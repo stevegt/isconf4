@@ -1,0 +1,128 @@
+digraph protocol
+{
+    labelloc=top;
+    compound=true;
+    size="7,10"
+    node[shape=ellipse];
+
+    subgraph legend
+    {
+        method [shape=box];
+        task [shape=ellipse];
+        task -> method [label="function call"];
+        method -> task [style=dotted,label="event"];
+        method -> task [style=dashed,label="spawn"];
+    }
+
+    subgraph clusterisconf
+    {
+        label = "ISconf";
+
+        subgraph confstack
+        {
+            node[shape=plaintext];
+            edge[style=invis];
+            cclient -> cserver;
+        }
+
+        {rank=same; cserver confmgr}
+        confmgr [shape=ellipse];
+
+        {rank=same; cclient conftx confrx}
+        conftx [shape=ellipse];
+        confrx [shape=ellipse];
+
+        confmgr -> conftx;
+        confrx -> confmgr [style=dotted,label="isconf"];
+        confmgr -> confsession [style=dotted];
+
+    }
+
+    confsession -> { login open read write close } [style=solid,minlen=2];
+
+    subgraph clusterisfs
+    {
+        label = "ISFS";
+
+        subgraph stack
+        {
+            node[shape=plaintext];
+            edge[style=invis];
+            client -> server;
+        }
+
+        {rank=same; client login open read write close}
+        login [shape=box];
+        open [shape=box];
+        read [shape=box];
+        write [shape=box];
+        close [shape=box];
+
+        {rank=same; server cachemgr}
+        cachemgr [shape=ellipse];
+
+        { login } -> cachemgr [style=dotted, label="isfs"];
+        { open } -> session [style=dotted, label="sessid"];
+        { read write close } -> file [style=dotted, label="fileid"];
+        cachemgr -> session [style=dashed];
+        session -> file [style=dashed];
+    }
+
+    file -> mcast [style=solid,minlen=2,label="whohas => meshobj"];
+    meshmgr -> cachemgr [style=dotted,minlen=2,label="isfs"];
+
+    subgraph clusterisdmesh
+    {
+        label = "ISdmesh";
+
+        subgraph meshstack
+        {
+            node[shape=plaintext];
+            edge[style=invis];
+            meshapi -> meshctl -> meshio;
+        }
+
+        {rank=same; meshapi ucast mcast}
+        ucast [shape=box];
+        mcast [shape=box];
+
+        {rank=same; meshctl meshmgr}
+        meshmgr [shape=ellipse];
+
+        {rank=same; meshio meshtx }
+        meshtx [shape=box];
+
+        { ucast mcast } -> meshmgr [style=dotted];
+        meshmgr -> meshtx;
+    }
+
+    "..." [shape=box]
+    meshtx -> send;
+    meshtx -> "...";
+    linkmgr -> meshmgr [style=dotted,label="isdmesh"];
+
+    subgraph clusterisdlink
+    {
+        label = "ISdlink";
+
+        subgraph linkstack
+        {
+            node[shape=plaintext];
+            edge[style=invis];
+            linkapi -> linkctl -> linkio;
+        }
+
+        {rank=same; linkapi send }
+        send [shape=box];
+
+        {rank=same; linkctl linkmgr}
+        linkmgr [shape=ellipse];
+
+        {rank=same; linkio linktx }
+        linktx [shape=box];
+
+        { send } -> linkmgr [style=dotted];
+        linkmgr -> linktx;
+    }
+
+}

@@ -1,0 +1,216 @@
+XXX TCN is one big turing tape, composed of lots of fragments,
+addressable by SHA1 of a fragment.  Fragments are read-only.  There
+needs to be an index tying the fragments together into a coherent
+sequence.  The UTM that reads this tape is composed of many TM's, all
+able to run in parallel.  Perhaps each TM owns its own portion of the
+index, and sells read/write access to other TM's.  Each TM would
+probably want to cache a copy of each tape fragment that its own index
+points to.  Each TM's instruction set is published at a URL; the URL
+itself is the identifier for TM type.  
+
+XXX The controller of a checkin (or anything that needs to be locked)
+should be the entity requesting the lock.  The controller posts the
+lock request on one (and only one) exchange, as an ask.
+Counterparties post bids to register their agreement.  The exchange
+counts orders and grants the lock when a majority have ordered.
+Variations: 
+
+XXX delivery date spot market
+
+XXX user actions, repeating actions, and externs are probably related
+
+XXX handle HACMP builds (barrier problem, manual contexts)
+
+XXX handle cron vs. boot vs. manual and other contexts
+
+XXX handle barrier
+
+XXX use isconf to develop isconf
+
+XXX use isconf to collaborate on isconf development
+
+XXX service derivatives are lower-layer primitives which snap and exec
+are implemented in
+
+XXX isconf is really just a UI for contract net service market
+
+XXX need an API spec format, language, so that the spec isn't written
+in perlpod or pydoc -- use ABNF?
+
+XXX unit tests read the spec file
+
+XXX figure out how to do code/data separation on top of this -- this
+would enable libraries of isconf-based utilities; these primitives are
+the virtual machine which the library code executes on top of
+
+acl file
+
+  XXX kill this?  but if I kill it then how to enforce PGP sigs on
+  packages?  Who reads this file?  Okay, we read it both at ci and at
+  apply.  
+
+  The set of access controls governing which admins are allowed to
+  check in packages on which branches.  The ACL set is a flat file
+  containing branch names and admin uids, and looks something like:
+
+	linux:	stevegt,gott,rhudson,matt
+	nfs:	rhudson,matt
+	dns:	stevegt,matt
+	dev:	stevegt,gott,rhudson,matt
+	stage:	stevegt,matt
+	prod:	matt
+
+  The admin uids are tied to their PGP key fingerprints in
+  the admin file.
+
+branch
+
+  Each machine is always on one branch of development, no more or
+  less.  XXX how to fork new branches?  probably either at ci or as a
+  separate isconf command.  I like the idea of 'isconf mkbranch
+  {name}' or somesuch.
+
+  XXX we need a way of representing extern packages i.e. resolv.conf
+  -- a special branch?  
+
+  The only time untested sequences are applied to a machine is via a
+  snap, exec, get, or merge.  XXX are get and merge the same thing?
+  yes, if merge can be constrained by package name as well as date
+  etc.
+
+  The only way packages leave the local machine's hard drive is via
+  ci.  A ci always puts them on the current branch only.
+
+  
+  supported actions:
+
+    create snap or exec locally and test
+    get individual package from another branch, apply locally and test
+    merge changes from another branch onto local machine and test
+    ci outstanding changes on local machine to current branch
+
+gold server
+
+  A TCNP exchange.  There can (and should) be multiple gold servers.
+  There can even be one on each host.  
+
+
+host
+
+  The source and/or target of a change control package.
+
+connect
+
+  a TCNP/TCP connection 
+
+connection
+
+  Hosts always connect to exchange, never the other way around.
+
+  The connection protocol:
+
+    connect
+    check time
+    catch up on news and market data
+    get packages
+    apply packages
+    send packages
+    close
+    
+market data  
+
+  XXX ticker symbols are hierarchical e.g.:
+
+  	csco  			(underlying)
+	csco.op.jan03.put.20	(option)
+	csco.news		(news)
+	csco.news.1424		(news)
+
+	nfs.news.153		(nfs class change #153)
+
+  Notices sent from TCNP exchange to host regarding new packages on
+  host.  Filtered by host attributes.  Hosts request market data early
+  in any connection.  Hosts will usually ask for a "catch up"; they
+  will specify their filter expression along with the most recent
+  market data tick number they received, and the exchange will send
+  all later data that matches the filter.  
+
+  Because the filter expression is stored in the attributes file, and
+  because the attributes file can be upgraded in response to packages
+  installed in response to market data, there needs to be a special
+  code path which detects an attributes file upgrade, breaks the
+  connection, and reestablishes the connection with the new filter in
+  place.  XXX ugly -- instead try something like the extern file; call
+  it a 'break' file; when any file listed in the break file gets
+  upgraded, we restart the connection (or do we restart isconf
+  itself?)
+
+  A market data tick typically contains attributes, a bid
+  or ask price, and a SHA1 hash of a package.  If the tick is an ask,
+  that means the file is available by consignment from the exchange.
+  If the file is a bid, that means the exchange or an exchange member
+  wants a copy of the file.
+
+  Each inbound ask is presumed to be a package that should be applied
+  to the local host.  The attributes are checked against the local acl
+  file on each host to ensure that the admin who posted the ask is
+  authorized to publish data containing that attribute.  Note that,
+  because the acl file is local to each host, and might be altered as
+  packages are applied, one host might allow an order that another
+  host might not.
+
+  If the host agrees that it should install the package, then it will
+  send a bid matching the ask.  The exchange will send a confirmation
+  ticket, with the package attached.
+
+  Transient information such as external environment (e.g. IP
+  addresses and gateways) is published as market data directly, rather
+  than as packages.  XXX  I don't know about this.  How do we specify
+  that?  Do we need an 'extern' primitive?  Or is there a time axis or
+  sequence attribute that we can set to ALL?  Hey, I kinda like that.
+  For another idea, see extern file.
+
+
+package
+
+  The result of one of these commands:
+
+	isconf snap
+	isconf exec
+
+  Published to exchange by admins, sold by consignment from exchange,
+  applied to target hosts.
+
+TCNP
+
+  TerraLuna Contract Net Protocol.  ISconf hosts are TCNP
+  counterparties.  ISconf gold servers are TCNP exchanges.
+
+
+TCNP exchange
+
+  A bid/ask market server.  Uses PGP-based messaging for all
+  communications.  
+
+
+XXX TODO
+
+  Conflict avoidance
+
+  Conflict detection
+
+  Conflict resolution
+
+  How do admins set prices?
+
+  How do exchanges set markup?
+
+  arbitration (replication)
+
+  How does a host join an exchange?
+
+  Can individual files have their own attributes, to allow that time
+  axis thing to make them externs?  Or do we have a /var/isconf/extern
+  file which just lists the files which are timeless?  Does the extern
+  file evolve, or is it an extern?
+

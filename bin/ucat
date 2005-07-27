@@ -1,0 +1,49 @@
+#!/usr/bin/python2.2
+
+import errno
+import select
+import socket
+import sys
+import time
+
+s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+s.setblocking(0)
+s.connect(sys.argv[1])
+
+txd = ''
+while True:
+
+    # read socket
+    while True:
+        try:
+            rxd = s.recv(1024)
+            if not rxd:
+                sys.exit(0)
+            sys.stdout.write(rxd)
+        except socket.error, (error, strerror):
+            if error == errno.EAGAIN:
+                break
+            raise
+
+    # write socket
+    while True:
+        while txd:
+            try:
+                sent = s.send(txd)
+                txd = txd[sent:]
+            except socket.error, (error, strerror):
+                if error == errno.EAGAIN:
+                    break
+                raise
+        (r,w,e) = select.select([sys.stdin],[],[],0)
+        if sys.stdin in r:
+            txd = sys.stdin.readline()
+        break
+
+    time.sleep(.1)
+
+
+
+
+
+

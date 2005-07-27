@@ -1,0 +1,138 @@
+version (n) == revision, step, phase, moment, tick, mark
+
+branch (n) == model, build, set
+
+image (n) == product, derivative, assembly
+
+journal == checklist, procedure
+
+journals have versions, images have marks or ticks
+
+
+
+base image
+
+    An image which was created directly from vendor CD or another
+    external source, and which contains an empty journal.  Normally as
+    simple as possible, with only a management tool (such as ISconf)
+    and its prerequisites added.  
+    
+    You will usually create only one base image per platform -- see
+    the one-base axiom.
+    
+    Base images are named using an arbitrary ASCII string.
+    Recommended practice is to use platform name followed by a dash
+    and the domain name of your organization, as in
+    'linux_debian_i686-t7a.org' or 'solaris_5.8_sparc-arc.nasa.gov'.
+    Because you will usually only create one base image for each
+    platform, a version number isn't needed.
+    
+    If you for some reason do find yourself creating a second base
+    image for the same platform, then first examine what you're doing
+    and re-read the one-base definition.  If you still want to do
+    this, then recommended practice is to add another dash and then
+    then version number, as in 'aix_4.X_rs6000-langley.af.mil-2'.  
+
+checkpoint image
+
+    An offline copy of the disk image of a given branch at a given
+    revision, used for speedier installs.  A checkpoint image is made
+    by installing a host from an ancestor checkpoint or base image,
+    allowing its branch's journal entries to execute, then capturing
+    the resulting disk content.
+    
+    A disk's content evolves incrementally as changes are made --
+    these changes are recorded in the journal for replay on other
+    hosts of the same branch.  This replay can take a long time if
+    many transactions have been added to the branch on top of the base
+    image.  Since the checkpoint allows the install image to contain
+    XXX
+
+
+one-base 
+
+    One-base is an axiom of deterministic host management -- it says
+    that a host of any branch can be created by installing the base
+    image for that platform and then replaying that branch's
+    journal.  This means you only need one base image for any given
+    platform -- starting from there you can use journal replay to
+    morph the image into any other image which will execute on that
+    platform.
+
+        "One base to root them all, one base to gild them, one base to
+        start them all and in the darkness build them."
+
+    Sorry.
+
+branch
+
+    Host model or type.  Similar usage as in software version control.
+    A different branch is normally used for each set of hosts that
+    need their own disk image and that do wildly different or
+    conflicting things.  For example, a DNS server and a database
+    server would tend to be on different branches.
+
+    A branch is described by the sequence of transactions in a
+    journal.  A new branch is created by forking an existing branch or
+    by merging two existing branches.  
+    
+    Branches are named with an arbitrary string of letters and numbers. 
+
+    XXX recommended naming convention
+
+    XXX isconf select branchname
+
+journal
+
+    The transaction log of all changes made to a branch, starting from
+    the base image.  Used for replay on other hosts of the same
+    branch.  A new journal is created by forking an existing journal.
+    The first entry in a journal contains the name includes 
+
+class
+
+    This is an anti-definition: the word "class" should not be used to
+    describe anything related to deterministic host management.  It
+    brings with it misconceptions, such as "hosts can be subclassed",
+    "changes in the parent class can be automatically and safely
+    propagated to subclasses", and so on; all of these misconceptions
+    imply that editing history is a safe thing to do.
+
+editing history
+
+    XXX
+
+fork
+
+    The act of creating a new branch from an existing branch.  The
+    original branch is the "parent" branch, and the new branch is the
+    "child" branch.  Since a journal describes the details of a
+    branch, then at a low level a fork is performed by copying the
+    journal for the parent branch.
+
+install image
+
+    The bits placed on disk during installation; this will be either
+    the base image or a checkpoint image taken from a child branch.
+
+host
+
+    The combination of hardware and disk content which makes up a
+    unique machine.  (Conventional UNIX sysadmin meaning.)
+
+merge
+
+    The act of creating a new branch from 2 existing branches.  
+
+platform
+
+    combination of hardware and operating system 
+
+    XXX 'linux_debian_i686',
+    'solaris_5.8_sparc',
+    or 'aix_5.X_rs6000'.  
+
+XXX sysadmind
+
+    The ISconf daemon.
+

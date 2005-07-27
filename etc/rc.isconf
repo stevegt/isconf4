@@ -1,0 +1,28 @@
+#!/bin/sh
+
+case "$1" in
+	start)
+		echo -n "Starting isconf file server: netstore"
+		isconf netstore -d &
+		# sleep 5
+		# isconf -v update
+		echo "."
+  		;;
+	stop)
+		echo -n "Stopping isconf file server: netstore"
+		killall netstore
+		echo "."
+  		;;
+	restart|force-reload)
+		killall netstore
+		isconf netstore -d &
+		echo "done."
+  		;;
+	*)
+  		echo "Usage: /etc/init.d/isconf {start|stop|restart|force-reload}"
+  		exit 1
+		;;
+esac
+
+exit 0
+

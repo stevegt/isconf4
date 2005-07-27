@@ -1,0 +1,249 @@
+Return-Path: <infrastructures-admin@roton.terraluna.org>
+Received: from scramjet.TerraLuna.Org (localhost.TerraLuna.Org [127.0.0.1])
+	by roton.TerraLuna.Org (8.11.6/8.11.6) with ESMTP id h8HCsAr15112;
+	Wed, 17 Sep 2003 05:54:10 -0700
+Received: from TerraLuna.Org (pathfinder.TerraLuna.Org [10.27.1.18])
+	by roton.TerraLuna.Org (8.11.6/8.11.6) with ESMTP id h8HCrHr15091
+	for <infrastructures@terraluna.org>; Wed, 17 Sep 2003 05:53:17 -0700
+Received: from stevegt by pathfinder with local (Exim 3.35 #1 (Debian))
+	id 19zbo3-00084f-00; Wed, 17 Sep 2003 05:53:15 -0700
+To: infrastructures@terraluna.org
+Cc: couch@eecs.tufts.edu
+Message-ID: <20030917125315.GA29569@pathfinder>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+User-Agent: Mutt/1.3.28i
+From: stevegt@TerraLuna.Org
+Subject: [Infrastructures] ISconf4 Primitives, Examples
+Sender: infrastructures-admin@TerraLuna.Org
+Errors-To: infrastructures-admin@TerraLuna.Org
+X-BeenThere: infrastructures@mailman.terraluna.org
+X-Mailman-Version: 2.0.5
+Precedence: bulk
+List-Help: <mailto:infrastructures-request@mailman.terraluna.org?subject=help>
+List-Post: <mailto:infrastructures@mailman.terraluna.org>
+List-Subscribe: <http://mailman.terraluna.org/mailman/listinfo/infrastructures>,
+	<mailto:infrastructures-request@mailman.terraluna.org?subject=subscribe>
+List-Id: <infrastructures.mailman.terraluna.org>
+List-Unsubscribe: <http://mailman.terraluna.org/mailman/listinfo/infrastructures>,
+	<mailto:infrastructures-request@mailman.terraluna.org?subject=unsubscribe>
+List-Archive: <http://mailman.terraluna.org/pipermail/infrastructures/>
+Date: Wed, 17 Sep 2003 05:53:15 -0700
+
+Hi All,
+
+I think that there may be only two lowest-level primitives which need to
+be supported by an automated host administration tool:
+
+- create or overwrite a file with a snapshot of what it should contain
+- execute a non-interactive command
+
+Can anyone think of any other host administration actions which can't be
+duplicated by some complex combination of these two?  If nobody can
+think of anything else, then these are the only primitives I'm going to
+implement in isconf4.  (GUI installers are the worst fit.  But short of
+intercepting syscalls or retraining developers, we don't seem to have
+any recourse other than to figure out what they did, then duplicate it
+with these two primitives.)
+
+I think all we need to do is record these primitives and play them back
+in the same order.  This should work both for rebuilding a unique
+machine as well as building lots of similar ones.  It should also work
+for driving and maintaining more complex tools and configuration file
+editors/generators, like cfengine, psgconf, and lcfg.
+
+More detail on these two primitives:
+
+
+Snapshot:
+=========
+
+Snapshot preserves the current contents, permissions, etc. of a file.
+This includes recording where we are in the build sequence for this
+machine.  ISconf4 will then restore the snapshot at the same point in
+the lifecycle of similar machines, whether that's today or next year.
+
+
+Execute:
+========
+
+Execute is what it sounds like -- do this now, "now" being defined as
+the current point in the ordered sequence of the lifecycle of the
+machine.  ISconf will execute the same command at the same point in the
+lifecycle of all similar machines.  
+
+The sequence marks recorded by "Snapshot" and "Execute" are both on the
+same relative timeline.  In other words, you can interleave the two.
+They'll always replay in the same order you recorded all of them in.
+
+
+
+Example 1:
+----------
+
+The following hypothetical iconf4 command means "I want cfengine.conf to
+contain its current bits at this point in the lifecycle of all machines
+of this type".  Presumably you just now manually edited cfengine.conf a
+few moments ago, and want this version instantiated on other machines,
+but only if they're at the same level of maturity as this one.  To make
+all this magic happen, just say:
+
+	isconf snap /etc/cfengine/cfengine.conf
+
+Before, you would have had to do a CVS checkin, then an update to the
+gold server, then somehow cause rc.isconf, or at least an rsync pull, to
+be run on each machine.  ISconf4 will do the equivalent of all of that
+in a few seconds from this one command.
+
+
+Example 2:
+----------
+
+"I want this tarball to magically appear in /tmp at this point in the
+life of this type of machine".  You must first have gotten the tarball
+from somewhere; we don't care how.  You've manually placed it in /tmp on
+one machine.  You want all similar machines to have this tarball in /tmp
+at this point in their build, which again might be now or next year
+depending on when you're building them.  The usefulness of snapshotting
+something into /tmp will be obvious shortly:
+
+	isconf snap /tmp/foo.tar.gz
+
+The tarball will start magically appearing in /tmp on other machines a
+few seconds later.  Any machine that's currently down will automatically
+get the tarball after it boots up.  Any machine built a year from now
+will get the tarball in /tmp at this point in its build too.  In all of
+these cases, the tarball will stay there until something later deletes
+it.
+
+
+Example 3:
+----------
+
+"Run this ad-hoc script which I just hacked together to clean out old
+a.out binaries on this machine.  Oh, and do it on all our other machines
+too."  Truly a DWIM technique, requires knowing nothing about the
+purpose of /usr/local, let alone pansy-ass central repositories, and is
+therefore backward compatible with many broken versions of sysadmin
+meatware:
+
+	vi /tmp/doit.sh
+	chmod +x /tmp/doit.sh   
+	isconf snap /tmp/doit.sh
+	isconf exec /tmp/doit.sh /bin/* /usr/bin/* /sbin/* /usr/local/bin/*
+
+Old binaries will start disappearing on multiple machines right away, as
+well as on future machines yet to be built.  Hopefully the sysadmin knew
+what he was doing.  See "Caveats" below about testing, staging, ACLs,
+etc.
+
+
+Example 4:
+----------
+
+"Fetch, patch, build, and install kernel 2.4.21 on all similar machines
+when they get to this point in their life."  This is extreme -- usually
+you'd build once and then deploy binaries.  But just to prove a point:
+
+	isconf snap /tmp/linux-2.4.21.tar.bz2
+	isconf snap /tmp/openmosix-2.4.21.patch
+	cd /usr/src
+	isconf exec tar --bzip2 -xvf /tmp/linux-2.4.21.tar.bz2
+	isconf exec ln -fs linux-2.4.21 linux
+	cd linux
+	isconf exec "patch -p1 < /tmp/openmosix-2.4.21.patch"
+	isconf exec make mrproper
+	make menuconfig  
+	isconf snap .config   # neat, huh?
+	isconf exec make oldconfig dep bzImage modules
+	isconf exec rm -rf /lib/modules/`uname -r`
+	INSTALL_PATH=/boot 
+	isconf exec make modules_install bzlilo
+	isconf exec shutdown -r now
+
+Did I mention how env gets captured by 'isconf exec', similar to the way
+the 'at' command works?  This means the 'cd' commands and that
+INSTALL_PATH setting actually do something useful and persistent.  
+
+Note the reboot at the end -- in a few seconds, all target machines will
+start building new kernels and rebooting.  Probably need a barrier of
+some sort in there -- see maintenance windows in "Caveats".
+
+
+Example 5:
+----------
+
+Same thing, but build only once, then deploy to other machines:
+
+	cd /usr/src
+	tar --bzip2 -xvf /tmp/linux-2.4.21.tar.bz2
+	ln -fs linux-2.4.21 linux
+	cd linux
+	patch -p1 < /tmp/openmosix-2.4.21.patch
+	make mrproper
+	make menuconfig  
+	isconf snap .config  # so you have a record
+	make oldconfig dep bzImage modules
+	# remove old modules on all machines
+	isconf exec rm -rf /lib/modules/`uname -r`
+	INSTALL_PATH=/boot 
+	make modules_install bzlilo
+	# we have to explicitly rerun lilo because we just now missed 
+	# it by not running 'make bzlilo' under isconf
+	isconf exec lilo
+	# snapshot the newly installed module tree, recursively
+	isconf snap /lib/modules
+	# and the new kernel, map, etc.
+	isconf snap /boot
+	history > BUILD
+	isconf snap BUILD  # cool
+	isconf exec shutdown -r now
+
+Note that we got everything all built locally before we started
+deploying.  You'd want to stage the release of this sequence until
+it's all done and tested locally anyway -- see "Caveats".
+
+
+Example 6:
+----------
+
+Take the commands in Example 5, put them in a script, tailor it to take
+kernel version arguments, do error checking, and so on, call it
+/usr/src/build+deploy.sh, then:
+
+	cd /usr/src
+	isconf snap build+deploy.sh
+
+Now build+deploy.sh will always be there in /usr/src on every machine.
+All you have to do for each new kernel is run build+deploy.sh; because
+the script has isconf commands in it, it will automatically deploy the
+bits being built, as they're built.  
+
+
+Caveats:
+========
+
+What's missing from these examples is any selection of where these
+operations will be replayed -- same machine, same machine type, all
+machines, only test machines, staging machines, production, etc.
+Security also needs to be covered.  I think the best place to select
+targets might be in environment variables on the sending end, and an ACL
+of some sort on the receiving end.  There would also need to be a means
+of releasing tested changes to a wider set of machines.  Other isconf
+commands might include ways to single-step execution of changes, review
+history, resurrect old snapshots, add comments, see what would be
+replayed on a given machine before it boots up, ways to define
+maintenance windows and only allow primitives to replay during those
+times, and so on.  Still thinking.  
+
+Steve
+-- 
+Stephen G. Traugott  (KG6HDQ)
+UNIX/Linux Infrastructure Architect, TerraLuna Aerospace LLC
+stevegt@TerraLuna.Org 
+http://www.stevegt.com -- http://Infrastructures.Org 
+_______________________________________________
+Infrastructures mailing list
+Infrastructures@mailman.terraluna.org
+http://mailman.terraluna.org/mailman/listinfo/infrastructures

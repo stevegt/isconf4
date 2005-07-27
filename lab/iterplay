@@ -1,0 +1,33 @@
+#!/usr/bin/python2.2
+
+from __future__ import generators
+
+class b:
+
+    def __init__(self):
+        self.obj = self.mygen()
+
+    def mygen(self):
+        i=0
+        while True:
+            i += 1
+            if i == 5:
+                yield None
+            if i > 10:
+                break
+            yield i
+
+    def next(self):
+        return self.obj.next()
+
+    def __iter__(self):
+        return self.obj
+
+
+bar = b()
+print bar.next()
+for i in bar:
+    print i
+print bar.next()
+
+

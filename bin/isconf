@@ -1,0 +1,33 @@
+#!/usr/bin/python2.2
+# vim:set expandtab:
+# vim:set foldmethod=indent:
+# vim:set shiftwidth=4:
+# vim:set tabstop=4:
+
+from __future__ import generators
+import ConfigParser
+import copy
+import email.Message
+import email.Parser
+import errno
+import inspect
+import md5
+import os
+import popen2
+import random
+import re
+import select
+import sha
+import shutil
+import socket
+import sys
+import time
+
+sys.path.append("lib/python")
+
+from isconf.Main import Main
+
+if __name__ == "__main__":
+    main = Main()
+    main.main()
+

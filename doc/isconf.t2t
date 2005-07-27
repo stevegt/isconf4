@@ -1,0 +1,469 @@
+isconf(8)
+ISconf 4.2.0
+%%date(%m/%d/%Y)
+
+%!target: man
+%%!options(man): -o isconf.8
+
+%% %!preproc(html): <<    '""<a name=""'
+%% %!preproc(html): >>    '"">""'
+
+%% named anchors:  <<foo>>
+%!postproc(html): &lt;&lt;    '<a name='
+%!postproc(html): &gt;&gt;    '>'
+%!postproc(man): <<.*>> ''
+%!postproc(man): \s*\(#\S+\) ''
+
+%% links to named anchors:  <# text ## foo #>
+%!preproc(html): <#\s*      '<a href='
+%!preproc(html): \s*##\s*   '>'
+%!preproc(html): \s*#>\s*   '</a>'
+%!preproc(man): <#\s*       '//'
+%!preproc(man): \s*##\s*\S+\s*    ''
+%!preproc(man): \s*#>\s*    '//'
+
+
+= NAME =
+
+isconf - command line client for isconfd
+
+= SYNOPSIS =
+
+**isconf** [**-nv**] ``[``**-h** //hostname//] //subcommand// [//args//] ...
+
+= DESCRIPTION =
+
+The ISconf package provides deterministic, reproducible management of
+UNIX machines, the kind of rock-hard reproducibility you can count on
+for disaster recovery, security, and auditability.  It's not for use
+in environments where you want to make manual, ad-hoc, or other
+out-of-band changes to machines.  If you don't care about disaster
+recovery, don't need to keep your machines in sync with each
+other, don't want to test O/S changes before deploying them to
+production, aren't interested in O/S patch management, or still
+want to log in as root on target machines and make arbitrary
+untracked changes, then you don't need this package.  
+
+**isconf** is the command-line client for **isconfd**(8).  You use
+isconf roughly the way you would use **sudo**(8).  Run isconf as
+yourself to create signed change packages (//transactions//) and hand
+them off to isconfd.  A transaction can be as simple as a single
+command or as complex as an entire tarball, vendor package, or even an
+O/S upgrade.  
+
+After verifying your signature and checking it against an
+authorization list, isconfd executes each transaction on the local
+machine (causing a logical clock //tick//).  After you're done testing
+the resulting disk content, you tell isconf; isconfd then publishes
+these transactions to all machines of the same type (a host type is
+called an image //branch//).  After publication, the isconfd daemon
+running on each of the other machines receives the transactions, again
+checks signatures, and then applies them.
+
+See the GLOSSARY below for more terms and concepts.
+
+The ISconf infrastructure is completely peer-to-peer; there are no
+servers or other single points of failure, and it works well in
+partially-partitioned networks such as DMZ environments.  It scales
+well -- the algorithms and communications protocols are designed for
+efficiency in infrastructures ranging up to 80,000 hosts (this has not
+yet been tested...)
+
+= QUICK START =
+
+XXX show the examples from mail
+
+= FLAGS =
+
+Flags appear only after the isconf command name, not after
+subcommands (as opposed to e.g. CVS).
+
+: **-c** //context//  
+    XXX arbitrary string e.g. 'boot' or 'any'
+    isconfd checks /var/isconf/context and pauses journal replay if
+    the strings don't match
+
+: **-h** //hostname_or_ip//
+    Contact isconfd at //hostname_or_ip// rather than on localhost.
+    Works exactly as if you were logged into the remote host when
+    running isconf.  This is 
+    
+: **-m**
+    Message -- human-readable comment describing the change.
+
+: **-n**
+    Noop or dry run; prints to stderr the actions which would be
+    taken.
+
+: **-q**
+    Quiet.
+
+XXX something for "this transaction will not return"
+
+
+= SUBCOMMANDS =
+
+: **acl** ``[``-s //exam_name=minscore// ``]`` //key_id [-]acfmst branch ...//  
+    Set/show access controls for the given GPG key 
+    on one or more branches.  The
+    special branch name 'ALL' means all existing and future branches.
+
+    If no //branch// given, then applies only to the branch the local
+    machine is on.  If no ACL given, then list ACLs for //key_id//.  If
+    no //key_id// given, then list all ACLs.
+
+    This command must be run by someone who has the 'a'
+    ACL turned on for the given branch(es).  
+
+    **-s** //exam_name=minscore//
+
+        Make grant of ACL be contingent on the score of person
+        with key_id rising above //minscore// on exam.
+
+    XXX ACLs
+
+    a acl change
+
+    c checkin
+    
+    f fork
+
+    m merge
+
+    s switch
+    
+    t transaction (snap or exec)
+
+
+    **Examples:**
+
+    # XXX  
+
+: **ci**
+
+: **checkpoint**
+    XXX prints instructions and/or calls systemimager prepare-client
+
+: **exam** -c //filename// | -d //exam_name// | -s //key_id//
+    XXX create, disable, scores
+
+: **fork** //old_branchname new_branchname//
+    Create a new branch from an existing branch.  The
+    original branch is the "parent" branch, and the new branch is the
+    "child" branch.  
+    
+    Low-level implementation:  Since a journal describes the details
+    of a branch, then a fork essentially just copies the entire
+    journal contents from the parent branch into a new journal named
+    after the child branch.
+
+: **lock** //message//
+    Lock the branch.  Required before **snap**, **exec**, and *ci**,
+    and recommended before **fork** and **switch**.  The //message//
+    will be recorded in the journal for each subsequent transaction.
+
+: **append** //other_branch//
+    Closest thing to a safe branch merge.  Append the entire journal
+    of //other_branch// to the journal of the local machine's own
+    branch.  The transations are not executed -- you'll need to run
+    **update** yourself.  This is not likely to do what you want; you'll likely
+    need to edit the resulting journal, add fixup transactions, and so
+    on, before **up** will run to completion.
+    
+
+: **msg** //key_id < message//
+    Send/queue a message for key_id.
+
+: **unlock** 
+
+: **update** ``[``-c //context//``]``
+    Causes isconfd to re-attempt execution of any new transactions in
+    journal.  Errors and messages are copied to stderr and stdout of
+    **isconf** as well as to syslog.  Exits with a non-zero return
+    code in case of error.
+
+: **switch** //branchname// ``[`` hostname_glob ... ``]``
+    Migrates the named host(s) onto a new branch.  In human language
+    this means the hosts are now going to change roles.  If
+    //hostname_glob// is not given then defaults to local host.
+
+    If //hostname_glob// contains dots, it is matched against the
+    fully-qualified domain name of each host, otherwise, it is matched
+    only against the output of 'hostname'.  Note that this is a
+    shell-style **glob**(3) pattern, //not// a regular expression --
+    dots don't need to be escaped.  XXX use fnmatch
+    
+    Switching a host to a new branch is only possible if the new
+    branch is a child of the host's old branch, and if there have been
+    no transactions executed on the host since the new branch was
+    forked off -- in other words, the new branch's journal content
+    needs to be a contiguous superset of the old branch's journal
+    content.  If these conditions aren't met, **isconf switch** will
+    exit with a non-zero return code, and/or isconfd will log the
+    error and panic.
+    
+    If this is confusing, think of this railroad analogy -- our host
+    is a long train, and our journal is the railroad
+    track.  As we make changes, we proceed down the track; each change
+    transaction advances us to the next railroad tie.  The new branch
+    is a side-track up ahead.  If we want to take that side-track,
+    then we need throw the switch to route the train onto it.  If we throw
+    the switch //before// we get there, we'll turn onto the side-track
+    and everything will be fine.  But if we throw the switch //after//
+    the head of the train is already past it, then we'll have a
+    disaster on our hands, as the trailing cars attempt to diverge
+    from the rest and subsequently derail.  In UNIX terms this
+    derailment is the kind of thing that happens when you, for
+    instance, try to force a package install when there are missing
+    prerequisites.
+
+: **backdate** //transaction_id// ``[``//insert_before_id//``]``
+    Drags a transaction back in time, moving it earlier in the
+    journal.  This explicitly breaks ordering and is a gun pointed at
+    your foot -- be careful.  It should only be used in those cases
+    where new host builds break due to network configuration or other
+    environmental data having changed -- presumably, you created a
+    **snap** later in the build to fix this (otherwise how are your
+    current hosts working?).  Go find that snap transaction and
+    specify it as //transaction_id//.  If you leave off
+    //insert_before_id//, then the snap will be inserted before the
+    next unexecuted transaction in the journal; presumably that's the
+    transaction that's breaking, so this is normally where you'd want
+    it.
+    
+    Overall, it's better to avoid this problem in the first place and
+    generate environmental configuration files from some external
+    source data, such as from a directory or isfs.
+
+    Internal implementation:  We don't actually move the transaction
+    within the journal.  All we do is append it to a separate list of
+    backdated transactions.  This list is executed in chronological
+    order, as if it were a small journal, at the beginning of each
+    **update** run. 
+
+    XXX ah-hah!  we need a subcommand that lets us "symlink", say,
+    /etc/hosts to a file or even an executable in isfs space; all of
+    these links get checked at the beginning of each run
+    
+    XXX think about how to handle e.g. licence files which expire
+
+    XXX okay -- it makes most sense to use backdate as shown above to keep
+    a separate list (aside from worklist) of snaps which need to take
+    place early; this makes sense because when the snap is taken we
+    might not know that it needs to be backdated, or how much, and can't
+    test without rebuilding.  But we will see the problem during a
+    later build, and can add the backdate and test it then.
+
+
+= CONFIGURATION OPTIONS =
+
+    Defaults shown where applicable.
+
+: **min-approvals**=1111111  XXX kill this
+    Each digit is the minimum number of people who need to sign an
+    action before it takes effect.  XXX acfst
+
+= ENVIRONMENT =
+
+    XXX environment overrides config?
+
+: **IS_PRIVATE_KEY**=/path/to/keyring
+    Tells the isconf client where to find your GPG secret keyring.  Defaults
+    to whatever the **gpg**(1) default is.
+
+    This path can use a URL-like 'ssh:' scheme to designate a path on
+    a remote machine, so that you don't need to keep copies of your
+    private key laying around:
+
+    - **ssh:username@host:/path/to/keyring** will cause isconf to
+      spawn an ssh session, prompting you for your ssh password if
+      needed (see **ssh-agent**(1)).  Your private key will be
+      exported from the keyring in ascii-armoured form using 
+      (using //gpg --export-secret-key  -a//)
+      and piped via stdout over the ssh
+      connection into the local isconf processes' memory space.  
+      
+      XXX At no time will a copy of the key hit disk (except possibly in swap);
+      the gpg //--enable-special-filenames// flag is used to do I/O
+      directly to 
+      directly to
+      and the
+      memory area will be overwritten with null bytes before being
+      freed.  See **IS_KEY_TIMEOUT** for how to have isconfd cache the
+      key longer.
+      
+      XXX        --enable-special-filenames  doesn't work right?
+
+
+: **IS_KEY_TIMEOUT**=//seconds//
+    If set to a positive integer, isconfd will cache your
+    private key in memory for this length of time.  Defaults to 0.
+
+    At the end of the timeout period, the memory area will be
+    overwritten with null bytes before being freed.
+
+
+: **IS_PASSPHRASE_TIMEOUT**=//seconds//
+    If set to a positive integer, isconfd will cache your
+    private key's passphrase in memory for this length of time.
+    Defaults to 0.
+
+    At the end of the timeout period, the memory area will be
+    overwritten with null bytes before being freed.
+
+
+    
+
+    
+
+= FILES =
+
+
+= GLOSSARY =
+
+: **base image**
+
+    An image which was created directly from vendor CD or another
+    external source, and which contains an empty journal.  Normally as
+    simple as possible, with only a management tool (such as ISconf)
+    and its prerequisites added.  
+    
+    You will usually create only one base image per platform -- see
+    the one-base axiom.
+    
+    Base images are named using an arbitrary ASCII string.
+    Recommended practice is to use platform name followed by a dash
+    and the domain name of your organization, as in
+    //linux_debian_i686-t7a.org//
+    or //solaris_5.8_sparc-arc.nasa.gov//.
+    Because you will usually only create one base image for each
+    platform, a version number isn't needed.
+    
+    If you for some reason do find yourself creating a second base
+    image for the same platform, then first examine what you're doing
+    and re-read the one-base definition.  If you still want to do
+    this, then recommended practice is to add another dash and then
+    then version number, as in //aix_4.X_rs6000-langley.af.mil-2//.  
+
+: **checkpoint image**
+
+    An offline copy of the disk image of a given branch at a given
+    revision, used for speedier installs.  A checkpoint image is made
+    by installing a host from an ancestor checkpoint or base image,
+    allowing its branch's journal entries to execute, then capturing
+    the resulting disk content.
+    
+    A disk's content evolves incrementally as changes are made --
+    these changes are recorded in the journal for replay on other
+    hosts of the same branch.  This replay can take a long time if
+    many transactions have been added to the branch on top of the base
+    image.  Since the checkpoint allows the install image to contain
+    XXX
+
+
+: **one-base** 
+
+    One-base is an axiom of ISconf (and probably deterministic host
+    management in general) -- it says that a host of any branch can be
+    created by installing the base image for that platform and then
+    replaying that branch's journal.  This means you only need one
+    base image for any given platform -- starting from there you can
+    use journal replay to morph the image into any other image which
+    is decribed by a branch's journal.
+
+        "One base to start them all, one base to gild them, one base to
+        boot them all and in the darkness build them."
+
+    Sorry.
+
+: **branch** <<branch>>
+
+    Host model or type.  Similar usage as in software version control.
+    A different branch is normally used for each set of hosts that
+    need their own disk image and that do wildly different or
+    conflicting things.  For example, a DNS server and a database
+    server would tend to be on different branches.
+
+    A branch is described by the sequence of transactions in a
+    journal.  A new branch is created by forking an existing branch or
+    by merging two existing branches.  
+    
+    Branches are named with an arbitrary string of letters and numbers. 
+
+    XXX recommended naming convention
+
+    XXX isconf switch branchname
+
+: **journal**
+
+    The transaction log of all changes made to a branch, starting from
+    the base image.  Used for replay on other hosts of the same
+    branch.  A new journal is created by forking an existing journal.
+    The first entry in a journal contains the name includes 
+
+: **class**
+    This is an anti-definition: the word "class" should not be used to
+    describe anything related to deterministic host management.  It
+    brings with it misconceptions, such as "hosts can be subclassed",
+    "changes in the parent class can be automatically and safely
+    propagated to subclasses", and so on; most of these misconceptions
+    imply that //editing history// is a safe thing to do.
+
+: **editing history**
+
+    XXX
+
+: **install image**
+    The bits placed on disk during installation; this will be either
+    the base image or a checkpoint image taken from a child branch.
+
+
+
+: **host** <<host>>
+
+    The combination of hardware and disk content which makes up a
+    unique machine.  (Conventional UNIX sysadmin meaning.)
+
+: **machine**
+
+    See <# host ## host #>.
+
+: **platform**
+
+    combination of hardware and operating system 
+
+    XXX 'linux_debian_i686',
+    'solaris_5.8_sparc',
+    or 'aix_5.X_rs6000'.  
+
+: **tick**
+
+    The act of executing a single transaction on a single host.  Think
+    of each host as having a logical clock -- ISconf's job is to keep
+    the logical clocks of all hosts on the same branch in sync with
+    each other.  Any host which falls behind needs to catch up with
+    the rest -- it may have been powered off for a few months, or
+    might have been installed from an old image just now.  The isconfd
+    on the host will take care of catchup during first boot, by
+    replaying the journal entries -- the transactions -- one tick at a
+    time, in order, until done.
+
+XXX sysadmind
+
+    The ISconf daemon.
+
+
+= SEE ALSO =
+= BUGS =
+= AUTHOR =
+
+
+
+subcommands
+===========
+
+isconf set var=val
+
+    Causes an entry or update of the given tuple in the host's
+    environmental settings in isconf.cf.  
+

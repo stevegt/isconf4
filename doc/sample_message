@@ -1,0 +1,55 @@
+Type: flood
+Version: 1
+MinSeen: 30000
+Size: 992
+SeenVec:
+ H4sIADmEkUIAA+3RsQmAMBAFUCEDOIJu4mqO5iiOYZcUqYKFBxIC+l75+VzxL2cAAAAAgB87p6A1
+ WuxlGz3Vg2P0QB+33Ce/3t5Mgb/utTo3YZsVVxZbkGoYAAA=
+
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
+
+Type: block
+Version: 1
+MD5Sum: 561d2d5d2a4c4efc2ea94b28a3283346
+SHA1Sum: 52e6d9b5f16a29df3ba650bc7e1e773ef41b0c59
+Size: 631
+
+127.0.0.1	localhost unix
+10.27.1.18	spirit
+# 10.27.77.1	spirit
+10.27.1.62	pathfinder
+10.27.1.201	saber
+10.100.1.61 status.tellme.com
+
+10.27.2.23  c3po
+10.27.2.100 contact
+
+144.203.8.196 stlog
+
+# The following lines are desirable for IPv6 capable hosts
+# (added automatically by netbase upgrade)
+
+::1     ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+ff02::3 ip6-allhosts
+
+10.27.77.10	isconf10
+10.27.77.11	isconf11
+10.27.77.12	isconf12
+10.27.77.13	isconf13
+10.27.77.14	isconf14
+10.27.77.15	isconf15
+10.27.77.16	isconf16
+10.27.77.17	isconf17
+10.27.77.19	isconf19
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.1 (GNU/Linux)
+
+iD8DBQFCkYa13pZXCSGHus8RAmmoAJwN4bhwPY9N8krRnzfqmzHsmbQmmwCfQvt7
+anvWQgbHbQRmc0MIgjqNnlE=
+=Ya2G
+-----END PGP SIGNATURE-----

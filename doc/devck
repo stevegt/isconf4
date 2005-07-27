@@ -1,0 +1,23 @@
+development checklist items (sanity check)
+
+for each task:
+
+    starter         identified
+    killer          identified
+
+for each method:
+
+    event paths     none
+
+for each event path:
+
+    reply path      identified
+
+for any two objects:
+
+    data path           compatible with endpoint types
+    return data path    compatible with endpoint types
+    protocol            described
+
+
+

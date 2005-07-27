@@ -1,0 +1,13 @@
+digraph flow
+{
+    rankdir=LR;
+    labelloc=top;
+    compound=true;
+    size="7,10"
+    node[shape=record];
+
+    cli [ label ="cli | {stdin | stdout | stderr} | {in | out}" ]
+     [ label ="cli | {stdin | stdout | stderr} | {in | out}" ]
+
+}
+

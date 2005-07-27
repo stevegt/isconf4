@@ -1,0 +1,17 @@
+Copyright (C) 2005,  Steve Traugott, stevegt@terraluna.org
+
+All rights reserved -- do not redistribute.  This code was developed
+as a proof-of-concept prototype, is only being distributed as a human
+communications aid, and should not be considered viable software.
+*Please* don't use this code on any machines you care about.  *Please*
+don't base any other code on it -- the file formats and wire protocols
+are all going to change.
+
+See http://trac.t7a.org/isconf4/wiki/ProofOfConcept for more
+information.
+
+THIS PACKAGE IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR
+IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
+WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
+PURPOSE.
+
