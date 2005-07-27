@@ -777,8 +777,8 @@ class PopenHi:
                     os.close(i)
                 except OSError:
                     pass
-            debug = "%d child running %s\n" % (os.getpid(), cmd)
-            open("/tmp/debug", 'w').write(debug)
+            # debug = "%d child running %s\n" % (os.getpid(), cmd)
+            # open("/tmp/debug", 'w').write(debug)
             try:
                 os.execvp(cmd[0], cmd)
             finally:
