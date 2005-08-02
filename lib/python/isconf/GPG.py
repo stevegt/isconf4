@@ -13,9 +13,9 @@ change.
 This is a generic wrapper and is not ISconf-specific -- feel free to
 use it in your own applications, and see the pycrypto license below.  
 
-Portions of this module are derived from A.M. Kuchling's skillfully
-written GPG.py version 1.3, which can be found in the pycrypto CVS
-repository on Sourceforge:
+Portions of this module are derived from A.M. Kuchling's well-designed
+GPG.py version 1.3, which can be found in the pycrypto CVS repository
+on Sourceforge:
 
     http://cvs.sourceforge.net/viewcvs.py/pycrypto/gpg/GPG.py
 
@@ -27,9 +27,9 @@ keyrings.  I've also altered some of the returned objects in order for
 the caller to not have to know as much about the internals of the
 result classes.
 
-While the rest of ISconf is released under a different license, I am
-releasing this single file under the same terms that A.M. Kuchling
-used for pycrypto:
+While the rest of ISconf is released under the GPL, I am releasing
+this single file under the same terms that A.M. Kuchling used for
+pycrypto:
 
 _____________________ pycrypto LICENSE file starts __________________________
 ===================================================================
