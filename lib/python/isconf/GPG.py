@@ -14,8 +14,8 @@ This is a generic wrapper and is not ISconf-specific -- feel free to
 use it in your own applications, and see the pycrypto license below.  
 
 Portions of this module are derived from A.M. Kuchling's well-designed
-GPG.py version 1.3, which can be found in the pycrypto CVS repository
-on Sourceforge:
+GPG.py, using Richard Jones' updated version 1.3, which can be found
+in the pycrypto CVS repository on Sourceforge:
 
     http://cvs.sourceforge.net/viewcvs.py/pycrypto/gpg/GPG.py
 
