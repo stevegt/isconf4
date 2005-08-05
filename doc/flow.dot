@@ -1,13 +1,14 @@
 digraph flow
 {
     rankdir=LR;
-    labelloc=top;
-    compound=true;
-    size="7,10"
-    node[shape=record];
+    // labelloc=top;
+    // compound=true;
+    // size="7,10"
+    node[shape=box];
+    distance=5;
 
-    cli [ label ="cli | {stdin | stdout | stderr} | {in | out}" ]
-     [ label ="cli | {stdin | stdout | stderr} | {in | out}" ]
+    cli -> isconf [label="clp", headlabel="cmd", taillabel="cmdin"]
+    isconf -> cli [label="clp", headlabel="res", taillabel="cmdres"]
 
 }
 
