@@ -1,0 +1,20 @@
+#!/usr/bin/python2.3
+
+# example input file:
+#
+
+DEFAULT:
+
+
+
+taskfoo:
+    pin1="busA"
+    pin2="busB"
+    pin3="busC"
+
+taskbar:
+    pin1="busB"
+    pin2="busX"
+
+
+

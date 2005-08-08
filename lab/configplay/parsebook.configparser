@@ -1,0 +1,42 @@
+#!/usr/bin/python2.3
+
+import ConfigParser
+
+
+import ConfigParser
+import string
+
+def getconf(section):
+    conf = {}
+    # XXX doesn't work right -- the var order is indeterminate
+    for var in config.options(section):
+        print "#", var, config.get(section, var)
+        if var == '.include':
+            includes = config.get(section, var).split()
+            for include in includes:
+                subconf = getconf(include)
+                conf.update(subconf)
+            continue
+        conf[var] = config.get(section, var)
+    return conf
+
+
+config = ConfigParser.ConfigParser()
+
+config.read("book.cfg")
+
+# print summary
+print
+print string.upper(config.get("book", "title"))
+print "by", config.get("book", "author"),
+print  "(" + config.get("book", "email") + ")"
+print
+print config.get("ematter", "pages"), "pages"
+print
+
+# dump entire config file
+for section in config.sections():
+    print section
+    conf = getconf(section)
+    for (var,val) in conf.items():
+        print " ", var, "=", val
