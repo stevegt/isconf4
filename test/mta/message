@@ -1,0 +1,72 @@
+contents: isdmesh1
+
+mode: ucast
+id: 1234567890.12314@C0F069B2F3C79AB99C202C12A2F26185D8265268
+from: 
+    C0F069B2F3C79AB99C202C12A2F26185D8265268
+    9BD79DB2AFF47BD0F208F43F9A83BC1224886BCB
+    C6CA5A1FAC99DD56158AEFC534AD31A0347553DD
+    C7C8B3F77DD931C62F40B978F64B07FFA338DA14
+to: 
+    CCF0F45148677D3C7963DBF5A0A1A75C94178E46
+    9B36BCFA4DE08ADE8A17D09156B0315F0167CA38
+    DD97CAAA9F3D9C3BEFEDE9DB3792DFB4CDC607E3
+contents: isfs1
+
+op: hereis
+datatype: block
+md5sum: 561d2d5d2a4c4efc2ea94b28a3283346
+sha1sum: 52e6d9b5f16a29df3ba650bc7e1e773ef41b0c59
+
+
+
+
+op: hereis
+datatype: journal
+path: /branch/generic
+version: 24
+
+
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
+
+Size: 631
+
+127.0.0.1	localhost unix
+10.27.1.18	spirit
+# 10.27.77.1	spirit
+10.27.1.62	pathfinder
+10.27.1.201	saber
+10.100.1.61 status.tellme.com
+
+10.27.2.23  c3po
+10.27.2.100 contact
+
+144.203.8.196 stlog
+
+# The following lines are desirable for IPv6 capable hosts
+# (added automatically by netbase upgrade)
+
+::1     ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+ff02::3 ip6-allhosts
+
+10.27.77.10	isconf10
+10.27.77.11	isconf11
+10.27.77.12	isconf12
+10.27.77.13	isconf13
+10.27.77.14	isconf14
+10.27.77.15	isconf15
+10.27.77.16	isconf16
+10.27.77.17	isconf17
+10.27.77.19	isconf19
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.2.1 (GNU/Linux)
+
+iD8DBQFCqHS58rKIxO1Fc9MRAgGuAJ47j8uwWupnAkHpPbVWr5QRVDchLwCeOD/6
+6u4J/9FN6+UoD9g0BV5HNKU=
+=jiQf
+-----END PGP SIGNATURE-----
