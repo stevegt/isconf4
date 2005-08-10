@@ -47,64 +47,6 @@ for (name,expr) in RE.items():
 # if True: print "True ok"
 # if False: print "False bad"
 
-def getkwopt(argv,opt={},help=False): 
-    """
-    Get command line options and positional arguments.
-
-    Returns help text if help=True
-
-    Returns (kwopt,args) otherwise.
-
-    Sample input:
-
-        opt = {
-            'd': ('varisconf', "/var/isconf", "base of cache"),
-            'p': ('port', 9999, "port to listen on"),
-            'v': ('verbose', False, "verbose"),
-        }
-        
-    Sample kwopt return value (with empty command line):
-
-        kwopt = {
-            'varisconf': "/var/isconf",
-            'port': 9999,
-            'verbose': False,
-        }
-    """
-    kwopt = {}
-    optstr = ''
-    longopts = []
-    if help and not opt:
-        return ""
-    usagetxt = "options:\n"
-    for short in opt.keys():
-        long    = opt[short][0]
-        default = opt[short][1]
-        desc    = opt[short][2]
-        kwopt[long] = default
-        optstr += short
-        longopt = long
-        opthelp = "  -%s, --%s" % (short,long)
-        if default is not True and default is not False:
-            optstr += ':'
-            longopt += '='
-            opthelp += '=' + str(default)
-        longopts.append(longopt)
-        sep=""
-        if len(opthelp) > 20: 
-            sep="\n" + " " * 22
-        usagetxt += "%-22s%s%s\n" % (opthelp,sep,desc)
-    if help:
-        return usagetxt
-    (opts, args) = getopt.getopt(argv, optstr, longopts)
-    for (short,default) in opts:
-        short = short[1:] # strip off '-'
-        if default == '': 
-            default = True
-        long = opt[short][0] 
-        kwopt[long] = default
-    return (kwopt,args)
-
 def mkdict(**kwargs):
     return dict(kwargs)
 

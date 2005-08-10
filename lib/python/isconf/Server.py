@@ -63,8 +63,8 @@ class Peer:
 class Server:
 
     def __init__(self,**kwargs):
-        self.varisconf = kwargs.get('varisconf',"/var/isconf")
-        self.port = kwargs.get('port',9999)
+        self.varisconf = os.environ['VARISCONF']
+        self.port = int(os.environ['ISCONF_PORT'])
         self.ctlpath = kwargs.get('ctlpath',"%s/.ctl" % self.varisconf)
         self.pidpath = kwargs.get('pidpath',"%s/.pid" % self.varisconf)
         if not os.path.isdir(self.varisconf):
@@ -74,6 +74,9 @@ class Server:
     def serve(self):
         """be a server forever"""
         self.gpgsetup()
+
+        # XXX set up FBP netlist here
+
         kernel.run(self.init)
 
     def init(self,*args,**kwargs):

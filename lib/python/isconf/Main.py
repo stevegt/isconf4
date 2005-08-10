@@ -13,19 +13,15 @@ class Main:
     """XXX explanation about use of doc strings for help text"""
 
     verbs = (
-            'ci',
-            'date',
-            'doctest',
-            'exec',
-            'fork',
-            'help',
+            'ci',     
+            'exec',   
+            'fork',    
             'snap',
-            'selftest',
             'server',
             'up',
-        )
+    )
 
-    def _getconfig(self):
+    def XXX_getconfig(self):
         # parse config
         defaults={}
         defaults['var'] = "/var/isconf/current"
@@ -35,86 +31,52 @@ class Main:
         # XXX i hate these names
         conf.read(home+".hosts.conf", "/var/isconf/hosts.conf", "/etc/hosts.conf")
         conf.read(home+".isconf.cf", "/var/isconf/isconf.cf", "/etc/isconf.cf")
+        # XXX see lab/config
 
-        # XXX 
-        # print conf.sections()
-        # print conf.get('DEFAULT','var')
+    def _config(self):
+        if self.kwopt['verbose']:
+            os.environ['VERBOSE'] = '1'
+        os.environ['VARISCONF'] = "/tmp/var/isconf" # XXX
+        os.environ['ISCONF_PORT'] = str(self.kwopt['port'])
+        
 
     def main(self):
 
-        """[-hv] [-m message] {verb} [verb_options] ..."""
+        synopsis = """
+        isconf [-hv] [-c config ] [-m message] [-p port] {verb} ...
+        
+        """
         global verbose
-        opt={
-            'd': ('varisconf', '/var/isconf', "ISFS/ISconf data directory (relative to rootdir)" ),
+        opt = {
+            'c': ('config', '/etc/is.conf', "ISFS/ISconf configuration file" ),
             'h': ('help',    False, "this text" ),
             'm': ('message', None,  "changelog and branch lock message" ),
-            'r': ('rootdir',    '/',   "root directory (target of modifications)" ),
-            'v': ('verbose', False, "show debug output"),
+            'p': ('port',    9999,  "TCP/UDP port for interhost comms" ),
+            'v': ('verbose', False, "show verbose output"),
         }
-        ps = "verb is one of: %s\n" % ', '.join(self.verbs)
-        def usage(msg=None): self.usage(self.main,opt,msg,ps)
-
-        # self.home = os.getenv("HOME")
-        
-        (kwopt,args) = getkwopt(sys.argv[1:],opt)
-        if kwopt['help']: usage()
-        kwopt['varisconf'] = "%s/%s" % (
-            kwopt['rootdir'].rstrip('/'), kwopt['varisconf'].lstrip('/'),
-        )
+        ps = "\nVerb is one of: %s\n" % ', '.join(self.verbs)
+        (kwopt,args,usage) = getkwopt(sys.argv[1:],opt)
+        self.helptxt = synopsis + usage + ps
+        if kwopt['help']: self.usage()
         self.kwopt = copy.deepcopy(kwopt)
-        verbose = kwopt['verbose']
+        self._config()
         if not args: 
-            usage("missing verb")
+            self.usage("missing verb")
         self.args = copy.deepcopy(args)
         verb = args.pop(0)
         if not verb in self.verbs:
-            usage("unknown verb")
-        if verb in ('doctest', 'selftest', 'help', 'server'):
+            self.usage("unknown verb")
+        if verb in ('help', 'server'):
             self.verb = verb
             func = getattr(self,verb)
             rc = func(args)
             sys.exit(rc)
-        transport = UNIXClientSocket(varisconf = kwopt['varisconf'])
+        transport = UNIXClientSocket(varisconf = os.environ['VARISCONF'])
         isconf = ISconf4(transport=transport)
         rc = isconf.client(self.args)
         sys.exit(rc)
         
-    def help(self,argv):
-        """isconf help {verb}"""
-        raise
-        opt={}
-        ps = "verb is one of: %s\n" % ', '.join(self.verbs)
-        def usage(msg=None): self.usage(self.help,opt,msg,ps)
-        verb = argv[0]
-        if not verb in self.verbs:
-            usage("unknown verb")
-        func = getattr(self,verb)
-        func(('-h'))
-        return 0
-
-    def doctest(self,argv):
-        """isconf doctest"""
-        opt={
-            'h': ('help',       False, "this text" ),
-        }
-        ps = "run docstring self-tests"
-        def usage(msg=None): self.usage(self.selftest,opt,msg,ps)
-        (kwopt,args) = getkwopt(argv,opt)
-        if kwopt['help']: usage()
-
-        test = Test()
-        return test.doctest()
-
     def server(self,argv):
-        """isconf server"""
-        opt={
-            'h': ('help',       False, "this text" ),
-            'p': ('port',       9999,  "TCP port to listen on" ),
-        }
-        ps = "start isconf server daemon"
-        def usage(msg=None): self.usage(self.server,opt,msg,ps)
-        (kwopt,args) = getkwopt(argv,opt)
-        if kwopt['help']: usage()
         # detach from parent per Stevens
         os.fork() and sys.exit(0)
         os.chdir('/')
@@ -122,40 +84,81 @@ class Main:
         os.umask(0)
         os.fork() and sys.exit(0)
         # start
-        server = Server(
-            varisconf = self.kwopt['varisconf'],
-            port = int(kwopt['port']),
-            )
+        server = Server()
         server.serve()
         sys.exit(0)
 
-    def selftest(self,argv):
-        """isconf selftest [-p]"""
-        opt={
-            'd': ('dirty',      False, "don't clean up -- leave /tmp dirty" ),
-            'h': ('help',       False, "this text" ),
-            'p': ('persistent', False, "leave a test server daemon running" ),
-        }
-        ps = "run standalone self-tests"
-        def usage(msg=None): self.usage(self.selftest,opt,msg,ps)
-        (kwopt,args) = getkwopt(argv,opt)
-        if kwopt['help']: usage()
-
-        test = Test()
-        return test.selftest(**kwopt)
-
-    def usage(self,obj,opt=None,msg=None,ps="\n"):
-        # XXX avoid passing obj -- use:
+    def usage(self,msg=None):
+        # avoid passing obj -- use:
         # inspect.stack()[1][0].f_code.co_consts[0] to get docstring
-        doc = inspect.getdoc(obj)
+        # doc = inspect.stack()[1][0].f_code.co_consts[0]
         if not msg: msg = ""
-        usagetxt = "%s\nusage: %s %s\n\n%s\n%s" % (
+        usagetxt = "%s\nusage: %s\n\n" % (
             msg,
-            sys.argv[0], 
-            doc,
-            getkwopt(None,opt,help=True),
-            ps
+            self.helptxt.strip()
         )
         print >>sys.stderr, usagetxt
         sys.exit(1)
+
+def getkwopt(argv,opt={}): 
+    """
+    Get command line options and positional arguments.
+
+    Returns help text if help=True 
+
+    Returns (kwopt,args) otherwise.
+
+    Sample input:
+
+        opt = {
+            'd': ('varisconf', "/var/isconf", "base of cache"),
+            'p': ('port', 9999, "port to listen on"),
+            'v': ('verbose', False, "verbose"),
+        }
+        
+    Sample kwopt return value (with empty command line):
+
+        kwopt = {
+            'varisconf': "/var/isconf",
+            'port': 9999,
+            'verbose': False,
+        }
+    """
+    kwopt = {}
+    optstr = ''
+    longopts = []
+    if opt:
+        usagetxt = "options:\n"
+    else:
+        usagetxt = ""
+    for short in opt.keys():
+        long    = opt[short][0]
+        default = opt[short][1]
+        desc    = opt[short][2]
+        kwopt[long] = default
+        optstr += short
+        longopt = long
+        opthelp = "  -%s, --%s" % (short,long)
+        if default is not True and default is not False:
+            optstr += ':'
+            longopt += '='
+            opthelp += '=' + str(default)
+        longopts.append(longopt)
+        sep=""
+        if len(opthelp) > 20: 
+            sep="\n" + " " * 22
+        usagetxt += "%-22s%s%s\n" % (opthelp,sep,desc)
+    (opts, args) = getopt.getopt(argv, optstr, longopts)
+    for (flag,value) in opts:
+        if value == '': 
+            value = True
+        long = None
+        if flag.startswith('--'): 
+            long = flag[2:]
+        else:
+            short = flag[1:] 
+            long = opt[short][0]
+        assert long
+        kwopt[long] = value
+    return (kwopt,args,usagetxt)
 
