@@ -23,7 +23,6 @@ import sys
 import time
 import isconf.Protocol
 from isconf.Globals import *
-from isconf.ISdmesh1 import ISdmesh1
 
 proto = 'isfs1'
 

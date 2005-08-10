@@ -8,7 +8,6 @@ import socket
 import sys
 import time
 import isconf
-import isconf.ISdmesh1
 import isconf.ISdlink1
 import isconf.ISFS1
 import isconf.ISconf4

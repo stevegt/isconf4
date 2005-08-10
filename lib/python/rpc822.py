@@ -137,11 +137,11 @@ class rpc822:
         >>> cli.parse(toolong)
         Traceback (most recent call last):
             (...doctest ignores traceback detail...)
-        HeaderParseError: Not a header, not a continuation
+        Error822: unable to parse
         >>> cli.parse(toolong,trial=True)
         Traceback (most recent call last):
             (...doctest ignores traceback detail...)
-        HeaderParseError: Not a header, not a continuation
+        Error822: headers too long: maxheaderlen exceeded
         >>> req = call.getcolor('apple')
         >>> blankline = str(req).find('\\n\\n')
         >>> partial = str(req)[:blankline-1]
@@ -153,7 +153,7 @@ class rpc822:
         >>> cli.parse(partial)
         Traceback (most recent call last):
             (...doctest ignores traceback detail...)
-        Error822: invalid _size value
+        Error822: payload size mismatch: stated 5, actual 0
         >>> cli.parse(partial,trial=True)
         Traceback (most recent call last):
             (...doctest ignores traceback detail...)

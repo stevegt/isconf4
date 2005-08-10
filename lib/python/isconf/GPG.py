@@ -520,8 +520,11 @@ class Verify:
         self.valid = 1
         self.key_id, self.username = value.split(None, 1)
     def VALIDSIG(self, value):
+        #         C54065C14467F344A9585C1B96D482BAE5F1EA31 2005-08-10
+        #         1123652038 0 3 0 1 2 01
+        #         C54065C14467F344A9585C1B96D482BAE5F1EA31
         self.fingerprint, self.creation_date, self.sig_timestamp, \
-            self.expire_timestamp = value.split()
+                self.expire_timestamp = value.split()[:4]
     def SIG_ID(self, value):
         self.signature_id, self.creation_date, self.timestamp = value.split()
 
@@ -531,6 +534,10 @@ class Verify:
     def TRUST_MARGINAL(self,value): pass
     def TRUST_FULLY(self,value): pass
     def TRUST_ULTIMATE(self,value): pass
+
+    # these showed up in gpg 1.4.1
+    def PLAINTEXT(self,value): pass
+    def PLAINTEXT_LENGTH(self,value): pass
 
     def is_valid(self):
         return self.valid

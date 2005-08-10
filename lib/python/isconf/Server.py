@@ -19,8 +19,6 @@ import isconf.ISFS1
 from isconf.Kernel import kernel, Event
 import rpc822
 
-print "svr", kernel
-
 class EchoTest:
 
     def __init__(self,transport):
