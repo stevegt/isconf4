@@ -11,59 +11,6 @@ import time
 
 from isconf.Globals import *
 
-class Context(dict):
-    """
-    Coroutine call/return context
-
-    >>> def gena(func):
-    ...     context = Context()
-    ...     s = ''
-    ...     while True:
-    ...         yield context.call(func,input=s)
-    ...         print context['output']
-    ...         s += 'a'
-    ... 
-    >>> def genb(context):
-    ...     s = context['input']
-    ...     yield context.ret(output='hi %s' % s)
-    ... 
-    >>> kernel.spawn(gena(genb)).tid
-    1
-    >>> kernel.run(steps=20)
-    hi 
-    hi a
-    hi aa
-    hi aaa
-    hi aaaa
-    hi aaaaa
-    hi aaaaaa
-    hi aaaaaaa
-    hi aaaaaaaa
-    >>> kernel.kill(1)
-    >>> kernel.run(steps=20)
-
-    """
-
-    def __init__(self):
-        self.state = False
-
-    def call(self,func,**kwargs):
-        self.update(kwargs)
-        obj = func(self)
-        self.state = False
-        return kernel.sigcall, obj, self
-
-    def done(self,state=None):
-        if state is not None:
-            self.state = state
-        return self.state
-
-    def ret(self,**kwargs):
-        self.update(kwargs)
-        self.state = True
-        return kernel.sigret
-
-
 class Event:
     """An event class, useful for bidirectional comms.
 
@@ -219,9 +166,6 @@ class Kernel:
         self._aliasidx = {}
         self._tasks = {}
         self._nextid = 1
-        self.shm = {}
-        self.msg = {}
-        self.news = {}
         self.HZ = 1000
 
     # XXX these should just be moved to module or package globals
@@ -314,141 +258,12 @@ class Kernel:
     def killall(self):
         self._tasks = {}
 
-    def msgsnd(self,key,data,cp=False):
-        """
-        
-        >>> kernel.msgsnd('foo','apple')
-        'apple'
-        >>> kernel.msgsnd('bar','pear')
-        'pear'
-        >>> kernel.msgrcv('foo')
-        'apple'
-        >>> kernel.msgrcv('bar')
-        'pear'
-        >>> 
-        >>> kernel.msgrcv('baz')
-        
-        """
-        if cp: data = copy.deepcopy(data)
-        q = self.msg.setdefault(key,[])
-        q.append(data)
-        self.HZ *= 10
-        return data
-
-    def msgrcv(self,key):
-        # XXX see newsreader notes below about memory leaks -- we're 
-        # vulnerable here in the same way
-        q = self.msg.setdefault(key,[])
-        if len(q) == 0:
-            return None
-        data = q.pop(0)
-        self.HZ *= 10
-        return data
-
-    def newswiper(self,key,who,reader,refcount,**kwargs):
-        """garbage collector task for news queues -- one per reader"""
-        while True:
-            yield self.sigsleep,1
-            # we use a dynamic refcount rather than just hardcoding
-            # '2' here, because doctest adds a reference
-            if sys.getrefcount(reader) <= refcount:
-                # _newsreader has been destroyed
-                del self.news[key][who]
-                return
-
-    def newsck(self,key,who):
-        """check for unread messages"""
-        group = self.news.setdefault(key,{})
-        q = group.setdefault(who,[])
-        if len(q) == 0:
-            return False
-        return True
-
-    def newsreader(self,key,who):
-        """
-        We go to the trouble of using a generator for a news reader,
-        and of using a separate newswiper() garbage collection task,
-        just so we can watch for the generator reference count to drop
-        and then delete that reader's queue.  If we just used a normal
-        sub/quit mechanism, we're liable to have some awful memory leaks 
-        as calling tasks forget to quit before terminating, causing 
-        unread messages to build up in the queues.
-        """
-
-        def _newsreader(self,q):
-            while True:
-                if len(q) == 0:
-                    yield None
-                data = q.pop(0)
-                self.HZ *= 10
-                yield data
-
-        # do the subscription stuff outside the generator so that
-        # messages will start queuing up for caller immediately
-        # (otherwise caller'd have to do at least one read first)
-        group = self.news.setdefault(key,{})
-        q = group.setdefault(who,[])
-        reader = _newsreader(self,q)
-        refcount = sys.getrefcount(reader) 
-        self.spawn(self.newswiper(key,who,reader,refcount))
-        return reader
-
-    def newspost(self,key,data,cp=True,readercp=True):
-        """
-        
-        >>> alicefoo = kernel.newsreader('foo','alice')
-        >>> carolbar = kernel.newsreader('bar','carol')
-        >>> kernel.newspost('foo','apple')
-        >>> carolfoo = kernel.newsreader('foo','carol')
-        >>> kernel.newspost('foo','berry')
-        >>> alicebar = kernel.newsreader('bar','alice')
-        >>> kernel.newspost('bar','cherry')
-        >>> carolbar.next()
-        'cherry'
-        >>> carolbar = None
-        >>> kernel.run(steps=10)
-        >>> time.sleep(2)
-        >>> kernel.run(steps=10)
-        >>> assert 'carol' not in kernel.news['bar']
-        >>> kernel.newspost('bar','date')
-        >>> alicefoo.next()
-        'apple'
-        >>> carolfoo.next()
-        'berry'
-        >>> carolbar = kernel.newsreader('bar','carol')
-        >>> kernel.newspost('bar','eggplant')
-        >>> alicefoo.next()
-        'berry'
-        >>> alicefoo.next()
-        >>> carolbar.next() # carol can't get a date...
-        'eggplant'
-        >>> carolbar.next()
-        >>> alicebar.next()
-        'cherry'
-        >>> alicebar.next()
-        'date'
-        >>> alicebar.next()
-        'eggplant'
-        >>> alicebar.next()
-        >>> carolfoo.next()
-        
-        """
-        if cp: data = copy.deepcopy(data)
-        group = self.news.setdefault(key,{})
-        self.HZ *= 10
-        for (who,q) in group.items():
-            if readercp: data = copy.deepcopy(data)
-            q.append(data)
-            
     def ps(self):
         out = ''
         for id in self._tasks.keys():
             task = self._tasks[id]
             out += str(task) + "\n"
         return out
-
-    def shmget(self,key,default={}):
-        return self.shm.setdefault(key,default)
 
     def spawn(self,genobj,step=False):
         """
