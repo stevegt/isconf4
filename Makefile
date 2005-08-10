@@ -31,6 +31,9 @@ tar:
 	cd $(tmpdir); tar --exclude=cache -czvf /tmp/isconf-$(version).tar.gz .
 	rm -rf $(tmpdir)
 
+test:
+	cd t && make
+
 mtatest:
 	- killall isconf
 	- bin/isconf -v selftest -p
