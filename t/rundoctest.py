@@ -50,7 +50,7 @@ def docTest():
         (f,t) = doctest.testmod(mod,report=0)
         fail += f
         total += t
-    doctest.master.summarize()
+    doctest.master.summarize(verbose=1)
     return fail
 
 def getmods(modules,dirname,names):

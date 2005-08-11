@@ -3,13 +3,48 @@
 import re
 import string
 
-class Conf:
-    def __init__(self,string):
-        sections = {}
-        for line in string.split('\n'):
-            if l
+(START,SECTION) = range(2)
 
-            if line.startswith("DEFAULT:"):
+class Conf:
+
+    def __init__(self,string):
+        section = {}
+        state=START
+        name=''
+        var={}
+        i=0
+        for line in string.split('\n'):
+
+            # skip comments
+            if re.match('\s*#', line):
+                continue
+            if re.match('^\s*$', line):
+                if state is SECTION:
+                    section[name]
+                state=START
+                name=''
+                includes=[]
+                continue
+            m = re.match('(\S+.*): (.*)',line)
+            if m:
+                # name: inc1 inc2
+                state=SECTION
+                name = m.group(1)
+                includes = ['DEFAULT'] + m.group(2).split()
+                for inc in includes:
+                    if not section.has_key(inc):
+                        raise ConfigurationError("section not found:
+                continue
+            if state is SECTION:
+                if not re.match('^\s+', line):
+                    raise ConfigurationError("syntax error: %s" % line)
+
+
+def error(line,msg):
+    raise ConfigurationError("syntax error: %s" % line)
+    
+
+class ConfigurationError(Exception): pass
 
 
 

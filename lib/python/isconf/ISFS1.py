@@ -21,7 +21,6 @@ import shutil
 import socket
 import sys
 import time
-import isconf.Protocol
 from isconf.Globals import *
 
 proto = 'isfs1'

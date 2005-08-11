@@ -14,7 +14,6 @@ import time
 import isconf
 from isconf.Globals import *
 from isconf.GPG import GPG
-from isconf.ISdlink1 import ISdlink1
 import isconf.ISFS1
 from isconf.Kernel import kernel, Event, Buffer
 import rpc822

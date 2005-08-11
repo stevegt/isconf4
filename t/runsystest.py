@@ -33,7 +33,8 @@ def systemTest():
     load = unittest.defaultTestLoader.loadTestsFromModule  
 
     testfiles = os.listdir(os.curdir)                               
-    test = re.compile("^test.*\.py$", re.IGNORECASE)          
+    # test = re.compile("^test.*\.py$", re.IGNORECASE)          
+    test = re.compile("^test.*\.py$")
     testfiles = filter(test.search, testfiles)                     
     # print testfiles
     testNames = map(filenameToModuleName, testfiles)         

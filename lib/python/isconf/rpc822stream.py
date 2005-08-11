@@ -14,6 +14,8 @@ from isconf.Globals import *
 from isconf.Kernel import kernel
 import rpc822
 
+# XXX convert this entire thing to FBP, or kill it
+
 class rpc822stream:
     """
     convert between stream-based transport and rpc822 messages
@@ -59,7 +61,6 @@ class rpc822stream:
                 self.transport.abort("susrv server error, aborting")
                 return
             # yay. got it all -- now post it to the event queue
-            # XXX pass peer obj here instead of fromid?
             kernel.event('rpc822',msg,fromid=self.address)
             rxd = ''
             wanted = 1

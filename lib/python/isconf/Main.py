@@ -7,10 +7,8 @@ import sys
 from isconf.Globals import *
 from isconf.GPG import GPG
 from isconf.Server import Server
-from isconf.Test import Test
 
 class Main:
-    """XXX explanation about use of doc strings for help text"""
 
     verbs = (
             'ci',     
@@ -21,24 +19,22 @@ class Main:
             'up',
     )
 
-    def XXX_getconfig(self):
-        # parse config
-        defaults={}
-        defaults['var'] = "/var/isconf/current"
-        defaults['cache'] = defaults['var'] + "/cache"
-        hostname = os.uname()[1]
-        conf = ConfigParser.ConfigParser(defaults)
-        # XXX i hate these names
-        conf.read(home+".hosts.conf", "/var/isconf/hosts.conf", "/etc/hosts.conf")
-        conf.read(home+".isconf.cf", "/var/isconf/isconf.cf", "/etc/isconf.cf")
-        # XXX see lab/config
-
     def _config(self):
         if self.kwopt['verbose']:
             os.environ['VERBOSE'] = '1'
         os.environ['VARISCONF'] = "/tmp/var/isconf" # XXX
         os.environ['ISCONF_PORT'] = str(self.kwopt['port'])
         
+        # parse config
+        defaults={}
+        defaults['varisconf'] = "/var/isconf"
+        defaults['cache'] = defaults['var'] + "/cache"
+        hostname = os.uname()[1]
+        home = os.environ['HOME']
+        conf = ConfigParser.ConfigParser(defaults)
+        conf.read(home+".is.conf", "/etc/is.conf")
+        # XXX see lab/config
+
 
     def main(self):
 
