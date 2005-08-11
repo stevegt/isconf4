@@ -23,12 +23,13 @@ import sys
 import time
 import isconf
 from isconf.Globals import *
+from isconf.Kernel import kernel
 
 
 class ISconf4:
     """ISconf protocol version 4"""
 
-    def __init__(self,transport,**kwargs):
+    def __init__(self,transport):
         self.transport=transport
 
     # TO SERVER:
@@ -129,7 +130,7 @@ class ISconf4:
             return (SHORT_READ, size - len(data))
         return (rectype,data)
 
-    def run(self,*args,**kwargs):
+    def run(self):
         kernel.info("starting ISconf4.run")
 
         self.transport.write("isconf4\n")
@@ -147,6 +148,7 @@ class ISconf4:
                 size = int(data)
                 continue
             elif rectype == 'c':
+                self.transport.write("got %s\n" % data)
                 # print "got %s" % data
                 stdout = os.popen(data,'r')
                 for line in stdout:

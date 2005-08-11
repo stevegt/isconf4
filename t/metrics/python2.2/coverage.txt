@@ -1,17 +1,17 @@
 Name           Stmts   Exec  Cover
 ----------------------------------
 GPG              440    372    84%
-Globals           15     14    93%
+Globals           11      0     0%
 ISFS1             46     32    69%
-ISconf4          143     34    23%
+ISconf4          145     35    24%
 ISdlink1         233     50    21%
-Kernel           252    210    83%
+Kernel           263    216    82%
 Main             100     17    17%
 Protocol          64     54    84%
-Server           220     44    20%
+Server           193     39    20%
 Test             148     25    16%
 __init__           0      0   100%
 rpc822stream      60     17    28%
 rpc822           175    159    90%
 ----------------------------------
-TOTAL           1896   1028    54%
+TOTAL           1878   1016    54%

@@ -16,7 +16,7 @@ from isconf.Globals import *
 from isconf.GPG import GPG
 from isconf.ISdlink1 import ISdlink1
 import isconf.ISFS1
-from isconf.Kernel import kernel, Event
+from isconf.Kernel import kernel, Event, Buffer
 import rpc822
 
 class EchoTest:
@@ -37,36 +37,13 @@ class EchoTest:
                 rxd = ''
         return 
 
-
-class Peer:
-    # XXX deprecate in favor of per-class routing tables:
-    # 
-    # have            get
-    #
-    # pathname        ISFS instance    
-    # Message-Id      ISdmesh1 instance
-    # Fingerprint     ISdlink1 instance
-    # IP              ServerSocket instance
-   
-    
-    def __init__(self, role='client'):
-        self.layers = []
-        self.role = role
-        self.fingerprint = None
-
-    def addLayer(self,layer):
-        self.layers.append(layer)
-
-    def state(self):
-        return self.layers[0].state
-
 class Server:
 
-    def __init__(self,**kwargs):
+    def __init__(self):
         self.varisconf = os.environ['VARISCONF']
         self.port = int(os.environ['ISCONF_PORT'])
-        self.ctlpath = kwargs.get('ctlpath',"%s/.ctl" % self.varisconf)
-        self.pidpath = kwargs.get('pidpath',"%s/.pid" % self.varisconf)
+        self.ctlpath = "%s/.ctl" % self.varisconf
+        self.pidpath = "%s/.pid" % self.varisconf
         if not os.path.isdir(self.varisconf):
             os.makedirs(self.varisconf,0700)
         open(self.pidpath,'w').write("%d\n" % os.getpid())
@@ -74,14 +51,28 @@ class Server:
     def serve(self):
         """be a server forever"""
         self.gpgsetup()
+        kernel.run(self.init())
 
-        # XXX set up FBP netlist here
-
-        kernel.run(self.init)
-
-    def init(self,*args,**kwargs):
+    def init(self):
         """parent of all tasks"""
-        yield kernel.sigspawn, self.rpc822()
+        # set up FBP netlist 
+        clin = Buffer()
+        clout = Buffer()
+        tofs = Buffer()
+        frfs = Buffer()
+        toca = Buffer()
+        frca = Buffer()
+
+        # kernel.spawn(UXmgr(frsock=clin,tosock=clout))
+        # kernel.spawn(ISconf(cmd=clin,res=clout,fsreq=tofs,fsres=frfs))
+        # kernel.spawn(ISFS(cmd=tofs,res=frfs,careq=toca,cares=frca))
+        # cache = Cache(cmd=toca,res=frca,
+        #         bcast=bcast,ucast=ucast,frnet=frnet
+        #     )
+        # kernel.spawn(cache)
+        # kernel.spawn(UDPmgr(cmd=toca,res=frca,tonet=tonet,frnet=frnet))
+
+
         unix = UNIXServerFactory(path=self.ctlpath)
         yield kernel.sigspawn, unix.run()
         tcp = TCPServerFactory(port=self.port)
@@ -108,57 +99,26 @@ class Server:
             \n""" % (host, sys.argv[0], host)
             gpg.gen_key(genkeyinput)
 
-    def rpc822(self):
-        """Serve all rpc822 requests from here"""
-        server = rpc822.rpc822()
-        # protocols we'll serve
-        # XXX this is where we configure the stack
-        # server.register('isfs1',isconf.ISFS1.ISFS1())
-        # event queue we'll listen on
-        yield kernel.sigalias, 'rpc822'
-        while True:
-            event = Event()
-            # get the next request
-            yield kernel.sigwait, event
-            request = event.data
-            # XXX get rid of the replyto business and use peer obj
-            # instead?
-            context  = event.context
-            replyto = event.replyto 
-            # call the method, get the response
-            response = server.respond(request,context=context)
-            # send the response back
-            if not replyto:
-                error("missing replyto")
-                continue
-            parties = kernel.event(replyto,response)
-            if not parties:
-                error("nobody listening on queue %s" % replyto)
-
 class ServerFactory:
 
-    def run(self,*args,**kwargs):
+    def run(self,):
         global peers
         while True:
             yield None
             # accept new connections
             try:
                 (peersock, address) = self.sock.accept()
-                # XXX check if permitted address
-                peer = Peer(role='slave')
-                peers[peersock] = peer
-                layer = ServerSocket(sock=peersock,address=address)
-                peer.addLayer(layer)
+                sock = ServerSocket(sock=peersock,address=address)
+
+                # XXX this is a dynamic FBP net -- hook it into clin,
+                # clout, do the mux/demux for it
+
+
                 yield kernel.sigspawn, layer.run()
             except socket.error, (error, strerror):
                 if not error == errno.EAGAIN:
                     raise
             
-            # clean out dead peers
-            for s in peers.keys():
-                if peers[s].state() == 'down':
-                    del peers[s]
-
 class ServerSocket:
     """a TCP or UNIX domain server socket"""
 
@@ -189,12 +149,12 @@ class ServerSocket:
             self.abort("subab newline expected -- stop babbling")
             return 
 
-        match = re.match("isconf(\d+)cli\n", rxd)
+        match = re.match("isconf(\d+)\n", rxd)
         if match and match.group(1) == '4':
             self.read(len(match.group())) # throw away this line
-            self.protocol = isconf.ISconf4cli(self)
-            kernel.spawn(self.protocol.start(self))
-            if verbose: print "found isconf4cli"
+            self.protocol = isconf.ISconf4.ISconf4(transport=self)
+            kernel.spawn(self.protocol.run())
+            if verbose: print "found isconf4"
             return 
 
         match = re.match("rpc822stream\n", rxd)

@@ -90,7 +90,7 @@ class ISFS1:
 
 
     """
-#     switch = mkdict(
+#     switch = dict(
 #         login = _login,
 #         open = _open,
 #         read = _read,

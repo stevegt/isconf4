@@ -11,6 +11,25 @@ import time
 
 from isconf.Globals import *
 
+class Buffer:
+
+    def __init__(self):
+        self.data=[]
+
+    def __call__(self):
+        return self.ready()
+
+    def tx(self,msg):
+        # XXX check len, raise exception if full
+        self.data.append(msg)
+
+    def ready(self):
+        return len(self.data)
+
+    def rx(self):
+        return self.data.pop(0)
+
+
 class Event:
     """An event class, useful for bidirectional comms.
 
@@ -239,7 +258,7 @@ class Kernel:
         group = self._aliasidx.setdefault(name,{})
         sent = 0
         if not payload:
-            payload = mkdict(**kwargs)
+            payload = dict(kwargs)
         for tid in group:
             if not self.isrunning(tid):
                 continue
@@ -333,17 +352,17 @@ class Kernel:
         task.step = step
         return task
 
-    def run(self, initfunc=None, steps=None, **initargs):
+    def run(self, initobj=None, steps=None):
         """
         runs for {steps} or until init task is done
         
         """
-        assert initfunc or steps
-        if initfunc and not self.isrunning(1): 
-            initid = self.spawn(initfunc(**initargs)).tid
+        assert initobj or steps
+        if initobj and not self.isrunning(1): 
+            initid = self.spawn(initobj).tid
         ticks = 0
         while True:
-            if initfunc and not self.isrunning(initid): break
+            if initobj and not self.isrunning(initid): break
             if steps and steps <= ticks: 
                 break
             ticks += 1

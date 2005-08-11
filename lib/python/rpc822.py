@@ -16,8 +16,9 @@ class rpc822:
     XML-RPC or MIME-RPC.  Method name goes in _method header, parms go
     in other headers, payload goes in message body.  Obviously, this
     only gives us one payload, but that's the price we pay for speed
-    and simplicity.  If you want multipart (and slower), then see
-    xmlrpclib or S. Alexander Jacobson's mimerpc python library.
+    and simplicity.  If you want multipart (and slower), then nest
+    multiple rpc822 messages in the same payload, or see xmlrpclib or
+    S. Alexander Jacobson's mimerpc python library.
 
     For simplicity, the only way to register methods on the server is
     in an instance.  XXX Note that the only difference between an rpc822

@@ -47,9 +47,3 @@ for (name,expr) in RE.items():
 # if True: print "True ok"
 # if False: print "False bad"
 
-def mkdict(**kwargs):
-    return dict(kwargs)
-
-def mklist(str):
-    return str.split()
-
