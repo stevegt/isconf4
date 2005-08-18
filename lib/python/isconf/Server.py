@@ -62,6 +62,8 @@ class Server:
         toca = Buffer()
         frca = Buffer()
 
+        # XXX start cliserver, netserver
+
         # kernel.spawn(UXmgr(frsock=clin,tosock=clout))
         # kernel.spawn(ISconf(cmd=clin,res=clout,fsreq=tofs,fsres=frfs))
         # kernel.spawn(ISFS(cmd=tofs,res=frfs,careq=toca,cares=frca))
@@ -70,7 +72,6 @@ class Server:
         #     )
         # kernel.spawn(cache)
         # kernel.spawn(UDPmgr(cmd=toca,res=frca,tonet=tonet,frnet=frnet))
-
 
         unix = UNIXServerFactory(path=self.ctlpath)
         yield kernel.sigspawn, unix.run()

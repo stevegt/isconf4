@@ -4,6 +4,7 @@ import inspect
 import os
 import sys
 
+from isconf.Config import Config
 from isconf.Globals import *
 from isconf.GPG import GPG
 from isconf.Server import Server
@@ -15,39 +16,53 @@ class Main:
             'exec',   
             'fork',    
             'snap',
-            'server',
+            'start',
             'up',
     )
 
-    def _config(self):
+    def _config(self,fname):
         if self.kwopt['verbose']:
             os.environ['VERBOSE'] = '1'
-        os.environ['VARISCONF'] = "/tmp/var/isconf" # XXX
-        os.environ['ISCONF_PORT'] = str(self.kwopt['port'])
+        os.environ.setdefault('VARISCONF',"/var/isconf")
+        os.environ.setdefault('ISCONF_PORT',"65027")
+        hostname = os.popen('hostname','r').read().strip()
+        os.environ.setdefault('HOSTNAME',hostname)
+        hostname = os.environ['HOSTNAME']
         
-        # parse config
-        defaults={}
-        defaults['varisconf'] = "/var/isconf"
-        defaults['cache'] = defaults['var'] + "/cache"
-        hostname = os.uname()[1]
-        home = os.environ['HOME']
-        conf = ConfigParser.ConfigParser(defaults)
-        conf.read(home+".is.conf", "/etc/is.conf")
-        # XXX see lab/config
+        conf = Config(fname)
+        vars = conf.match(hostname)
+        self.info("adding to environment: %s" % str(vars))
+
+        for (var,val) in vars.items():
+            os.environ[var]=val
+
+        # self.info(os.system("env"))
+
+    def info(self,*msg):
+        if not self.kwopt['verbose']:
+            return
+        self.error(*msg)
+
+    def error(self,*msg):
+        for m in msg:
+            print >>sys.stderr, m
+        print >>sys.stderr, "\n"
+
+    def panic(self,*msg):
+        self.error(*msg)
+        sys.exit(99)
 
 
     def main(self):
 
         synopsis = """
-        isconf [-hv] [-c config ] [-m message] [-p port] {verb} ...
+        isconf [-hv] [-c config ] [-m message] {verb} ...
         
         """
-        global verbose
         opt = {
             'c': ('config', '/etc/is.conf', "ISFS/ISconf configuration file" ),
             'h': ('help',    False, "this text" ),
             'm': ('message', None,  "changelog and branch lock message" ),
-            'p': ('port',    9999,  "TCP/UDP port for interhost comms" ),
             'v': ('verbose', False, "show verbose output"),
         }
         ps = "\nVerb is one of: %s\n" % ', '.join(self.verbs)
@@ -55,14 +70,14 @@ class Main:
         self.helptxt = synopsis + usage + ps
         if kwopt['help']: self.usage()
         self.kwopt = copy.deepcopy(kwopt)
-        self._config()
+        self._config(kwopt['config'])
         if not args: 
             self.usage("missing verb")
         self.args = copy.deepcopy(args)
         verb = args.pop(0)
         if not verb in self.verbs:
             self.usage("unknown verb")
-        if verb in ('help', 'server'):
+        if verb in ('help', 'start'):
             self.verb = verb
             func = getattr(self,verb)
             rc = func(args)
@@ -72,14 +87,14 @@ class Main:
         rc = isconf.client(self.args)
         sys.exit(rc)
         
-    def server(self,argv):
+    def start(self,argv):
         # detach from parent per Stevens
         os.fork() and sys.exit(0)
         os.chdir('/')
         os.setsid()
         os.umask(0)
         os.fork() and sys.exit(0)
-        # start
+        # start daemon
         server = Server()
         server.serve()
         sys.exit(0)
@@ -157,4 +172,8 @@ def getkwopt(argv,opt={}):
         assert long
         kwopt[long] = value
     return (kwopt,args,usagetxt)
+
+if __name__ == "__main__":
+    main = Main()
+    main.main()
 

@@ -1,20 +1,66 @@
-#!/usr/bin/python2.3
+#!/usr/bin/python
 
-# example input file:
-#
+"""
+example input file:
 
-DEFAULT:
+[taskfoo]
+pin1="busA"
+pin2="busB"
+pin3="busC"
+
+[taskbar]
+pinA="busB"
+pinB="busX"
+"""
+
+
+import ConfigParser
+import os
+import sys
+
+def main():
+    net = parse(sys.stdin)
+    flow2dot(net)
+
+def flow2dot():
+    print "digraph flow {"
+
+    print "}"
+
+def getconf(section):
+    conf = {}
+    for var in config.options(section):
+        # print "#", var, config.get(section, var)
+        if var == '.include':
+            includes = config.get(section, var).split()
+            for include in includes:
+                subconf = getconf(include)
+                conf.update(subconf)
+            continue
+        conf[var] = config.get(section, var)
+    return conf
+
+def parse(fp)
+    config = ConfigParser.ConfigParser()
+    config.readfp(fp)
+    
+    net = {}
+    
+    for task in config.sections():
+        conf = getconf(task)
+        for (pin,bus) in conf.items():
+            (io,bus) = bus,split()
+            assert io in ('i','o')
+            net.setdefault(bus,{})
+            net[bus].setdefault(io,[])
+            net[bus][io].append((task,pin))
 
 
 
-taskfoo:
-    pin1="busA"
-    pin2="busB"
-    pin3="busC"
+main()
 
-taskbar:
-    pin1="busB"
-    pin2="busX"
+
+
 
 
 

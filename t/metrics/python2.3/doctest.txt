@@ -10,5 +10,5 @@
   22 tests in isconf.Kernel.Kernel.spawn
   34 tests in rpc822.rpc822
   19 tests in rpc822.rpc822.parse
-207 tests in 216 items.
+207 tests in 224 items.
 207 passed and 0 failed.

@@ -1,14 +1,13 @@
 missing verb
-usage: isconf [-hv] [-c config ] [-m message] [-p port] {verb} ...
+usage: isconf [-hv] [-c config ] [-m message] {verb} ...
         
         options:
   -h, --help          this text
   -c, --config=/etc/is.conf
                       ISFS/ISconf configuration file
-  -v, --verbose       show verbose output
   -m, --message=None  changelog and branch lock message
-  -p, --port=9999     TCP/UDP port for interhost comms
+  -v, --verbose       show verbose output
 
-Verb is one of: ci, exec, fork, snap, server, up
+Verb is one of: ci, exec, fork, snap, start, up
 
 

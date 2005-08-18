@@ -1,17 +1,15 @@
-#!/usr/bin/python2.3
 
 import os
 import re
 import sys
 
-(START,SECTION) = range(2)
-
-class Conf:
+class Config:
 
     def __init__(self,fname):
         self.fname = fname
         self.section = {}
         self.sections = []
+        (START,SECTION) = range(2)
         state=START
         name=''
         self.i=0
@@ -57,28 +55,15 @@ class Conf:
     def match(self,hostname):
         vars={}
         for name in self.sections:
-            if name is 'DEFAULT' or name == hostname:
-                print >>sys.stderr, "config matched %s" % name
+            if name is 'DEFAULT':
                 vars.update(self.section[name])
+            if name == hostname:
+                vars.update(self.section[name])
+                break
             if name.startswith('^') and re.match(name,hostname):
-                print >>sys.stderr, "config matched %s" % name
+                # print >>sys.stderr, "config matched %s" % name
                 vars.update(self.section[name])
-
+                break
         return vars
 
 class ConfigurationError(Exception): pass
-
-conf = Conf("book.conf")
-# print conf.sections
-# print conf.section
-
-hostname = os.popen('hostname','r').read().strip()
-
-vars = conf.match(hostname)
-print >>sys.stderr, "adding to environment: %s" % str(vars)
-
-for (var,val) in vars.items():
-    os.environ[var]=val
-
-os.system("env")
-
