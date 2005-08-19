@@ -13,117 +13,30 @@ from isconf.Globals import *
 
 class Buffer:
 
-    def __init__(self):
+    def __init__(self,maxlen=None):
         self.data=[]
-
-    def __call__(self):
-        return self.ready()
+        self.maxlen=maxlen
 
     def tx(self,msg):
-        # XXX check len, raise exception if full
+        if self.maxlen and len(self.data) + 1 > self.maxlen:
+            raise BufferOverflow
         self.data.append(msg)
 
-    def ready(self):
+    def ready(self,expires=None):
+        if (expires is not None) and time.time() > expires:
+            return True
         return len(self.data)
 
     def rx(self):
+        if not len(self.data):
+            return kernel.eagain
         return self.data.pop(0)
 
+    def wait(self,timeout=None):
+        expires = time.time() + timeout
+        return kernel.siguntil, self.ready, expires
 
-class Event:
-    """An event class, useful for bidirectional comms.
-
-    >>> def mygen(name):
-    ...     i = 0
-    ...     yield kernel.sigalias, name
-    ...     data = 'empty'
-    ...     while True:
-    ...         event = Event()
-    ...         print name, "waiting"
-    ...         if data == 'timetest':
-    ...             yield kernel.sigwait, event, 1
-    ...         elif data == 'notimetest':
-    ...             yield kernel.sigwait, event, 0
-    ...         else:
-    ...             yield kernel.sigwait, event
-    ...         data = event.data
-    ...         print name, 'got', event.data
-    ...         if event.data == 'bing':
-    ...             event.reply(name + '\\'s reply to ' + event.data)
-    ... 
-    >>> a = kernel.spawn(mygen('alice'))
-    >>> b = kernel.spawn(mygen('bob'))
-    >>> c = kernel.spawn(mygen('carol'))
-    >>> b.alias('alice')
-    >>> b.alias('carol')
-    >>> kernel.run(steps=10)
-    alice waiting
-    bob waiting
-    carol waiting
-    >>> kernel.event('bob','bing',replyto='alice')
-    1
-    >>> kernel.event('alice','foo')
-    2
-    >>> kernel.run(steps=10)
-    alice got foo
-    alice waiting
-    bob got bing
-    bob waiting
-    alice got bob's reply to bing
-    alice waiting
-    bob got foo
-    bob waiting
-    bob got bob's reply to bing
-    bob waiting
-    >>> kernel.event('carol','bar')
-    2
-    >>> kernel.run(steps=10)
-    bob got bar
-    bob waiting
-    carol got bar
-    carol waiting
-    >>> kernel.event('carol','notimetest')
-    2
-    >>> kernel.run(steps=20)
-    bob got notimetest
-    bob waiting
-    carol got notimetest
-    carol waiting
-    bob got EAGAIN
-    bob waiting
-    carol got EAGAIN
-    carol waiting
-    >>> kernel.event('alice','timetest')
-    2
-    >>> kernel.run(steps=20)
-    alice got timetest
-    alice waiting
-    bob got timetest
-    bob waiting
-    >>> kernel.run(steps=20)
-    >>> time.sleep(2)
-    >>> kernel.run(steps=20)
-    bob got EAGAIN
-    bob waiting
-    alice got EAGAIN
-    alice waiting
-    >>> kernel.kill(a.tid)
-    >>> kernel.kill(b.tid)
-    >>> kernel.kill(c.tid)
-    >>> kernel.run(steps=10)
-    
-    
-    """
-    def __init__(self):
-        self.replyto = None
-        self.data = None
-        self.time=time.time()
-
-    def reply(self,data,replyto=None):
-        # We're in the event receiver -- we just replied to
-        # the event, with raw data and maybe another reply address.
-        # note that you can reply to replies...
-        kernel.event(self.replyto,data,replyto)
+class BufferOverflow(Exception): pass
 
 class Kernel:
     """
@@ -169,7 +82,6 @@ class Kernel:
 
     """
 
-    sigalias='alias'
     sigcall='call'
     sigbusy='busy'
     signice='nice'
@@ -177,95 +89,13 @@ class Kernel:
     sigsleep='sleep'
     sigspawn='spawn'
     siguntil='until'
-    sigwait='wait'
     signals = ( sigbusy, signice, sigsleep, sigspawn, siguntil )
     eagain = 'EAGAIN'
 
     def __init__(self):
-        self._aliasidx = {}
         self._tasks = {}
         self._nextid = 1
         self.HZ = 1000
-
-    # XXX these should just be moved to module or package globals
-    def info(self,*msg):
-        if not verbose:
-            return
-        self.error(*msg)
-    def error(self,*msg):
-        for m in msg:
-            print >>sys.stderr, m
-        print >>sys.stderr, "\n"
-    def panic(self,*msg):
-        self.error(*msg)
-        sys.exit(99)
-
-    def alias(self,tid,name,val=True):
-        group = self._aliasidx.setdefault(name,{})
-        group[tid] = val
-        if not val: del group[tid]
-
-    def event(self,name,payload=None,replyto=None,**kwargs):
-        """
-        
-        >>> def mygen(name):
-        ...     i = 0
-        ...     yield kernel.sigalias, name
-        ...     while True:
-        ...         print name, "waiting"
-        ...         event = Event()
-        ...         yield kernel.sigwait, event
-        ...         print name, 'got', event.data
-        ... 
-        >>> a = kernel.spawn(mygen('alice'))
-        >>> b = kernel.spawn(mygen('bob'))
-        >>> c = kernel.spawn(mygen('carol'))
-        >>> b.alias('alice')
-        >>> b.alias('carol')
-        >>> kernel.run(steps=10)
-        alice waiting
-        bob waiting
-        carol waiting
-        >>> kernel.event('bob','bing')
-        1
-        >>> kernel.event('alice','foo')
-        2
-        >>> kernel.run(steps=10)
-        alice got foo
-        alice waiting
-        bob got bing
-        bob waiting
-        bob got foo
-        bob waiting
-        >>> kernel.event('carol','bar')
-        2
-        >>> kernel.run(steps=10)
-        bob got bar
-        bob waiting
-        carol got bar
-        carol waiting
-        >>> kernel.event('carol',apple='red',berry='blue')
-        2
-        >>> kernel.run(steps=10)
-        bob got {'apple': 'red', 'berry': 'blue'}
-        bob waiting
-        carol got {'apple': 'red', 'berry': 'blue'}
-        carol waiting
-        
-        """
-        if not name:
-            return 0
-        group = self._aliasidx.setdefault(name,{})
-        sent = 0
-        if not payload:
-            payload = dict(kwargs)
-        for tid in group:
-            if not self.isrunning(tid):
-                continue
-            task = self._tasks[tid]
-            task.event(payload,replyto)
-            sent += 1
-        return sent
 
     def isrunning(self,tid):
         return self._tasks.get(tid,False)
@@ -464,14 +294,6 @@ class Kernel:
             cotask.context = task.context
         elif why == self.sigret:
             task.context.ret()
-        elif why == self.sigalias:
-            task.alias(*sigargs)
-        elif why == self.sigwait:
-            # we're in the event receiver  -- pass the event instance
-            # to the task so it can fill it later
-            task.until = task.ready
-            # args are event() instance, optional timeout
-            task.untilArgs = sigargs
         else:
             # we got an ordinary value back -- save it for spawn()
             task.result = argv
@@ -500,9 +322,7 @@ class Task:
         if parent:
             nice = parent.nice
             self.ptid = parent.tid
-        self.aliases = {}
         self.delay = nice
-        self.events = []
         self.nice = nice
         self.priority = nice
         self.result = kernel.eagain
@@ -524,38 +344,10 @@ class Task:
     def __iter__(self):
         self.wrapper=Wrapper(self).wrapper()
         return self.wrapper
-    #
     def next(self):
         if not hasattr(self,'wrapper'):
             self.wrapper=Wrapper(self).wrapper()
         return self.wrapper.next()
-
-    def alias(self,name,val=True):
-        self.aliases[name] = val
-        kernel.alias(tid=self.tid,name=name,val=val)
-
-    def event(self,payload,replyto=None):
-        self.events.append((payload,replyto))
-
-    def ready(self,event,timeout=None):
-        # we're in the event receiver...  it gave us an empty event
-        # instance when it called sigwait
-        #
-        # if we need a performance improvement, we can get it by
-        # moving this code into the kernel.run() loop and having
-        # sigwait set task.event rather than using task.until
-        if len(self.events):
-            # hand it the data and any replyto
-            (data,replyto) = self.events.pop(0)
-            event.data = data
-            event.replyto = replyto
-            return True
-        if timeout is None:
-            return False
-        if time.time() - self.time > timeout:
-            event.data = kernel.eagain
-            return True
-        return False
 
 class Wrapper:
 

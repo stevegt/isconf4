@@ -16,7 +16,7 @@ import isconf
 from isconf.Globals import *
 from isconf.GPG import GPG
 import isconf.ISFS1
-from isconf.Kernel import kernel, Event, Buffer
+from isconf.Kernel import kernel, Buffer
 from isconf.Socket import UNIXServerFactory, TCPServerFactory
 
 import rpc822

@@ -1,14 +1,12 @@
-11 items passed all tests:
+9 items passed all tests:
    1 tests in isconf.GPG.GPG.__init__
   33 tests in isconf.GPG.GPG.encrypt
    6 tests in isconf.GPG.GPG.gen_key
   34 tests in isconf.GPG.GPG.import_key
   11 tests in isconf.GPG.GPG.list_keys
   10 tests in isconf.GPG.GPG.verify
-  23 tests in isconf.Kernel.Event
-  14 tests in isconf.Kernel.Kernel.event
   22 tests in isconf.Kernel.Kernel.spawn
   34 tests in rpc822.rpc822
   19 tests in rpc822.rpc822.parse
-207 tests in 228 items.
-207 passed and 0 failed.
+170 tests in 218 items.
+170 passed and 0 failed.
