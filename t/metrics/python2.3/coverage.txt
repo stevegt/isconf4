@@ -4,12 +4,13 @@ Config            60      8    13%
 GPG              440    353    80%
 Globals           11     11   100%
 ISFS1             45     28    62%
-ISconf4          145     33    22%
+ISconf4          118     28    23%
 Kernel           263    199    75%
-Main             112     19    16%
-Server           192     37    19%
+Main             118     22    18%
+Server            70     24    34%
+Socket           159     24    15%
 __init__           0      0   100%
 rpc822stream      60     16    26%
 rpc822           175    155    88%
 ----------------------------------
-TOTAL           1503    859    57%
+TOTAL           1519    868    57%

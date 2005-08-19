@@ -175,36 +175,3 @@ class ISconf4:
         self.transport.write("r:%d:%s" % (len(strerrno), strerrno))
         self.transport.close()
 
-class UNIXClientSocket:
-    """a blocking UNIX domain client socket"""
-
-    def __init__(self, varisconf, chunksize=4096):
-        self.chunksize = chunksize
-        self.ctl = "%s/.ctl" % varisconf
-        self.role = 'client'
-        self.state = 'up'
-        self.txd = ''
-        self.rxd = ''
-        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.sock.setblocking(1)
-        # print self.ctl
-        self.sock.connect(self.ctl)
-
-    def close(self):
-        self.sock.close()
-
-    def read(self,size):
-        rxd = ''
-        while len(rxd) < size:
-            newrxd = self.sock.recv(size - len(rxd))
-            if not newrxd:
-                return rxd
-            rxd += newrxd
-        return rxd
-
-    def write(self,txd):
-        sent = 0
-        while sent < len(txd):
-            sent += self.sock.send(txd[sent:])
-        return sent
-

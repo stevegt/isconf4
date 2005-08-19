@@ -8,6 +8,7 @@ from isconf.Config import Config
 from isconf.Globals import *
 from isconf.GPG import GPG
 from isconf.Server import Server
+from isconf.Socket import UNIXClientSocket
 
 class Main:
 
@@ -17,6 +18,7 @@ class Main:
             'fork',    
             'snap',
             'start',
+            'stop',
             'up',
     )
 
@@ -77,11 +79,13 @@ class Main:
         verb = args.pop(0)
         if not verb in self.verbs:
             self.usage("unknown verb")
-        if verb in ('help', 'start'):
-            self.verb = verb
+        if verb in ('start','stop'):
             func = getattr(self,verb)
             rc = func(args)
             sys.exit(rc)
+        client()
+
+    def client(self):
         transport = UNIXClientSocket(varisconf = os.environ['VARISCONF'])
         isconf = ISconf4(transport=transport)
         rc = isconf.client(self.args)
@@ -89,15 +93,21 @@ class Main:
         
     def start(self,argv):
         # detach from parent per Stevens
-        os.fork() and sys.exit(0)
+        # XXX need to allow for optional foreground operation
+        if os.fork(): return 0
         os.chdir('/')
         os.setsid()
         os.umask(0)
-        os.fork() and sys.exit(0)
+        if os.fork(): sys.exit(0)
         # start daemon
         server = Server()
-        server.serve()
-        sys.exit(0)
+        rc = server.start()
+        sys.exit(rc)
+
+    def stop(self,argv):
+        server = Server()
+        rc = server.stop()
+        sys.exit(rc)
 
     def usage(self,msg=None):
         # avoid passing obj -- use:

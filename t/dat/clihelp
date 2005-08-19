@@ -8,6 +8,6 @@ usage: isconf [-hv] [-c config ] [-m message] {verb} ...
   -m, --message=None  changelog and branch lock message
   -v, --verbose       show verbose output
 
-Verb is one of: ci, exec, fork, snap, start, up
+Verb is one of: ci, exec, fork, snap, start, stop, up
 
 
