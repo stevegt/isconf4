@@ -31,13 +31,19 @@ tar:
 	rm -rf $(tmpdir)
 	mkdir -p $(tmpdir)/$(tarname)
 	cp -a . $(tmpdir)/$(tarname)
-	cd $(tmpdir); tar --exclude=.svn --exclude=*.pyc --exclude=*.swp --exclude=*.swo --exclude=.coverage -czvf $(tarball) $(tarname)
+	cd $(tmpdir); tar --exclude=*.pyc --exclude=*.swp --exclude=*.swo --exclude=.coverage -czvf $(tarball) $(tarname)
 	rm -rf $(tmpdir)
 
-ship: $(tarball)
+ship: test ci 
+	$(MAKE) pub
+
+pub: $(tarball)
 	scp $(tarball) root@trac.t7a.org:/var/trac/isconf/pub
 
 $(tarball): tar
+
+ci:
+	svn ci -m "checkpoint test results"
 
 test:
 	cd t && make
