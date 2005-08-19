@@ -6,19 +6,16 @@ import socket
 
 class ServerFactory:
 
-    def run(self):
+    def run(self,out):
+        """FBP component; emits ServerSocket refs on the 'out' pin""" 
         while True:
             yield None
-            # accept new connections
             try:
+                # accept new connections
                 (peersock, address) = self.sock.accept()
                 sock = ServerSocket(sock=peersock,address=address)
-
-                # XXX this is a dynamic FBP net -- hook it into clin,
-                # clout, do the mux/demux for it
-
-
-                yield kernel.sigspawn, layer.run()
+                yield kernel.sigspawn, sock.run()
+                out.tx(sock)
             except socket.error, (error, strerror):
                 if not error == errno.EAGAIN:
                     raise
@@ -45,31 +42,6 @@ class ServerSocket:
 
     def close(self):
         self.state = 'closing'
-
-    # figure out what protocol to route the data to
-    def dispatch(self,rxd):
-        if verbose: print "dispatcher running"
-        if '\n' not in rxd and len(rxd) > 128:
-            self.abort("subab newline expected -- stop babbling")
-            return 
-
-        match = re.match("isconf(\d+)\n", rxd)
-        if match and match.group(1) == '4':
-            self.read(len(match.group())) # throw away this line
-            self.protocol = isconf.ISconf4.ISconf4(transport=self)
-            kernel.spawn(self.protocol.run())
-            if verbose: print "found isconf4"
-            return 
-
-        match = re.match("rpc822stream\n", rxd)
-        if match:
-            self.read(len(match.group())) # throw away this line
-            self.protocol = Server.rpc822stream(self)
-            kernel.spawn(self.protocol.start(self,address=self.address))
-            if verbose: print "found rpc822stream"
-            return 
-
-        self.abort("supun protocol unsupported")
 
     def read(self,size):
         actual = min(size,len(self.rxd))
@@ -128,8 +100,6 @@ class ServerSocket:
                     except:
                         pass
                     self.state = 'closing'
-                if self.state == 'up' and not self.protocol:
-                    self.dispatch(self.rxd)
 
             # do writes
             if s in writeable:
@@ -208,4 +178,7 @@ class UNIXClientSocket:
         while sent < len(txd):
             sent += self.sock.send(txd[sent:])
         return sent
+
+    def shutdown(self):
+        self.sock.shutdown(1)
 

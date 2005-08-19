@@ -8,7 +8,6 @@ import re
 # 
 
 verbose = False
-peers = {}
 
 # return codes/messages 
 SHORT_READ        = (54, "message truncated, data contains missing byte count")

@@ -15,9 +15,10 @@ import time
 import isconf
 from isconf.Globals import *
 from isconf.GPG import GPG
+import isconf.ISconf4 
 import isconf.ISFS1
 from isconf.Kernel import kernel, Buffer
-from isconf.Socket import UNIXServerFactory, TCPServerFactory
+import isconf.Socket 
 
 
 class EchoTest:
@@ -51,7 +52,8 @@ class Server:
         if not os.path.isdir(self.varisconf):
             os.makedirs(self.varisconf,0700)
         open(self.pidpath,'w').write("%d\n" % os.getpid())
-        self.gpgsetup()
+        # XXX bug #20: not enough entropy
+        # self.gpgsetup()
         kernel.run(self.init())
         return 0
 
@@ -63,16 +65,24 @@ class Server:
         return 0
 
     def init(self):
-        """parent of all tasks"""
+        """parent of all server tasks"""
         # set up FBP netlist 
-        clin = Buffer()
-        clout = Buffer()
-        tofs = Buffer()
-        frfs = Buffer()
-        toca = Buffer()
-        frca = Buffer()
+        unixsocks = Buffer()
+        tcpsocks = Buffer()
 
-        # XXX start cliserver, netserver
+        unix = Socket.UNIXServerFactory(path=self.ctlpath)
+        kernel.spawn(unix.run(out=unixsocks))
+
+        # tcp = Socket.TCPServerFactory(port=self.port)
+        # kernel.spawn(tcp.run(out=tcpsocks))
+
+        # udp = Socket.UDPServer(port=self.port)
+        # kernel.spawn(udp.run(frudp=frmesh,toudp=tomesh))
+
+        cli = ISconf4.CLIServerFactory(socks=unixsocks)
+        kernel.spawn(cli.run())
+
+        kernel.spawn(netstore(port=self.port))
 
         # kernel.spawn(UXmgr(frsock=clin,tosock=clout))
         # kernel.spawn(ISconf(cmd=clin,res=clout,fsreq=tofs,fsres=frfs))
@@ -83,15 +93,13 @@ class Server:
         # kernel.spawn(cache)
         # kernel.spawn(UDPmgr(cmd=toca,res=frca,tonet=tonet,frnet=frnet))
 
-        unix = UNIXServerFactory(path=self.ctlpath)
-        yield kernel.sigspawn, unix.run()
-        tcp = TCPServerFactory(port=self.port)
-        yield kernel.sigspawn, tcp.run()
         while True:
+            yield None
             # periodic housekeeping
             print "mark", time.time()
             kernel.info(kernel.ps())
             yield kernel.sigsleep, 10
+            # XXX check all buffers for unbounded growth
 
     def gpgsetup(self):
         gnupghome = "%s/.gnupg" % self.varisconf
@@ -108,3 +116,8 @@ class Server:
                 %%commit
             \n""" % (host, sys.argv[0], host)
             gpg.gen_key(genkeyinput)
+
+# XXX migrated directly from 4.1.7 for now -- really needs to be an
+# FBP component 
+def netstore(self,port):
+    pass

@@ -40,6 +40,9 @@ def docTest():
     total=0
     imported = []
     for modname in modules:
+        # XXX not enough entropy during test -- bug #20
+        if modname == 'isconf.GPG':
+            continue
         # aarg!  need to include fromlist when importing from package
         # -- see pydoc
         fromlist = list('.'.join(modname.split('.')[1:]))

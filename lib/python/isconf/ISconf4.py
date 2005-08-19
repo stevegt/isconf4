@@ -26,35 +26,33 @@ from isconf.Globals import *
 from isconf.Kernel import kernel
 
 
-class ISconf4:
-    """ISconf protocol version 4"""
+# TO SERVER:
+#
+# commands:
+# c:size:argv
+#
+# stdin:  
+# i:size:content
+#
+# FROM SERVER:
+#
+# stdout:
+# o:size:content
+#
+# stderr:
+# e:size:content
+#
+# return code:
+# r:size:return_code
+# 
+# tell client to fetch stdin:
+# I:0:
+#
 
-    def __init__(self,transport):
-        self.transport=transport
+class Client:
+    
+    def __init__(self,transport,argv):
 
-    # TO SERVER:
-    #
-    # commands:
-    # c:size:argv
-    #
-    # stdin:  
-    # i:size:content
-    #
-    # FROM SERVER:
-    #
-    # stdout:
-    # o:size:content
-    #
-    # stderr:
-    # e:size:content
-    #
-    # return code:
-    # r:size:return_code
-    # 
-    # tell client to fetch stdin:
-    # I:0:
-    #
-    def client(self,argv):
         """
         A unix-domain client of an isconf server.  This client is very
         thin -- all the smarts are on the server side.
@@ -75,11 +73,11 @@ class ISconf4:
 
         txd = "isconf4\nc:%s:%s\n" % (len(args), args)
         # this is a blocking write...
-        self.transport.write(txd)
+        transport.write(txd)
         expect = 'isconf4\n'
         rxd = ''
         while len(rxd) < len(expect):
-            rxd += self.transport.read(1)
+            rxd += transport.read(1)
         if rxd != expect:
             return self.clierr(PROTOCOL_MISMATCH, rxd)
 
@@ -88,8 +86,8 @@ class ISconf4:
         # process one message each time through loop
         while True:
             # this is a blocking read...
-            rxd += self.transport.read(size)
-            (rectype,data) = self.parsemsg(rxd)
+            rxd += transport.read(size)
+            (rectype,data) = parsemsg(rxd)
             if rectype == SHORT_READ:
                 size = int(data)
                 continue
@@ -101,40 +99,41 @@ class ISconf4:
             elif rectype == 'I':
                 for line in sys.stdin:
                     txd = "i:%s:%s" % (len(line), line)
-                    self.transport.write(txd)
-                    self.socket.shutdown(1)
+                    transport.write(txd)
+                transport.shutdown()
             elif rectype == BAD_RECORD:
                 return self.clierr(rectype, data)
             else:
                 return self.clierr(INVALID_RECTYPE, data)
             rxd = ''
             size = 1
-                
-    # XXX move kernel.error to module globals, refactor to work on
-    # either client or server, kill this
+            
     def clierr(self,macro,msg=''):
         msg = "%s: %s" % (macro[1], msg)
         print >>sys.stderr, msg
         return macro[0]
 
-    def parsemsg(self,rxd):
-        m = re.match("\n*(\w):(\d+):(.*)",rxd,re.S)
-        if not m:
-            if len(rxd) > 20 or rxd.count(':') > 1:
-                return (BAD_RECORD, rxd)
-            return (SHORT_READ, 1)
-        rectype = m.group(1)
-        size = int(m.group(2))
-        data = m.group(3)
-        if len(data) < size:
-            return (SHORT_READ, size - len(data))
-        return (rectype,data)
+class ServerFactory:
+
+    def __init__(self,socks):
+        self.socks = socks
+
+class CLIServerFactory(ServerFactory):
 
     def run(self):
-        kernel.info("starting ISconf4.run")
+        while True:
+            yield self.socks.wait()
+            sock = self.socks.rx()
+            server = CLIserver(sock=sock)
+            kernel.spawn(server.run())
 
+class CLIServer:
+
+    def __init__(self,sock):
+        self.transport=sock
+
+    def run(self):
         self.transport.write("isconf4\n")
-
         rxd = ''
         size = 1
         # process one message each time through loop
@@ -148,6 +147,7 @@ class ISconf4:
                 size = int(data)
                 continue
             elif rectype == 'c':
+                # XXX migrate from 4.1.7 starting here
                 self.transport.write("got %s\n" % data)
                 # print "got %s" % data
                 stdout = os.popen(data,'r')
@@ -167,11 +167,32 @@ class ISconf4:
                 self.srverr(INVALID_RECTYPE, data)
             rxd = ''
             size = 1
-                
+
     def srverr(self,macro,msg=''):
         msg = "%s: %s" % (macro[1], msg)
         strerrno = str(macro[0])
         self.transport.write("e:%d:%s" % (len(msg), msg))
         self.transport.write("r:%d:%s" % (len(strerrno), strerrno))
         self.transport.close()
+
+def parsemsg(self,rxd):
+    m = re.match("\n*(\w):(\d+):(.*)",rxd,re.S)
+    if not m:
+        if len(rxd) > 20 or rxd.count(':') > 1:
+            return (BAD_RECORD, rxd)
+        return (SHORT_READ, 1)
+    rectype = m.group(1)
+    size = int(m.group(2))
+    data = m.group(3)
+    if len(data) < size:
+        return (SHORT_READ, size - len(data))
+    return (rectype,data)
+
+def branch(val=None):
+    varisconf = os.environ['VARISCONF']
+    fname = "%s/branch" % varisconf
+    if val is not None:
+        open(fname,'w').write(val)
+    val = open(fname,'r').read()
+    return val
 

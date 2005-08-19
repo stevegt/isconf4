@@ -22,7 +22,7 @@ class Main:
             'up',
     )
 
-    def _config(self,fname):
+    def config(self,fname):
         if self.kwopt['verbose']:
             os.environ['VERBOSE'] = '1'
         os.environ.setdefault('VARISCONF',"/var/isconf")
@@ -72,7 +72,7 @@ class Main:
         self.helptxt = synopsis + usage + ps
         if kwopt['help']: self.usage()
         self.kwopt = copy.deepcopy(kwopt)
-        self._config(kwopt['config'])
+        self.config(kwopt['config'])
         if not args: 
             self.usage("missing verb")
         self.args = copy.deepcopy(args)
@@ -87,8 +87,8 @@ class Main:
 
     def client(self):
         transport = UNIXClientSocket(varisconf = os.environ['VARISCONF'])
-        isconf = ISconf4(transport=transport)
-        rc = isconf.client(self.args)
+        isconf = ISconf4()
+        rc = isconf.client(transport=transport,argv=self.args)
         sys.exit(rc)
         
     def start(self,argv):

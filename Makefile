@@ -1,6 +1,7 @@
 PREFIX=/var/isconf
 tmpdir=/tmp/isconf-make.tmp
 version=$(shell cat version)
+revision=$(shell svn up | tr -d '.' | awk '{print $$3}')
 
 all:
 
@@ -27,8 +28,8 @@ ctags:
 tar:
 	rm -rf $(tmpdir)
 	mkdir -p $(tmpdir)
-	cp -a . $(tmpdir)/isconf-$(version)
-	cd $(tmpdir); tar --exclude=cache -czvf /tmp/isconf-$(version).tar.gz .
+	cp -a . $(tmpdir)/isconf-$(version).$(revision)
+	cd $(tmpdir); tar --exclude=cache -czvf /tmp/isconf-$(version).$(revision).tar.gz .
 	rm -rf $(tmpdir)
 
 test:

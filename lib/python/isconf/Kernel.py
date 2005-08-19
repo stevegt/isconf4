@@ -34,6 +34,7 @@ class Buffer:
     >>> bus2 = Buffer()
     >>> bus3 = Buffer()
     >>> bus1.tx(1)
+    1
     >>> bus1.rx()
     1
     >>> bus1.rx()
@@ -42,6 +43,7 @@ class Buffer:
     >>> b = kernel.spawn(genb(inpin=bus2,outpin=bus3))
     >>> kernel.run(steps=100)
     >>> bus1.tx(5)
+    1
     >>> bus2.rx()
     'EAGAIN'
     >>> bus1.data
@@ -56,6 +58,7 @@ class Buffer:
     >>> bus3.data
     [-5]
     >>> bus1.tx(7)
+    1
     >>> kernel.run(steps=100)
     >>> bus3.rx()
     -5
@@ -74,6 +77,7 @@ class Buffer:
         if self.maxlen and len(self.data) + 1 > self.maxlen:
             raise BufferOverflow
         self.data.append(msg)
+        return 1  # XXX should be actual number of readers
 
     def ready(self,expires=None):
         if (expires is not None) and time.time() > expires:
