@@ -27,12 +27,17 @@ ctags:
 	# ctags --language-force=python bin/isconf
 	cd bin; ctags --language-force=python isconf
 
-tar:
+tar: 
 	rm -rf $(tmpdir)
 	mkdir -p $(tmpdir)/$(tarname)
 	cp -a . $(tmpdir)/$(tarname)
 	cd $(tmpdir); tar --exclude=.svn --exclude=*.pyc --exclude=*.swp --exclude=*.swo --exclude=.coverage -czvf $(tarball) $(tarname)
 	rm -rf $(tmpdir)
+
+ship: $(tarball)
+	scp $(tarball) root@trac.t7a.org:/var/trac/isconf/pub
+
+$(tarball): tar
 
 test:
 	cd t && make
