@@ -12,7 +12,60 @@ import time
 from isconf.Globals import *
 
 class Buffer:
-
+    """
+    
+    >>> def gena(inpin,outpin):
+    ...     i = 0
+    ...     while True:
+    ...         yield inpin.wait()
+    ...         j = inpin.rx()
+    ...         i += j
+    ...         outpin.tx(i)
+    ... 
+    >>> def genb(inpin,outpin):
+    ...     i = 0
+    ...     while True:
+    ...         yield inpin.wait()
+    ...         j = inpin.rx()
+    ...         i -= j
+    ...         outpin.tx(i)
+    ... 
+    >>> bus1 = Buffer()
+    >>> bus2 = Buffer()
+    >>> bus3 = Buffer()
+    >>> bus1.tx(1)
+    >>> bus1.rx()
+    1
+    >>> bus1.rx()
+    'EAGAIN'
+    >>> a = kernel.spawn(gena(inpin=bus1,outpin=bus2))
+    >>> b = kernel.spawn(genb(inpin=bus2,outpin=bus3))
+    >>> kernel.run(steps=100)
+    >>> bus1.tx(5)
+    >>> bus2.rx()
+    'EAGAIN'
+    >>> bus1.data
+    [5]
+    >>> bus1.ready()
+    1
+    >>> kernel.run(steps=100)
+    >>> bus1.data
+    []
+    >>> bus2.data
+    []
+    >>> bus3.data
+    [-5]
+    >>> bus1.tx(7)
+    >>> kernel.run(steps=100)
+    >>> bus3.rx()
+    -5
+    >>> bus3.rx()
+    -17
+    >>> bus3.rx()
+    'EAGAIN'
+    
+    """
+    
     def __init__(self,maxlen=None):
         self.data=[]
         self.maxlen=maxlen
@@ -33,7 +86,9 @@ class Buffer:
         return self.data.pop(0)
 
     def wait(self,timeout=None):
-        expires = time.time() + timeout
+        expires = None
+        if timeout is not None:
+            expires = time.time() + timeout
         return kernel.siguntil, self.ready, expires
 
 class BufferOverflow(Exception): pass
