@@ -1,3 +1,5 @@
+
+from __future__ import generators
 from cStringIO import StringIO
 from email.Generator import Generator
 import email.Message
@@ -158,6 +160,43 @@ class fbp822:
                 (size,actsize)
                 )
         return msg
+
+    def fromStream(self,stream):
+        """generates message objects from a file or isconf.Socket"""
+        rxd = ''
+        wanted = 1
+        # read one message each time through complete loop
+        factory = fbp822()
+        while True:
+            yield kernel.eagain
+            if hasattr(stream,'state') and stream.state == 'down':
+                break
+            newrxd = stream.read(wanted)
+            if isinstance(stream,file) and not len(newrxd):
+                # at EOF
+                break
+            rxd += newrxd
+            # discard leading newlines
+            if rxd == '\n':
+                rxd = ''
+                continue
+            # try to parse a message
+            try:
+                msg = factory.parse(rxd,trial=True)
+            except Incomplete822, e:
+                # nope, didn't get it all
+                wanted = e
+                continue
+            # yay. got it all
+            yield msg
+            rxd = ''
+            wanted = 1
+        if rxd:
+            # hmm.  junk at end of stream.  this is probably going to
+            # blow up, but let's try anyway...
+            msg = factory.parse(rxd)
+            yield msg
+
 
 
 class Message(email.Message.Message):

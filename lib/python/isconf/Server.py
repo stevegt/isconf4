@@ -19,7 +19,6 @@ import isconf.ISFS1
 from isconf.Kernel import kernel, Buffer
 from isconf.Socket import UNIXServerFactory, TCPServerFactory
 
-import rpc822
 
 class EchoTest:
 
