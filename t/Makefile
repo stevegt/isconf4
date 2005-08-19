@@ -1,18 +1,16 @@
 lib=../lib/python
 files=$(shell find $(lib) -type f -name "*.py" | sort)
+pythons=$(shell ./pythondetect)
 export PYTHONPATH=$(lib)
 export VARISCONF=/tmp/isconf
 
-all: python2.2 python2.3
+all: $(pythons)
 
-python2.2: python=python2.2
-python2.2: run2.2
+python2.2 python2.3 python2.4 python2.5: 
+	$(MAKE) run python=$@
 
-python2.3: python=python2.3
-python2.3: run2.3
-
-run%: mdir=metrics/$(python)
-run%:
+run: mdir=metrics/$(python)
+run:
 	$(python) ./coverage.py -e
 	$(python) ./coverage.py -x rundoctest.py 2>&1 \
 		| egrep '^ *[0-9]+' | grep -v 'had no tests' \

@@ -27,6 +27,7 @@ class Main:
             os.environ['VERBOSE'] = '1'
         os.environ.setdefault('VARISCONF',"/var/isconf")
         os.environ.setdefault('ISCONF_PORT',"65027")
+        os.environ.setdefault('ISCONF_HTTP_PORT',"65028")
         hostname = os.popen('hostname','r').read().strip()
         os.environ.setdefault('HOSTNAME',hostname)
         hostname = os.environ['HOSTNAME']
