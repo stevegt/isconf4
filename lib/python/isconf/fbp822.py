@@ -61,7 +61,7 @@ class fbp822:
             if var.startswith("_"):
                 raise Error822("parameter names can't start with '_'")
             # XXX convert and identify non-string types
-            msg.add_header(var,val)
+            msg.add_header(var,str(val))
         if self.authkey:
             msg.hmacset(self.authkey)
         return msg

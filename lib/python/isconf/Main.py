@@ -31,8 +31,8 @@ class Main:
         os.environ.setdefault('VARISCONF',"/var/isconf")
         os.environ.setdefault('ISFS_HOME',"/var/isfs")
         os.environ.setdefault('ISFS_DOMAIN',"example.com")
-        os.environ.setdefault('ISCONF_PORT',"65027")
-        os.environ.setdefault('ISCONF_HTTP_PORT',"65028")
+        os.environ.setdefault('ISFS_PORT',"65027")
+        os.environ.setdefault('ISFS_HTTP_PORT',"65028")
         hostname = os.popen('hostname','r').read().strip()
         os.environ.setdefault('HOSTNAME',hostname)
         hostname = os.environ['HOSTNAME']
@@ -45,10 +45,7 @@ class Main:
             os.environ[var]=val
 
         isfshome=os.environ['ISFS_HOME']
-        isfsdomain=os.environ['ISFS_DOMAIN']
-        os.environ.setdefault(
-                    'ISFS_CACHE',"%s/cache/%s" % (isfshome,isfsdomain)
-                )
+        os.environ.setdefault('ISFS_CACHE',"%s/cache" % isfshome)
 
         # self.info(os.system("env"))
 

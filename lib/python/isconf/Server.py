@@ -43,8 +43,8 @@ class Server:
 
     def __init__(self):
         self.varisconf = os.environ['VARISCONF']
-        self.port = int(os.environ['ISCONF_PORT'])
-        self.httpport = int(os.environ['ISCONF_HTTP_PORT'])
+        self.port = int(os.environ['ISFS_PORT'])
+        self.httpport = int(os.environ['ISFS_HTTP_PORT'])
         self.ctlpath = "%s/.ctl" % self.varisconf
         self.pidpath = "%s/.pid" % self.varisconf
 
@@ -81,8 +81,11 @@ class Server:
         kernel.spawn(cli.run())
 
         cachedir = os.environ['ISFS_CACHE']
-        kernel.spawn(httpServer(port=self.httpport,dir=cachedir))
-        kernel.spawn(udpServer(port=self.port,dir=cachedir))
+        kernel.spawn(ISconf4.httpServer(port=self.httpport,dir=cachedir))
+        kernel.spawn(
+            ISconf4.udpServer(
+                udpport=self.port,httpport=self.httpport,dir=cachedir)
+            )
 
         # kernel.spawn(UXmgr(frsock=clin,tosock=clout))
         # kernel.spawn(ISconf(cmd=clin,res=clout,fsreq=tofs,fsres=frfs))
@@ -118,79 +121,3 @@ class Server:
             gpg.gen_key(genkeyinput)
 
 
-# XXX the following were migrated directly from 4.1.7 for now --
-# really need to be FBP components, at least in terms of logging
-
-
-def httpServer(port,dir):
-    from BaseHTTPServer import HTTPServer
-    from SimpleHTTPServer import SimpleHTTPRequestHandler
-    from SocketServer import ForkingMixIn
-    
-    if not os.path.isdir(dir):
-        os.makedirs(dir,0700)
-    os.chdir(dir)
-
-    class ForkingServer(ForkingMixIn,HTTPServer): pass
-
-    serveraddr = ('',port)
-    svr = ForkingServer(serveraddr,SimpleHTTPRequestHandler)
-    svr.socket.setblocking(0)
-    info("HTTP server listening on port %d" % port)
-    while True:
-        yield None
-        try:
-            request, client_address = svr.get_request()
-        except socket.error:
-            # includes EAGAIN
-            continue
-        # XXX filter request -- e.g. do we need directory listings?
-        try:
-            # process_request does the fork...  For now we're going to
-            # say that it's okay that the Kernel and other tasks fork
-            # with it; since process_request does not yield, nothing
-            # else will run before the child exits.
-            svr.process_request(request, client_address)
-        except:
-            svr.handle_error(request, client_address)
-            svr.close_request(request)
-
-
-def udpServer(port,dir):
-    from SocketServer import UDPServer
-    from isconf.fbp822 import fbp822, Error822
-
-    if not os.path.isdir(dir):
-        os.makedirs(dir,0700)
-    os.chdir(dir)
-
-    info("UDP server listening on port %d" % port)
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
-    sock.setblocking(0)
-    sock.bind(('',port))     
-    while True:
-        yield None
-        try:
-            data,addr = sock.recvfrom(8192)
-            info("from %s: %s" % (addr,data))
-            factory = fbp822()
-            try:
-                msg = factory.parse(data)
-            except Error822, e:
-                error("%s from %s: %s" % (e,addr,data))
-                continue
-            type = msg.type()
-            if type == 'whohas':
-                
-
-                continue
-            error("unsupported message type from %s: %s" % (addr,type))
-            sock.sendto("got %s" % msg, addr)
-        except socket.error:
-            continue
-
-
-
-
-    
