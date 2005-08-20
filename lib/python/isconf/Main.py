@@ -1,8 +1,10 @@
 
 import copy
+import getopt
 import inspect
 import os
 import sys
+import time
 
 from isconf.Config import Config
 from isconf.Globals import *
@@ -16,6 +18,7 @@ class Main:
             'ci',     
             'exec',   
             'fork',    
+            'restart',
             'snap',
             'start',
             'stop',
@@ -80,7 +83,7 @@ class Main:
         verb = args.pop(0)
         if not verb in self.verbs:
             self.usage("unknown verb")
-        if verb in ('start','stop'):
+        if verb in ('start','stop','restart'):
             func = getattr(self,verb)
             rc = func(args)
             sys.exit(rc)
@@ -92,6 +95,14 @@ class Main:
         rc = isconf.client(transport=transport,argv=self.args)
         sys.exit(rc)
         
+    def restart(self,argv):
+        try:
+            self.stop(argv)
+        except:
+            pass
+        time.sleep(1)
+        self.start(argv)
+
     def start(self,argv):
         # detach from parent per Stevens
         # XXX need to allow for optional foreground operation

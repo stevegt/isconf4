@@ -3,6 +3,7 @@ from __future__ import generators
 import errno
 import os
 import socket
+from isconf.Globals import *
 
 class ServerFactory:
 
@@ -132,6 +133,7 @@ class TCPServerFactory(ServerFactory):
         self.sock.setblocking(0)
         self.sock.bind(('', self.port))     
         self.sock.listen(5)
+        info("TCP server listening on port %d" % port)
     
 class UNIXServerFactory(ServerFactory):
 
@@ -145,6 +147,7 @@ class UNIXServerFactory(ServerFactory):
             os.unlink(self.path)
         self.sock.bind(self.path)
         self.sock.listen(5)
+        info("UNIX domain server listening at %s" % path)
     
 class UNIXClientSocket:
     """a blocking UNIX domain client socket"""

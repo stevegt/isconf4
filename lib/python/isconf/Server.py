@@ -9,16 +9,16 @@ import os
 import re
 import select
 import signal
+import socket
 import sys
 import time
 
 import isconf
+from isconf import ISconf4, Socket
 from isconf.Globals import *
 from isconf.GPG import GPG
-import isconf.ISconf4 
-import isconf.ISFS1
+# import isconf.ISFS1
 from isconf.Kernel import kernel, Buffer
-import isconf.Socket 
 
 
 class EchoTest:
@@ -27,7 +27,7 @@ class EchoTest:
         self.transport=transport
 
     def run(self,*args,**kwargs):
-        kernel.info("starting EchoTest.run")
+        info("starting EchoTest.run")
         rxd = ''
         while True:
             yield None
@@ -44,6 +44,7 @@ class Server:
     def __init__(self):
         self.varisconf = os.environ['VARISCONF']
         self.port = int(os.environ['ISCONF_PORT'])
+        self.httpport = int(os.environ['ISCONF_HTTP_PORT'])
         self.ctlpath = "%s/.ctl" % self.varisconf
         self.pidpath = "%s/.pid" % self.varisconf
 
@@ -76,13 +77,12 @@ class Server:
         # tcp = Socket.TCPServerFactory(port=self.port)
         # kernel.spawn(tcp.run(out=tcpsocks))
 
-        # udp = Socket.UDPServer(port=self.port)
-        # kernel.spawn(udp.run(frudp=frmesh,toudp=tomesh))
-
         cli = ISconf4.CLIServerFactory(socks=unixsocks)
         kernel.spawn(cli.run())
 
-        kernel.spawn(netstore(port=self.port))
+        cachedir = "%s/cache" % os.environ['VARISCONF']
+        kernel.spawn(httpServer(port=self.httpport,dir=cachedir))
+        kernel.spawn(udpServer(port=self.port,dir=cachedir))
 
         # kernel.spawn(UXmgr(frsock=clin,tosock=clout))
         # kernel.spawn(ISconf(cmd=clin,res=clout,fsreq=tofs,fsres=frfs))
@@ -97,7 +97,7 @@ class Server:
             yield None
             # periodic housekeeping
             print "mark", time.time()
-            kernel.info(kernel.ps())
+            info(kernel.ps())
             yield kernel.sigsleep, 10
             # XXX check all buffers for unbounded growth
 
@@ -117,7 +117,79 @@ class Server:
             \n""" % (host, sys.argv[0], host)
             gpg.gen_key(genkeyinput)
 
-# XXX migrated directly from 4.1.7 for now -- really needs to be an
-# FBP component 
-def netstore(self,port):
-    pass
+
+# XXX the following were migrated directly from 4.1.7 for now --
+# really need to be FBP components, at least in terms of logging
+
+
+def httpServer(port,dir):
+    from BaseHTTPServer import HTTPServer
+    from SimpleHTTPServer import SimpleHTTPRequestHandler
+    from SocketServer import ForkingMixIn
+    
+    if not os.path.isdir(dir):
+        os.makedirs(dir,0700)
+    os.chdir(dir)
+
+    class ForkingServer(ForkingMixIn,HTTPServer): pass
+
+    serveraddr = ('',port)
+    svr = ForkingServer(serveraddr,SimpleHTTPRequestHandler)
+    svr.socket.setblocking(0)
+    info("HTTP server listening on port %d" % port)
+    while True:
+        yield None
+        try:
+            request, client_address = svr.get_request()
+        except socket.error:
+            # includes EAGAIN
+            continue
+        # XXX filter request -- e.g. do we need directory listings?
+        try:
+            # process_request does the fork...  For now we're going to
+            # say that it's okay that the Kernel and other tasks fork
+            # with it; since process_request does not yield, nothing
+            # else will run before the child exits.
+            svr.process_request(request, client_address)
+        except:
+            svr.handle_error(request, client_address)
+            svr.close_request(request)
+
+
+def udpServer(port,dir):
+    from SocketServer import UDPServer
+    from isconf.fbp822 import fbp822, Error822
+
+    if not os.path.isdir(dir):
+        os.makedirs(dir,0700)
+    os.chdir(dir)
+
+    info("UDP server listening on port %d" % port)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
+    sock.setblocking(0)
+    sock.bind(('',port))     
+    while True:
+        yield None
+        try:
+            data,addr = sock.recvfrom(8192)
+            info("from %s: %s" % (addr,data))
+            factory = fbp822()
+            try:
+                msg = factory.parse(data)
+            except Error822, e:
+                error("%s from %s: %s" % (e,addr,data))
+                continue
+            if msg.type() != 'whohas':
+                error(
+                    "unsupported message type from %s: %s" % (addr,msg.type())
+                    )
+                continue
+            sock.sendto("got %s" % msg, addr)
+        except socket.error:
+            continue
+
+
+
+
+    

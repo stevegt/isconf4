@@ -223,8 +223,8 @@ class Message(email.Message.Message):
     def size(self):
         return self['_size']
 
-    def method(self):
-        return self['_method']
+    def type(self):
+        return self['_type']
 
     def hmac_calculated(self,key):
         h = hmac.new(key,msg=self.as_string(),digestmod=sha)

@@ -1,5 +1,6 @@
-import getopt
+import os
 import re
+import sys
 
 # Environment variables:
 #
@@ -45,4 +46,16 @@ for (name,expr) in RE.items():
 # 
 # if True: print "True ok"
 # if False: print "False bad"
+
+def info(*msg):
+    if not os.environ['VERBOSE']:
+        return
+    error(*msg)
+def error(*msg):
+    for m in msg:
+        print >>sys.stderr, m
+    print >>sys.stderr, "\n"
+def panic(*msg):
+    error(*msg)
+    sys.exit(99)
 
