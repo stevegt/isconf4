@@ -152,9 +152,9 @@ class UNIXServerFactory(ServerFactory):
 class UNIXClientSocket:
     """a blocking UNIX domain client socket"""
 
-    def __init__(self, varisconf, chunksize=4096):
+    def __init__(self, path, chunksize=4096):
         self.chunksize = chunksize
-        self.ctl = "%s/.ctl" % varisconf
+        self.ctl = path
         self.role = 'client'
         self.state = 'up'
         self.txd = ''

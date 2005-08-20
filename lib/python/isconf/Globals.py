@@ -2,12 +2,6 @@ import os
 import re
 import sys
 
-# Environment variables:
-#
-# VARISCONF     dynamic data dir, defaults to /var/isconf
-# GNUPGHOME     used only for user keys, not host keys
-# 
-
 verbose = False
 
 # return codes/messages 

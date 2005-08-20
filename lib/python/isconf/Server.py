@@ -80,7 +80,7 @@ class Server:
         cli = ISconf4.CLIServerFactory(socks=unixsocks)
         kernel.spawn(cli.run())
 
-        cachedir = "%s/cache" % os.environ['VARISCONF']
+        cachedir = os.environ['ISFS_CACHE']
         kernel.spawn(httpServer(port=self.httpport,dir=cachedir))
         kernel.spawn(udpServer(port=self.port,dir=cachedir))
 
@@ -180,11 +180,12 @@ def udpServer(port,dir):
             except Error822, e:
                 error("%s from %s: %s" % (e,addr,data))
                 continue
-            if msg.type() != 'whohas':
-                error(
-                    "unsupported message type from %s: %s" % (addr,msg.type())
-                    )
+            type = msg.type()
+            if type == 'whohas':
+                
+
                 continue
+            error("unsupported message type from %s: %s" % (addr,type))
             sock.sendto("got %s" % msg, addr)
         except socket.error:
             continue

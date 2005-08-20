@@ -60,7 +60,6 @@ def getkwopt(argv,opt={},help=False):
     Sample input:
 
         opt = {
-            'd': ('varisconf', "/var/isconf", "base of cache"),
             'p': ('port', 9999, "port to listen on"),
             'v': ('verbose', False, "verbose"),
         }
@@ -68,7 +67,6 @@ def getkwopt(argv,opt={},help=False):
     Sample kwopt return value (with empty command line):
 
         kwopt = {
-            'varisconf': "/var/isconf",
             'port': 9999,
             'verbose': False,
         }

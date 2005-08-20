@@ -29,6 +29,8 @@ class Main:
         if self.kwopt['verbose']:
             os.environ['VERBOSE'] = '1'
         os.environ.setdefault('VARISCONF',"/var/isconf")
+        os.environ.setdefault('ISFS_HOME',"/var/isfs")
+        os.environ.setdefault('ISFS_DOMAIN',"example.com")
         os.environ.setdefault('ISCONF_PORT',"65027")
         os.environ.setdefault('ISCONF_HTTP_PORT',"65028")
         hostname = os.popen('hostname','r').read().strip()
@@ -41,6 +43,12 @@ class Main:
 
         for (var,val) in vars.items():
             os.environ[var]=val
+
+        isfshome=os.environ['ISFS_HOME']
+        isfsdomain=os.environ['ISFS_DOMAIN']
+        os.environ.setdefault(
+                    'ISFS_CACHE',"%s/cache/%s" % (isfshome,isfsdomain)
+                )
 
         # self.info(os.system("env"))
 
@@ -90,7 +98,8 @@ class Main:
         client()
 
     def client(self):
-        transport = UNIXClientSocket(varisconf = os.environ['VARISCONF'])
+        ctl = "%s/.ctl" % os.environ['VARISCONF']
+        transport = UNIXClientSocket(path = ctl)
         isconf = ISconf4()
         rc = isconf.client(transport=transport,argv=self.args)
         sys.exit(rc)
@@ -144,7 +153,6 @@ def getkwopt(argv,opt={}):
     Sample input:
 
         opt = {
-            'd': ('varisconf', "/var/isconf", "base of cache"),
             'p': ('port', 9999, "port to listen on"),
             'v': ('verbose', False, "verbose"),
         }
@@ -152,7 +160,6 @@ def getkwopt(argv,opt={}):
     Sample kwopt return value (with empty command line):
 
         kwopt = {
-            'varisconf': "/var/isconf",
             'port': 9999,
             'verbose': False,
         }
