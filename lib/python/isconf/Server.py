@@ -14,7 +14,7 @@ import sys
 import time
 
 import isconf
-from isconf import ISconf4, Socket
+from isconf import ISconf4, ISFS1, Socket
 from isconf.Globals import *
 from isconf.GPG import GPG
 # import isconf.ISFS1
@@ -81,9 +81,9 @@ class Server:
         kernel.spawn(cli.run())
 
         cachedir = os.environ['ISFS_CACHE']
-        kernel.spawn(ISconf4.httpServer(port=self.httpport,dir=cachedir))
+        kernel.spawn(ISFS1.httpServer(port=self.httpport,dir=cachedir))
         kernel.spawn(
-            ISconf4.udpServer(
+            ISFS1.udpServer(
                 udpport=self.port,httpport=self.httpport,dir=cachedir)
             )
 
