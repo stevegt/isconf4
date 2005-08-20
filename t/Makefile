@@ -1,5 +1,5 @@
 lib=../lib/python
-files=$(shell find $(lib) -type f -name "*.py" | sort)
+files=$(shell find $(lib) -type f -name "*.py" | grep -v GPG.py | sort)
 pythons=$(shell ./pythondetect)
 export PYTHONPATH=$(lib)
 export ISFS_HOME=/tmp/var/isfs

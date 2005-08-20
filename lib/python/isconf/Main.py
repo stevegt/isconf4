@@ -97,7 +97,7 @@ class Main:
     def client(self):
         ctl = "%s/.ctl" % os.environ['VARISCONF']
         transport = UNIXClientSocket(path = ctl)
-        isconf = ISconf4()
+        isconf = ISconf()
         rc = isconf.client(transport=transport,argv=self.args)
         sys.exit(rc)
         
