@@ -6,7 +6,9 @@ import re
 class Test(unittest.TestCase):
 
     def testHelp(self):
-        (stdin, stdout, stderr) = os.popen3('../bin/isconf -c simple.conf','r')
+        coverage = os.environ.get('COVERAGE','')
+        (stdin, stdout, stderr) = os.popen3(
+                '%s ../bin/isconf -c simple.conf' % coverage,'r')
         out = ''.join(stderr.readlines())
         ref = ''.join(open('dat/clihelp','r').readlines())
         self.assertEqual(out,ref)

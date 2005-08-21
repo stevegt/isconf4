@@ -141,7 +141,7 @@ class CLIServer:
 
                 
 
-                if True:
+                if False:   # XXX
                     cmd = ' '.join(data.split("\n"))
                     print "cmd:", cmd
                     stdout = os.popen(cmd,'r')

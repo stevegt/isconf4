@@ -15,7 +15,7 @@ run:
 	$(python) ./coverage.py -x rundoctest.py 2>&1 \
 		| egrep '^ *[0-9]+' | grep -v 'had no tests' \
 		|  tee $(mdir)/doctest.txt
-	$(python) ./coverage.py -x runsystest.py 2>&1 | tee $(mdir)/systest.txt 
+	COVERAGE="$(python) ./coverage.py -x" $(python) runsystest.py 2>&1 | tee $(mdir)/systest.txt 
 	$(python) ./coverage.py -r $(files) 2>&1 | tee $(mdir)/coverage.txt
 	$(python) ./coverage.py -rm $(files) 2>&1 | tee $(mdir)/missing.txt
 
