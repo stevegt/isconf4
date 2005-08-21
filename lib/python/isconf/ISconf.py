@@ -23,85 +23,10 @@ import sys
 import time
 import isconf
 from isconf.Globals import *
+from isconf import ISFS
 from isconf.Kernel import kernel, Bus
 from isconf.fbp822 import fbp822, Error822
 
-
-# XXX kill this -- using fbp822 instead
-#
-# TO SERVER:
-#
-# commands:
-# c:size:argv
-#
-# stdin:  
-# i:size:content
-#
-# FROM SERVER:
-#
-# stdout:
-# o:size:content
-#
-# stderr:
-# e:size:content
-#
-# return code:
-# r:size:return_code
-# 
-# tell client to fetch stdin:
-# I:0:
-#
-
-def client(transport,argv,kwopt):
-
-    """
-    A unix-domain client of an isconf server.  This client is very
-    thin -- all the smarts are on the server side.
-
-    argv is e.g. ('snap', '/tmp/foo') 
-    """
-    def clierr(macro,msg=''):
-        msg = "%s: %s" % (macro[1], msg)
-        print >>sys.stderr, msg
-        return macro[0]
-
-    fbp = fbp822()
-    verb = argv.pop(0)
-    if len(argv):
-        payload = "\n".join(argv) + "\n"
-    else:
-        payload = ''
-    msg = fbp.mkmsg('cmd',payload,verb=verb,**kwopt)
-
-    # this is a blocking write...
-    transport.write(str(msg))
-
-    stream = fbp.fromStream(transport)
-    # process one message each time through loop
-    while True:
-        try:
-            msg = stream.next()
-        except StopIteration:
-            return clierr(UNKNOWN_RC)
-        except Error822, e:
-            return clierr(BAD_RECORD,e)
-        if msg in (kernel.eagain,None):
-            continue
-        rectype = msg.type()
-        data = msg.payload()
-        if rectype == 'rc':
-            code = int(data)
-            return code
-        elif rectype == 'stdout': sys.stdout.write(data)
-        elif rectype == 'stderr': sys.stderr.write(data)
-        elif rectype == 'reqstdin':
-            for line in sys.stdin:
-                msg = fbp.mkmsg('stdin',line)
-                transport.write(str(msg))
-            transport.shutdown()
-        else:
-            return clierr(INVALID_RECTYPE, rectype)
-        
 class CLIServerFactory:
 
     def __init__(self,socks):
@@ -152,10 +77,13 @@ class CLIServer:
             debug("from client:", str(msg))
             rectype = msg.type()
             data = msg.payload()
-            opts = msg.items()
+            opt = dict(msg.items())
+            if opt['message'] == 'None':
+                opt['message'] = None
+            debug(opt)
             # get cmd from client
             if rectype != 'cmd':
-                self.srverr(INVALID_RECTYPE, 
+                busexit(INVALID_RECTYPE, 
                     "first message must be cmd, got %s" % rectype)
                 return
             verb = msg['verb']
@@ -166,11 +94,11 @@ class CLIServer:
             try:
                 func = getattr(ops,verb)
             except AttributeError:
-                self.srverr(INVALID_VERB, verb)
+                busexit(outpin,INVALID_VERB,verb)
                 return
             # start command processor
             kernel.spawn(
-                func(opts=opts,args=args,data=data,inpin=inpin,outpin=outpin)
+                func(opt=opt,args=args,data=data,inpin=inpin,outpin=outpin)
                 )
             break
 
@@ -190,32 +118,139 @@ class CLIServer:
                 debug("to client:", str(msg))
                 transport.write(str(msg))
 
-    # XXX bypasses FBP
-    def srverr(self,macro,msg=''):
-        msg = "%s: %s\n" % (macro[1], str(msg))
-        strerrno = str(macro[0])
-        fbp=fbp822()
-        error(msg)
-        self.transport.write(str(fbp.mkmsg('stderr',msg)))
-        self.transport.write(str(fbp.mkmsg('rc',strerrno)))
-        self.transport.close()
-
 class Ops:
     """ISconf server-side operations"""
 
-    # XXX migrate from 4.1.7 to here
-
-    def snap(self,opts,args,data,inpin,outpin):
+    def lock(self,opt,args,data,inpin,outpin):
         fbp=fbp822()
         yield None
-        while not outpin.tx(fbp.mkmsg('rc',234)): yield None
+        volume = branch()
+        lock = ISFS.Volume(volume).lock
+        if lock.locked() and not cklock(outpin,volume,opt['logname']):
+            return
+        if not opt['message']:
+            busexit(outpin,MESSAGE_REQUIRED,'did not lock %s' % volume)
+            return
+        if lock.lock(opt['logname'],opt['message']):
+            busexit(outpin,NORMAL) 
+            return
+        busexit(outpin,NOTLOCKED,'attempt to lock %s failed' % volume) 
+
+    def snap(self,opt,args,data,inpin,outpin):
+        fbp=fbp822()
+        yield None
+        volume = branch()
+        if not cklock(outpin,volume,opt['logname']):
+            return
+        if opt['message']:
+            if not lock.lock(opt['logname'],opt['message']):
+                busexit(outpin,NOTLOCKED,'failed relocking %s' % volume) 
+                return
+            
+    def unlock(self,opt,args,data,inpin,outpin):
+        fbp=fbp822()
+        yield None
+        volume = branch()
+        lock = ISFS.Volume(volume).lock
+        locker = lock.lockedby()
+        if locker:
+            if not lock.unlock():
+                busexit(outpin,LOCKED,'attempt to unlock %s failed' % volume) 
+                return
+            outpin.tx(fbp.mkmsg('stderr',
+                "broke %s lock -- please notify %s\n" % (volume,locker))
+                )
+        busexit(outpin,NORMAL) 
+        
+            
+            
+
 
 
 def branch(val=None):
     varisconf = os.environ['VARISCONF']
     fname = "%s/branch" % varisconf
+    if not os.path.exists(fname):
+        val = 'generic'
     if val is not None:
         open(fname,'w').write(val)
     val = open(fname,'r').read()
     return val
+
+def cklock(errpin,volume,logname):
+    lock = ISFS.Volume(volume).lock
+    lockmsg = lock.locked()
+    if not lockmsg:
+        busexit(errpin,NOTLOCKED, "%s branch is not locked" % volume)
+        return False
+    if not lock.lockedby(logname):
+        busexit(errpin,LOCKED,"%s branch is locked by %s" % (volume,lockmsg))
+        return False
+    return True
+
+def client(transport,argv,kwopt):
+
+    """
+    A unix-domain client of an isconf server.  This client is very
+    thin -- all the smarts are on the server side.
+
+    argv is e.g. ('snap', '/tmp/foo') 
+    """
+    def clierr(macro,msg=''):
+        msg = "%s: %s" % (macro[1], msg)
+        print >>sys.stderr, msg
+        return macro[0]
+
+    fbp = fbp822()
+    verb = argv.pop(0)
+    if len(argv):
+        payload = "\n".join(argv) + "\n"
+    else:
+        payload = ''
+    logname = os.environ['LOGNAME']
+    msg = fbp.mkmsg('cmd',payload,verb=verb,logname=logname,**kwopt)
+
+    # this is a blocking write...
+    transport.write(str(msg))
+
+    stream = fbp.fromStream(transport)
+    # process one message each time through loop
+    while True:
+        try:
+            msg = stream.next()
+        except StopIteration:
+            return clierr(SERVER_CLOSE)
+        except Error822, e:
+            return clierr(BAD_RECORD,e)
+        if msg in (kernel.eagain,None):
+            continue
+        rectype = msg.type()
+        data = msg.payload()
+        if rectype == 'rc':
+            code = int(data)
+            return code
+        elif rectype == 'stdout': sys.stdout.write(data)
+        elif rectype == 'stderr': sys.stderr.write(data)
+        elif rectype == 'reqstdin':
+            for line in sys.stdin:
+                msg = fbp.mkmsg('stdin',line)
+                transport.write(str(msg))
+            transport.shutdown()
+        else:
+            return clierr(INVALID_RECTYPE, rectype)
+        
+def busexit(errpin,macro,msg=''):
+        if macro[1] or msg:
+            msg = "%s: %s\n" % (macro[1], str(msg))
+        fbp=fbp822()
+        if msg and macro[0]:
+            error(msg)
+            msg = "error: " + msg
+            errpin.tx(str(fbp.mkmsg('stderr',msg)))
+        strerrno = str(macro[0])
+        errpin.tx(str(fbp.mkmsg('rc',strerrno)))
+        errpin.close()
+
+
+
 

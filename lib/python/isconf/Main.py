@@ -17,14 +17,16 @@ from isconf.Kernel import kernel, Restart
 class Main:
 
     verbs = (
-            'ci',     
-            'exec',   
-            'fork',    
-            'restart',
+            'up',
+            'lock',
+            'unlock',
             'snap',
+            'exec',   
+            'ci',     
+            'fork',    
             'start',
             'stop',
-            'up',
+            'restart',
     )
 
     def config(self,fname):
@@ -51,6 +53,7 @@ class Main:
 
         isfshome=os.environ['ISFS_HOME']
         os.environ.setdefault('ISFS_CACHE',"%s/cache" % isfshome)
+        os.environ.setdefault('ISFS_PRIVATE',"%s/private" % isfshome)
 
         debug(os.popen("env").read())
 
