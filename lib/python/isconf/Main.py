@@ -12,6 +12,7 @@ from isconf.Globals import *
 from isconf.GPG import GPG
 from isconf.Server import Server
 from isconf.Socket import UNIXClientSocket
+from isconf.Kernel import kernel, Restart
 
 class Main:
 
@@ -54,7 +55,6 @@ class Main:
         debug(os.popen("env").read())
 
     def main(self):
-
         synopsis = """
         isconf [-Dhv] [-c config ] [-m message] {verb} [verb args ...]
         
@@ -68,13 +68,14 @@ class Main:
         }
         ps = "\nVerb is one of: %s\n" % ', '.join(self.verbs)
         ps += "\nVerb and verb args can be interleaved with other flags."
+        self.cwd = os.getcwd()
         (kwopt,args,usage) = getkwopt(sys.argv[1:],opt)
         self.helptxt = synopsis + usage + ps
         if kwopt['help']: self.usage()
-        self.kwopt = copy.deepcopy(kwopt)
-        self.config(kwopt['config'])
         if not args: 
             self.usage("missing verb")
+        self.kwopt = copy.deepcopy(kwopt)
+        self.config(kwopt['config'])
         self.args = copy.deepcopy(args)
         verb = args.pop(0)
         if not verb in self.verbs:
@@ -83,14 +84,19 @@ class Main:
             func = getattr(self,verb)
             rc = func(args)
             sys.exit(rc)
-        self.client()
+        try:
+            rc = self.client()
+        except KeyboardInterrupt:
+            sys.exit(2)
+        sys.exit(rc)
+
 
     def client(self):
         ctl = "%s/.ctl" % os.environ['VARISCONF']
         transport = UNIXClientSocket(path = ctl)
         rc = isconf.ISconf.client(
                 transport=transport,argv=self.args,kwopt=self.kwopt)
-        sys.exit(rc)
+        return rc
         
     def restart(self,argv):
         try:
@@ -109,8 +115,18 @@ class Main:
         os.umask(0)
         if os.fork(): sys.exit(0)
         # start daemon
-        server = Server()
-        rc = server.start()
+        while True:
+            try:
+                server = Server()
+                rc = server.start()
+            except Restart:
+                error("restarting [%s]..." % ' '.join(sys.argv))
+                os.chdir(self.cwd)
+                # close everything down
+                kernel.killall()
+                server = None 
+                time.sleep(1)
+                os.execvp(sys.argv[0],sys.argv)
         sys.exit(rc)
 
     def stop(self,argv):

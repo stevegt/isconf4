@@ -8,94 +8,151 @@ import copy
 import os
 import sys
 import time
+import traceback
 
 from isconf.Globals import *
 
-class Buffer:
+class Deadlock(Exception): pass
+class Restart(Exception): pass
+
+class Bus:
     """
     
-    >>> def gena(inpin,outpin):
-    ...     i = 0
+    >>> def mygen(name,inpin,outpin):
     ...     while True:
-    ...         yield inpin.wait()
-    ...         j = inpin.rx()
-    ...         i += j
-    ...         outpin.tx(i)
-    ... 
-    >>> def genb(inpin,outpin):
-    ...     i = 0
+    ...         mlist = []
+    ...         yield inpin.rx(mlist)
+    ...         for msg in mlist:
+    ...             msg = "%s got (%s)" % (name, msg)
+    ...             while not outpin.tx(msg):
+    ...                 print "waiting for readers"
+    ...                 yield None
+    >>>
+    >>> def printer(inpin):
     ...     while True:
-    ...         yield inpin.wait()
-    ...         j = inpin.rx()
-    ...         i -= j
-    ...         outpin.tx(i)
-    ... 
-    >>> bus1 = Buffer()
-    >>> bus2 = Buffer()
-    >>> bus3 = Buffer()
-    >>> bus1.tx(1)
+    ...         l = []
+    ...         yield inpin.rx(l)
+    ...         for j in l:
+    ...             print j
+    >>> 
+    >>> bus1 = Bus()
+    >>> bus2 = Bus()
+    >>> bus3 = Bus(minreaders=2)
+    >>> assert not bus1.tx('never')
+    >>> t = kernel.spawn(bus1.writer('apple'))
+    >>> a = kernel.spawn(mygen('alice',inpin=bus1,outpin=bus2))
+    >>> b = kernel.spawn(mygen('bob',inpin=bus2,outpin=bus3))
+    >>> r = kernel.spawn(bus3.reader(),itermode=True)
+    >>> p = kernel.spawn(printer(inpin=bus3))
+    >>> kernel.run(steps=100)
+    bob got (alice got (apple))
+    >>> bus1.tx('pear')
     1
-    >>> bus1.rx()
-    1
-    >>> bus1.rx()
+    >>> kernel.run(steps=100)
+    bob got (alice got (pear))
+    >>> r.next()
     'EAGAIN'
-    >>> a = kernel.spawn(gena(inpin=bus1,outpin=bus2))
-    >>> b = kernel.spawn(genb(inpin=bus2,outpin=bus3))
     >>> kernel.run(steps=100)
-    >>> bus1.tx(5)
-    1
-    >>> bus2.rx()
-    'EAGAIN'
-    >>> bus1.data
-    [5]
-    >>> bus1.ready()
-    1
+    >>> r.next()
+    'bob got (alice got (apple))'
     >>> kernel.run(steps=100)
-    >>> bus1.data
-    []
-    >>> bus2.data
-    []
-    >>> bus3.data
-    [-5]
-    >>> bus1.tx(7)
-    1
+    >>> r.next()
+    'bob got (alice got (pear))'
     >>> kernel.run(steps=100)
-    >>> bus3.rx()
-    -5
-    >>> bus3.rx()
-    -17
-    >>> bus3.rx()
+    >>> r.next()
     'EAGAIN'
     
     """
     
-    def __init__(self,maxlen=None):
-        self.data=[]
-        self.maxlen=maxlen
+    def __init__(self,maxlen=None,minreaders=1,name=None):
+        self.maxlen = maxlen
+        # all reader queues, indexed by task id
+        self.readq = {}
+        self.minreaders = minreaders
+        self.name = name
+        self.state = 'up'
+
+    def clean(self):
+        for (tid,queue) in self.readq.items():
+            if not kernel.isrunning(tid):
+                del self.readq[tid]
+
+    def close(self):
+        self.state = 'down'
+
+    def subscribe(self,tid):
+        """Create a readers queue for tid.  Called by kernel."""
+        self.readq.setdefault(tid,[])
 
     def tx(self,msg):
-        if self.maxlen and len(self.data) + 1 > self.maxlen:
-            raise BufferOverflow
-        self.data.append(msg)
-        return 1  # XXX should be actual number of readers
+        self.clean()
+        i = len(self.readq) # number of subscribed readers
+        if i < self.minreaders:
+            return False
+        for (tid,queue) in self.readq.items():
+            if self.maxlen and len(queue) + 1 > self.maxlen:
+                raise Deadlock  # XXX need some id here
+            queue.append(msg)
+        return True
 
-    def ready(self,expires=None):
-        if (expires is not None) and time.time() > expires:
+    def reader(self):
+        """convenience generator -- read bus while not in a task"""
+        while True:
+            mlist = []
+            yield self.rx(mlist)
+            for msg in mlist:
+                yield msg
+    
+    def writer(self,msg):
+        """convenience generator -- reliable tx"""
+        while not self.tx(msg):
+            yield None
+    
+    def ready(self,tid,buf,expires,count):
+        if len(self.readq[tid]):
+            c = min(len(self.readq[tid]), count)
+            buf += self.readq[tid][:c]
+            self.readq[tid] = self.readq[tid][c:]
             return True
-        return len(self.data)
+        if self.state == 'down':
+            buf.append(kernel.eof)
+            return True
+        if (expires is not None) and time.time() > expires:
+            buf.append(kernel.eagain)
+            return True
+        return False
 
-    def rx(self):
-        if not len(self.data):
-            return kernel.eagain
-        return self.data.pop(0)
+    def rx(self,buf,timeout=None,count=999999):
+        """
 
-    def wait(self,timeout=None):
+        >>> def cgen(inpin,count=99999):
+        ...     while True:
+        ...         mlist = []
+        ...         yield inpin.rx(mlist,count=count)
+        ...         print count, mlist
+        ...
+        >>> bus1 = Bus()
+        >>> a = kernel.spawn(cgen(inpin=bus1))
+        >>> b = kernel.spawn(cgen(inpin=bus1,count=1))
+        >>> kernel.run(steps=1000)
+        >>> bus1.tx(1)
+        1
+        >>> bus1.tx(2)
+        1
+        >>> bus1.tx(3)
+        1
+        >>> kernel.run(steps=1000)
+        99999 [1, 2, 3]
+        1 [1]
+        1 [2]
+        1 [3]
+
+        """
         expires = None
         if timeout is not None:
             expires = time.time() + timeout
-        return kernel.siguntil, self.ready, expires
-
-class BufferOverflow(Exception): pass
+        # kernel will call subscribe()
+        return kernel.sigrx, self, buf, expires, count
 
 class Kernel:
     """
@@ -141,7 +198,7 @@ class Kernel:
 
     """
 
-    sigcall='call'
+    sigrx='rx'
     sigbusy='busy'
     signice='nice'
     sigret='ret'
@@ -150,6 +207,7 @@ class Kernel:
     siguntil='until'
     signals = ( sigbusy, signice, sigsleep, sigspawn, siguntil )
     eagain = 'EAGAIN'
+    eof = 'EOF'
 
     def __init__(self):
         self._tasks = {}
@@ -163,7 +221,24 @@ class Kernel:
         self._tasks.setdefault(tid,None)
         del self._tasks[tid]
 
+    def abort(self,task,e):
+        tid = task.tid
+        exc_info = sys.exc_info()
+        exc_type, exc_val, tb = exc_info[:3]
+        out = traceback.format_exception(exc_type, exc_val, tb)
+        out = ''.join(out)
+        out = out.strip() + "\n"
+        if task.errpin:
+            task.errpin.tx(out)
+        else:
+            error(out)
+            raise Restart
+        self.kill(tid)
+
     def killall(self):
+        tids = self._tasks.keys()
+        for tid in tids:
+            self.kill(tid)
         self._tasks = {}
 
     def ps(self):
@@ -173,7 +248,7 @@ class Kernel:
             out += str(task) + "\n"
         return out
 
-    def spawn(self,genobj,step=False):
+    def spawn(self,genobj,itermode=False):
         """
         Let the kernel manage an ordinary generator object by wrapping
         it in a Task -- extremely powerful, because this means a yield
@@ -181,16 +256,14 @@ class Kernel:
         It also means ordinary generators can yield sig* values to
         talk to the kernel e.g. sigsleep.
 
-        If step=False, then run freely, returning values only to the
+        If itermode=False, then run freely, returning values only to the
         kernel, which is going to interpret them as control signals or
         throw them away if unrecognized.
 
-        If step=True, then run in single-step mode and return each
+        If itermode=True, then run in single-step mode and return each
         value to the caller like a normal generator.  The only unusual
         thing the caller needs to know is that if there is no result
-        ready, then you will get a kernel.eagain result instead.  (And
-        you'll always get eagain on the first read, to remind you to
-        watch for it later.)
+        ready, then you will get a kernel.eagain result instead.  
 
         >>> def mygen():
         ...     i = 0
@@ -199,10 +272,7 @@ class Kernel:
         ...         if i == 3: yield kernel.sigsleep,1
         ...         i += 1
         ... 
-        >>> obj = kernel.spawn(mygen(),step=True)
-        >>> kernel.run(steps=10)
-        >>> obj.next()
-        'EAGAIN'
+        >>> obj = kernel.spawn(mygen(),itermode=True)
         >>> kernel.run(steps=10)
         >>> obj.next()
         0
@@ -218,6 +288,9 @@ class Kernel:
         >>> kernel.run(steps=10)
         >>> obj.next()
         'EAGAIN'
+        >>> kernel.run(steps=10)
+        >>> obj.next()
+        'EAGAIN'
         >>> while obj.next() != 4:
         ...         kernel.run(steps=10)
         ... 
@@ -227,7 +300,7 @@ class Kernel:
         >>> kernel.run(steps=100)
         >>> obj.next()
         6
-        >>> obj.step=False
+        >>> obj.itermode=False
         >>> kernel.run(steps=100)
         >>> assert obj.next() > 10
         
@@ -238,7 +311,11 @@ class Kernel:
         assert tid == self._nextid
         self._nextid += 1
         self._tasks[tid] = task
-        task.step = step
+        task.itermode = itermode
+        # immediately advance to the first yield; allows message bus
+        # readers to subscribe right away; assumes bus.rx() is their
+        # first yield
+        self.step(task)
         return task
 
     def run(self, initobj=None, steps=None):
@@ -281,38 +358,46 @@ class Kernel:
                 # wait until condition is met
                 if task.until:
                     done=False
-                    if isinstance(task.untilArgs,list) or \
-                           isinstance(task.untilArgs,tuple):
-                        done = task.until(*task.untilArgs)
-                    elif task.untilArgs:
-                        done = task.until(task.untilArgs)
-                    else:
-                        done = task.until()
+                    try:
+                        if isinstance(task.untilArgs,list) or \
+                               isinstance(task.untilArgs,tuple):
+                            done = task.until(*task.untilArgs)
+                        elif task.untilArgs:
+                            done = task.until(task.untilArgs)
+                        else:
+                            done = task.until()
+                    except Exception, e:
+                        # XXX add traceback
+                        self.abort(task,e)
+                        continue
                     if not done:
                         # slow down so we don't beat up until()
                         task.priority += 1
                         continue
                 task.until = None
-                if task.step and task.resultReady:
+                if task.itermode and task.resultReady:
                     # we're waiting for Task._wrapper() to pick up our
                     # previous result
                     task.priority += 1
                     continue
                 self.step(task)
 
-    def step(self,task,showstop=None):
+    def step(self,task):
         obj = task.obj
         tid = task.tid
         try:
             argv = obj.next()
         except StopIteration:
-            del self._tasks[tid]
-            if showstop: raise
+            self.kill(tid)
             return
         except ValueError, e:
             if e == 'generator already executing':
                 # kernel.run() is nested -- that's okay to do
                 return
+        except Exception, e:
+            # XXX add traceback
+            self.abort(task,e)
+            return
         # figure out why task yielded and what it wants
         targv = argv
         if not isinstance(targv,tuple):
@@ -344,19 +429,17 @@ class Kernel:
                 task.untilArgs = sigargs[1:]
             else:
                 task.untilArgs = None
-        elif why == self.sigcall:
-            # XXX initialize all of these in Task
-            self.callobj = sigargs[0]
-            task.context = sigargs[1]
-            task.until = task.context.done 
-            cotid = self.spawn(self.callobj).tid
-            cotask = self._tasks[cotid]
-            cotask.caller = task
-            cotask.context = task.context
+        elif why == self.sigrx:
+            bus = sigargs[0]
+            buf = sigargs[1]
+            args = sigargs[2:]
+            task.until = bus.ready
+            task.untilArgs = [tid,buf] + list(args)
+            bus.subscribe(tid)
         elif why == self.sigret:
             task.context.ret()
         else:
-            # we got an ordinary value back -- save it for spawn()
+            # we got an ordinary value back -- save it for Wrapper.wrapper()
             task.result = argv
             task.resultReady = True
         task.priority = (task.priority + task.nice) / 2
@@ -384,13 +467,14 @@ class Task:
             nice = parent.nice
             self.ptid = parent.tid
         self.delay = nice
+        self.errpin = None
         self.nice = nice
         self.priority = nice
         self.result = kernel.eagain
         self.resultReady = True
         self.sleep = 0
         self.sleepDone = 0
-        self.step = None
+        self.itermode = False
         self.tid = tid
         self.time = time.time()
         self.until = None
@@ -413,7 +497,8 @@ class Task:
 class Wrapper:
 
     def __init__(self,task):
-        assert task.step
+        if not task.itermode:
+            raise Exception("set itermode=True if you want to iterate on this task")
         self.task = task
     
     def wrapper(self):
@@ -434,7 +519,7 @@ class Wrapper:
 
     def __del__(self):
         # XXX this does not work because task.wrapper is a
-        # reference; step mode tasks are a memory
+        # reference; itermode tasks are a memory
         # leak, and need to be explicitly removed with
         # kernel.kill() if they don't terminate themselves
         kernel.kill(self.task.tid)

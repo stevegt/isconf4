@@ -6,6 +6,8 @@ verbose = False
 
 # return codes/messages 
 SHORT_READ        = (54, "message truncated, data contains missing byte count")
+EXCEPTION         = (92, "server-side exception")
+INVALID_VERB      = (93, "invalid subcommand verb")
 UNKNOWN_RC        = (94, "missing return code from server")
 BAD_RECORD        = (95, "bad record")
 INVALID_RECTYPE   = (96, "invalid record type")

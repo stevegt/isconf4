@@ -17,7 +17,7 @@ import isconf
 from isconf import ISconf, ISFS, Socket
 from isconf.Globals import *
 from isconf.GPG import GPG
-from isconf.Kernel import kernel, Buffer
+from isconf.Kernel import kernel, Bus
 
 
 class EchoTest:
@@ -67,8 +67,8 @@ class Server:
     def init(self):
         """parent of all server tasks"""
         # set up FBP netlist 
-        unixsocks = Buffer()
-        tcpsocks = Buffer()
+        unixsocks = Bus()
+        tcpsocks = Bus()
 
         unix = Socket.UNIXServerFactory(path=self.ctlpath)
         kernel.spawn(unix.run(out=unixsocks))

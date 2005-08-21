@@ -23,7 +23,7 @@ import sys
 import time
 import isconf
 from isconf.Globals import *
-from isconf.Kernel import kernel
+from isconf.Kernel import kernel, Bus
 from isconf.fbp822 import fbp822, Error822
 
 
@@ -66,8 +66,12 @@ def client(transport,argv,kwopt):
         return macro[0]
 
     fbp = fbp822()
-    payload = "\n".join(argv) + "\n"
-    msg = fbp.mkmsg('cmd',payload,**kwopt)
+    verb = argv.pop(0)
+    if len(argv):
+        payload = "\n".join(argv) + "\n"
+    else:
+        payload = ''
+    msg = fbp.mkmsg('cmd',payload,verb=verb,**kwopt)
 
     # this is a blocking write...
     transport.write(str(msg))
@@ -105,10 +109,11 @@ class CLIServerFactory:
 
     def run(self):
         while True:
-            yield self.socks.wait()
-            sock = self.socks.rx()
-            server = CLIServer(sock=sock)
-            kernel.spawn(server.run())
+            slist = []
+            yield self.socks.rx(slist)
+            for sock in slist:
+                server = CLIServer(sock=sock)
+                kernel.spawn(server.run())
 
 class CLIServer:
 
@@ -116,55 +121,95 @@ class CLIServer:
         self.transport=sock
 
     def run(self):
+        yield kernel.sigbusy # speed things up a bit
         debug("CLIServer running")
-        # process one message each time through loop
         fbp = fbp822()
-        stream = kernel.spawn(fbp.fromStream(self.transport),step=True)
+
+        # set up FBP buses
+        frcli = Bus()
+        tocli = Bus()
+
+        # read messages from client
+        str = kernel.spawn(fbp.fromStream(stream=self.transport,outpin=frcli))
+        # process messages from client
+        proc = kernel.spawn(self.process(inpin=frcli,outpin=tocli))
+        # send messages to client
+        res = kernel.spawn(self.respond(transport=self.transport,inpin=tocli))
+
+    def process(self,inpin,outpin):
         while True:
             yield None
-            try:
-                msg = stream.next()
-            except StopIteration:
-                return
-            except Error822, e:
-                error("from client:", e)
-                return
+            mlist = []
+            yield inpin.rx(mlist,timeout=0,count=1)
+            msg = mlist[0]
             if msg in (kernel.eagain,None):
                 continue
-            if self.transport.state == 'down':
+            if outpin.state == 'down':
                 return
+            if msg is kernel.eof:
+                outpin.close()
+                return
+            debug("from client:", str(msg))
             rectype = msg.type()
             data = msg.payload()
-            if rectype == 'cmd':
-                debug("from client:", str(msg))
-                # XXX migrate from 4.1.7 starting here
+            opts = msg.items()
+            # get cmd from client
+            if rectype != 'cmd':
+                self.srverr(INVALID_RECTYPE, 
+                    "first message must be cmd, got %s" % rectype)
+                return
+            verb = msg['verb']
+            args=[]
+            if len(data):
+                args = data.split('\n')
+            ops = Ops()
+            try:
+                func = getattr(ops,verb)
+            except AttributeError:
+                self.srverr(INVALID_VERB, verb)
+                return
+            # start command processor
+            kernel.spawn(
+                func(opts=opts,args=args,data=data,inpin=inpin,outpin=outpin)
+                )
+            break
 
-                
-
-                if False:   # XXX
-                    cmd = ' '.join(data.split("\n"))
-                    print "cmd:", cmd
-                    stdout = os.popen(cmd,'r')
-                    for line in stdout:
-                        yield None
-                        self.transport.write("o:%d:%s" % (len(line), line))
-                    self.transport.write("r:2:10\n")
-                    self.transport.close()
+    def respond(self,transport,inpin):
+        while True:
+            yield None
+            mlist = []
+            yield inpin.rx(mlist)
+            for msg in mlist:
+                if transport.state == 'down':
                     return
-            elif rectype == 'stdin':
-                # XXX stdin from client arrives here
-                pass
-            else:
-                self.srverr(INVALID_RECTYPE, rectype)
-            rxd = ''
-            size = 1
+                if msg in (kernel.eagain,None):
+                    continue
+                if msg is kernel.eof:
+                    transport.close()
+                    return
+                debug("to client:", str(msg))
+                transport.write(str(msg))
 
+    # XXX bypasses FBP
     def srverr(self,macro,msg=''):
-        msg = "%s: %s" % (macro[1], msg)
+        msg = "%s: %s\n" % (macro[1], str(msg))
         strerrno = str(macro[0])
-        self.transport.write("e:%d:%s" % (len(msg), msg))
-        self.transport.write("r:%d:%s" % (len(strerrno), strerrno))
+        fbp=fbp822()
+        error(msg)
+        self.transport.write(str(fbp.mkmsg('stderr',msg)))
+        self.transport.write(str(fbp.mkmsg('rc',strerrno)))
         self.transport.close()
+
+class Ops:
+    """ISconf server-side operations"""
+
+    # XXX migrate from 4.1.7 to here
+
+    def snap(self,opts,args,data,inpin,outpin):
+        fbp=fbp822()
+        yield None
+        while not outpin.tx(fbp.mkmsg('rc',234)): yield None
+
 
 def branch(val=None):
     varisconf = os.environ['VARISCONF']

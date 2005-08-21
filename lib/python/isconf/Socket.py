@@ -18,7 +18,7 @@ class ServerFactory:
                 (peersock, address) = self.sock.accept()
                 sock = ServerSocket(sock=peersock,address=address)
                 yield kernel.sigspawn, sock.run()
-                out.tx(sock)
+                while not out.tx(sock): yield None
             except socket.error, (error, strerror):
                 if not error == errno.EAGAIN:
                     raise
@@ -50,7 +50,7 @@ class ServerSocket:
         actual = min(size,len(self.rxd))
         if actual == 0:
             return ''
-        print repr(actual)
+        # print repr(actual)
         rxd = self.rxd[:actual]
         # print "reading", rxd
         self.rxd = self.rxd[actual:]

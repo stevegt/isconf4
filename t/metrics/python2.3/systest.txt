@@ -1,5 +1,8 @@
-.
+..
 ----------------------------------------------------------------------
-Ran 1 test in 8.927s
+Ran 2 tests in 18.722s
 
 OK
+running python2.3 ./coverage.py -x ../bin/isconf -c simple.conf
+running python2.3 ./coverage.py -x ../bin/isconf -c simple.conf start
+running python2.3 ./coverage.py -x ../bin/isconf -c simple.conf stop

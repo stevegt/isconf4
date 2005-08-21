@@ -55,8 +55,11 @@ class fbp822:
         msg = Message()
         msg.add_header('_type',type)
         if _payload is not None:
+            _payload=str(_payload)
             msg.set_payload(_payload)
-        msg.add_header('_size',str(len(_payload)))
+            msg.add_header('_size',str(len(_payload)))
+        else:
+            msg.add_header('_size',str(0))
         for (var,val) in kwargs.items():
             if var.startswith("_"):
                 raise Error822("parameter names can't start with '_'")
@@ -161,8 +164,13 @@ class fbp822:
                 )
         return msg
 
-    def fromStream(self,stream):
-        """generates message objects from a file or isconf.Socket"""
+    def fromStream(self,stream,outpin=None):
+        """generate message objects from a file or isconf.Socket
+        
+        If outpin is set, then use FBP Bus API, otherwise act as ordinary
+        generator, yielding messages.
+        
+        """
         rxd = ''
         wanted = 1
         # read one message each time through complete loop
@@ -170,10 +178,12 @@ class fbp822:
         while True:
             yield None
             if hasattr(stream,'state') and stream.state == 'down':
+                if outpin: outpin.close()
                 break
             newrxd = stream.read(wanted)
             if isinstance(stream,file) and not len(newrxd):
                 # at EOF
+                if outpin: outpin.close()
                 break
             rxd += newrxd
             # discard leading newlines
@@ -188,7 +198,10 @@ class fbp822:
                 wanted = int(str(e))
                 continue
             # yay. got it all
-            yield msg
+            if outpin:
+                while not outpin.tx(msg): yield None
+            else:
+                yield msg
             rxd = ''
             wanted = 1
         if rxd:
