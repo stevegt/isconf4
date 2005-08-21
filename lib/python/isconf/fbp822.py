@@ -168,7 +168,7 @@ class fbp822:
         # read one message each time through complete loop
         factory = fbp822()
         while True:
-            yield kernel.eagain
+            yield None
             if hasattr(stream,'state') and stream.state == 'down':
                 break
             newrxd = stream.read(wanted)
@@ -185,17 +185,15 @@ class fbp822:
                 msg = factory.parse(rxd,trial=True)
             except Incomplete822, e:
                 # nope, didn't get it all
-                wanted = e
+                wanted = int(str(e))
                 continue
             # yay. got it all
             yield msg
             rxd = ''
             wanted = 1
         if rxd:
-            # hmm.  junk at end of stream.  this is probably going to
-            # blow up, but let's try anyway...
-            msg = factory.parse(rxd)
-            yield msg
+            # hmm.  junk at end of stream.  XXX discard for now
+            pass
 
 
 
@@ -225,6 +223,9 @@ class Message(email.Message.Message):
 
     def type(self):
         return self['_type']
+
+    def payload(self):
+        return self.get_payload()
 
     def hmac_calculated(self,key):
         h = hmac.new(key,msg=self.as_string(),digestmod=sha)

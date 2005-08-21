@@ -59,7 +59,7 @@ def httpServer(port,dir):
     serveraddr = ('',port)
     svr = ForkingServer(serveraddr,SimpleHTTPRequestHandler)
     svr.socket.setblocking(0)
-    info("HTTP server serving %s on port %d" % (dir,port))
+    debug("HTTP server serving %s on port %d" % (dir,port))
     while True:
         yield None
         try:
@@ -87,7 +87,7 @@ def udpServer(udpport,httpport,dir):
         os.makedirs(dir,0700)
     os.chdir(dir)
 
-    info("UDP server serving %s on port %d" % (dir,udpport))
+    debug("UDP server serving %s on port %d" % (dir,udpport))
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
     sock.setblocking(0)
@@ -98,7 +98,7 @@ def udpServer(udpport,httpport,dir):
         yield None
         try:
             data,addr = sock.recvfrom(8192)
-            info("from %s: %s" % (addr,data))
+            debug("from %s: %s" % (addr,data))
             factory = fbp822()
             msg = factory.parse(data)
             type = msg.type()
@@ -116,10 +116,10 @@ def udpServer(udpport,httpport,dir):
                     error("unsafe request from %s: %s" % (addr,fname))
                     continue
                 if not os.path.isfile(fname):
-                    info("from %s: not found: %s" % (addr,fname))
+                    debug("from %s: not found: %s" % (addr,fname))
                     continue
                 if newer is not None and newer > os.path.getmtime(fname):
-                    info("from %s: not newer: %s" % (addr,fname))
+                    debug("from %s: not newer: %s" % (addr,fname))
                     continue
                 # url = "http://%s:%d/%s" % (localip,httpport,fname)
                 reply = factory.mkmsg('ihave',

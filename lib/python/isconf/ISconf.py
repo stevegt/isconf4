@@ -24,8 +24,11 @@ import time
 import isconf
 from isconf.Globals import *
 from isconf.Kernel import kernel
+from isconf.fbp822 import fbp822, Error822
 
 
+# XXX kill this -- using fbp822 instead
+#
 # TO SERVER:
 #
 # commands:
@@ -49,82 +52,62 @@ from isconf.Kernel import kernel
 # I:0:
 #
 
-class Client:
-    
-    def __init__(self,transport,argv):
+def client(transport,argv,kwopt):
 
-        """
-        A unix-domain client of an isconf server.  This client is very
-        thin -- all the smarts are on the server side.
+    """
+    A unix-domain client of an isconf server.  This client is very
+    thin -- all the smarts are on the server side.
 
-        argv is e.g. ('snap', '-v', '/tmp/foo') 
-        """
-        args = ''
-        # if verbose: print >>sys.stderr, argv
-        for arg in argv:
-            if ' ' in arg:
-                # escape embedded "'"
-                arg.replace("'","\'")
-                # wrap arg in "'"
-                arg = "'%s'" % arg
-            args += "%s " % arg
-        args = args.rstrip()
-        # if verbose: print >>sys.stderr, args
-
-        txd = "isconf4\nc:%s:%s\n" % (len(args), args)
-        # this is a blocking write...
-        transport.write(txd)
-        expect = 'isconf4\n'
-        rxd = ''
-        while len(rxd) < len(expect):
-            rxd += transport.read(1)
-        if rxd != expect:
-            return self.clierr(PROTOCOL_MISMATCH, rxd)
-
-        rxd = ''
-        size = 1
-        # process one message each time through loop
-        while True:
-            # this is a blocking read...
-            rxd += transport.read(size)
-            (rectype,data) = parsemsg(rxd)
-            if rectype == SHORT_READ:
-                size = int(data)
-                continue
-            elif rectype == 'r':
-                code = int(data)
-                return code
-            elif rectype == 'o': sys.stdout.write(data)
-            elif rectype == 'e': sys.stderr.write(data)
-            elif rectype == 'I':
-                for line in sys.stdin:
-                    txd = "i:%s:%s" % (len(line), line)
-                    transport.write(txd)
-                transport.shutdown()
-            elif rectype == BAD_RECORD:
-                return self.clierr(rectype, data)
-            else:
-                return self.clierr(INVALID_RECTYPE, data)
-            rxd = ''
-            size = 1
-            
-    def clierr(self,macro,msg=''):
+    argv is e.g. ('snap', '/tmp/foo') 
+    """
+    def clierr(macro,msg=''):
         msg = "%s: %s" % (macro[1], msg)
         print >>sys.stderr, msg
         return macro[0]
 
-class ServerFactory:
+    fbp = fbp822()
+    payload = "\n".join(argv) + "\n"
+    msg = fbp.mkmsg('cmd',payload,**kwopt)
+
+    # this is a blocking write...
+    transport.write(str(msg))
+
+    stream = fbp.fromStream(transport)
+    # process one message each time through loop
+    while True:
+        try:
+            msg = stream.next()
+        except StopIteration:
+            return clierr(UNKNOWN_RC)
+        except Error822, e:
+            return clierr(BAD_RECORD,e)
+        if msg in (kernel.eagain,None):
+            continue
+        rectype = msg.type()
+        data = msg.payload()
+        if rectype == 'rc':
+            code = int(data)
+            return code
+        elif rectype == 'stdout': sys.stdout.write(data)
+        elif rectype == 'stderr': sys.stderr.write(data)
+        elif rectype == 'reqstdin':
+            for line in sys.stdin:
+                msg = fbp.mkmsg('stdin',line)
+                transport.write(str(msg))
+            transport.shutdown()
+        else:
+            return clierr(INVALID_RECTYPE, rectype)
+        
+class CLIServerFactory:
 
     def __init__(self,socks):
         self.socks = socks
-
-class CLIServerFactory(ServerFactory):
 
     def run(self):
         while True:
             yield self.socks.wait()
             sock = self.socks.rx()
-            server = CLIserver(sock=sock)
+            server = CLIServer(sock=sock)
             kernel.spawn(server.run())
 
 class CLIServer:
@@ -133,38 +116,46 @@ class CLIServer:
         self.transport=sock
 
     def run(self):
-        self.transport.write("isconf4\n")
-        rxd = ''
-        size = 1
+        debug("CLIServer running")
         # process one message each time through loop
+        fbp = fbp822()
+        stream = kernel.spawn(fbp.fromStream(self.transport),step=True)
         while True:
             yield None
+            try:
+                msg = stream.next()
+            except StopIteration:
+                return
+            except Error822, e:
+                error("from client:", e)
+                return
+            if msg in (kernel.eagain,None):
+                continue
             if self.transport.state == 'down':
                 return
-            rxd += self.transport.read(size)
-            (rectype,data) = self.parsemsg(rxd)
-            if rectype == SHORT_READ:
-                size = int(data)
-                continue
-            elif rectype == 'c':
+            rectype = msg.type()
+            data = msg.payload()
+            if rectype == 'cmd':
+                debug("from client:", str(msg))
                 # XXX migrate from 4.1.7 starting here
-                self.transport.write("got %s\n" % data)
-                # print "got %s" % data
-                stdout = os.popen(data,'r')
-                for line in stdout:
-                    yield None
-                    print line
-                    self.transport.write("o:%d:%s" % (len(line), line))
-                self.transport.write("r:2:10")
-                self.transport.close()
-                return
-            elif rectype == 'i':
-                # XXX 
+
+                
+
+                if True:
+                    cmd = ' '.join(data.split("\n"))
+                    print "cmd:", cmd
+                    stdout = os.popen(cmd,'r')
+                    for line in stdout:
+                        yield None
+                        self.transport.write("o:%d:%s" % (len(line), line))
+                    self.transport.write("r:2:10\n")
+                    self.transport.close()
+                    return
+            elif rectype == 'stdin':
+                # XXX stdin from client arrives here
                 pass
-            elif rectype == BAD_RECORD:
-                self.srverr(rectype, data)
             else:
-                self.srverr(INVALID_RECTYPE, data)
+                self.srverr(INVALID_RECTYPE, rectype)
             rxd = ''
             size = 1
 
@@ -174,19 +165,6 @@ class CLIServer:
         self.transport.write("e:%d:%s" % (len(msg), msg))
         self.transport.write("r:%d:%s" % (len(strerrno), strerrno))
         self.transport.close()
-
-def parsemsg(self,rxd):
-    m = re.match("\n*(\w):(\d+):(.*)",rxd,re.S)
-    if not m:
-        if len(rxd) > 20 or rxd.count(':') > 1:
-            return (BAD_RECORD, rxd)
-        return (SHORT_READ, 1)
-    rectype = m.group(1)
-    size = int(m.group(2))
-    data = m.group(3)
-    if len(data) < size:
-        return (SHORT_READ, size - len(data))
-    return (rectype,data)
 
 def branch(val=None):
     varisconf = os.environ['VARISCONF']

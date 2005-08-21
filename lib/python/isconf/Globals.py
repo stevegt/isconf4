@@ -6,6 +6,7 @@ verbose = False
 
 # return codes/messages 
 SHORT_READ        = (54, "message truncated, data contains missing byte count")
+UNKNOWN_RC        = (94, "missing return code from server")
 BAD_RECORD        = (95, "bad record")
 INVALID_RECTYPE   = (96, "invalid record type")
 PROTOCOL_MISMATCH = (97, "protocol mismatch")
@@ -41,13 +42,17 @@ for (name,expr) in RE.items():
 # if True: print "True ok"
 # if False: print "False bad"
 
+def debug(*msg):
+    if not os.environ.has_key('DEBUG'):
+        return
+    error(*msg)
 def info(*msg):
-    if not os.environ['VERBOSE']:
+    if not os.environ.has_key('VERBOSE'):
         return
     error(*msg)
 def error(*msg):
     for m in msg:
-        print >>sys.stderr, m
+        print >>sys.stderr, m,
     print >>sys.stderr, "\n"
 def panic(*msg):
     error(*msg)

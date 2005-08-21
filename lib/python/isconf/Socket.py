@@ -2,8 +2,10 @@
 from __future__ import generators
 import errno
 import os
+import select
 import socket
 from isconf.Globals import *
+from isconf.Kernel import kernel
 
 class ServerFactory:
 
@@ -48,6 +50,7 @@ class ServerSocket:
         actual = min(size,len(self.rxd))
         if actual == 0:
             return ''
+        print repr(actual)
         rxd = self.rxd[:actual]
         # print "reading", rxd
         self.rxd = self.rxd[actual:]
@@ -57,6 +60,9 @@ class ServerSocket:
         # print "writing", repr(data)
         self.txd += data
     
+    def shutdown(self):
+        self.sock.shutdown(1)
+
     def run(self,*args,**kwargs):
         busy = False
         while True:
@@ -72,7 +78,8 @@ class ServerSocket:
             try:
                 (readable, writeable, inerror) = \
                     select.select([s],[s],[s],0)
-            except:
+            except Exception, e:
+                debug("socket exception", e)
                 inerror = [s]
         
             # handle errors
@@ -161,7 +168,7 @@ class UNIXClientSocket:
         self.rxd = ''
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.sock.setblocking(1)
-        # print self.ctl
+        info("connecting to %s" % self.ctl)
         self.sock.connect(self.ctl)
 
     def close(self):

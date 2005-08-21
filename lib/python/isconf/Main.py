@@ -6,6 +6,7 @@ import os
 import sys
 import time
 
+import isconf
 from isconf.Config import Config
 from isconf.Globals import *
 from isconf.GPG import GPG
@@ -26,6 +27,9 @@ class Main:
     )
 
     def config(self,fname):
+        if self.kwopt['debug']:
+            os.environ['DEBUG'] = '1'
+            os.environ['VERBOSE'] = '1'
         if self.kwopt['verbose']:
             os.environ['VERBOSE'] = '1'
         os.environ.setdefault('VARISCONF',"/var/isconf")
@@ -39,7 +43,7 @@ class Main:
         
         conf = Config(fname)
         vars = conf.match(hostname)
-        self.info("adding to environment: %s" % str(vars))
+        debug("adding to environment: %s" % str(vars))
 
         for (var,val) in vars.items():
             os.environ[var]=val
@@ -47,36 +51,23 @@ class Main:
         isfshome=os.environ['ISFS_HOME']
         os.environ.setdefault('ISFS_CACHE',"%s/cache" % isfshome)
 
-        # self.info(os.system("env"))
-
-    def info(self,*msg):
-        if not self.kwopt['verbose']:
-            return
-        self.error(*msg)
-
-    def error(self,*msg):
-        for m in msg:
-            print >>sys.stderr, m
-        print >>sys.stderr, "\n"
-
-    def panic(self,*msg):
-        self.error(*msg)
-        sys.exit(99)
-
+        debug(os.popen("env").read())
 
     def main(self):
 
         synopsis = """
-        isconf [-hv] [-c config ] [-m message] {verb} ...
+        isconf [-Dhv] [-c config ] [-m message] {verb} [verb args ...]
         
         """
         opt = {
             'c': ('config', '/etc/is.conf', "ISFS/ISconf configuration file" ),
+            'D': ('debug',   False, "show debugging output"),
             'h': ('help',    False, "this text" ),
             'm': ('message', None,  "changelog and branch lock message" ),
             'v': ('verbose', False, "show verbose output"),
         }
         ps = "\nVerb is one of: %s\n" % ', '.join(self.verbs)
+        ps += "\nVerb and verb args can be interleaved with other flags."
         (kwopt,args,usage) = getkwopt(sys.argv[1:],opt)
         self.helptxt = synopsis + usage + ps
         if kwopt['help']: self.usage()
@@ -92,13 +83,13 @@ class Main:
             func = getattr(self,verb)
             rc = func(args)
             sys.exit(rc)
-        client()
+        self.client()
 
     def client(self):
         ctl = "%s/.ctl" % os.environ['VARISCONF']
         transport = UNIXClientSocket(path = ctl)
-        isconf = ISconf()
-        rc = isconf.client(transport=transport,argv=self.args)
+        rc = isconf.ISconf.client(
+                transport=transport,argv=self.args,kwopt=self.kwopt)
         sys.exit(rc)
         
     def restart(self,argv):
@@ -141,7 +132,9 @@ class Main:
 
 def getkwopt(argv,opt={}): 
     """
-    Get command line options and positional arguments.
+
+    Get command line options and positional arguments.  Positional
+    arguments can be interleaved with option flags.
 
     Returns help text if help=True 
 
@@ -185,7 +178,16 @@ def getkwopt(argv,opt={}):
         if len(opthelp) > 20: 
             sep="\n" + " " * 22
         usagetxt += "%-22s%s%s\n" % (opthelp,sep,desc)
-    (opts, args) = getopt.getopt(argv, optstr, longopts)
+
+    opts=[]
+    args=[]
+    dargv = argv[:]
+    # extract flags interleaved with positional args
+    while len(dargv):
+        (o,dargv) = getopt.getopt(dargv, optstr, longopts)
+        opts += o
+        if len(dargv):
+            args.append(dargv.pop(0))
     for (flag,value) in opts:
         if value == '': 
             value = True

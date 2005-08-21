@@ -258,14 +258,14 @@ class Kernel:
             # print self.HZ
             time.sleep(1/self.HZ)
             if not steps:
-                self.HZ *= .9
+                self.HZ *= .99
             self.HZ = max(self.HZ,1)
-            self.HZ = min(self.HZ,999999999)
-            # if verbose and self.HZ < 100:
-            # print "HZ", self.HZ 
+            self.HZ = min(self.HZ,999999999999)
+            # if self.HZ < 100:
+            #     debug("HZ", self.HZ) 
             for tid in self._tasks.keys():
                 task = self._tasks[tid]
-                task.priority = min(task.priority, 99)
+                task.priority = min(task.priority, 10)
                 # wait for N ticks if delay is set
                 if task.delay > 1:
                     task.delay -= 1
@@ -273,6 +273,8 @@ class Kernel:
                 task.delay += task.priority
                 if task.sleep and task.sleepDone > time.time():
                     # slow down so we don't beat up time()
+                    # XXX we can do a better job here -- use HZ and
+                    # sleepDone to calculate delay more accurately
                     task.priority += 1
                     continue
                 task.sleep = None

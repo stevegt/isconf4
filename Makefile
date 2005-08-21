@@ -2,7 +2,7 @@ PREFIX=/var/isconf
 tmpdir=/tmp/isconf-make.tmp
 version=$(shell cat version)
 revision=$(shell svn up | tr -d '.' | awk '{print $$3}')
-tarname=isconf-$(version)-$(revision)
+tarname=isconf-$(version).$(revision)
 tarball=/tmp/$(tarname).tar.gz
 
 all:
