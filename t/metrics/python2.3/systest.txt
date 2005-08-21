@@ -1,6 +1,6 @@
 ..
 ----------------------------------------------------------------------
-Ran 2 tests in 18.722s
+Ran 2 tests in 30.354s
 
 OK
 running python2.3 ./coverage.py -x ../bin/isconf -c simple.conf

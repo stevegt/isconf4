@@ -9,7 +9,7 @@ usage: isconf [-Dhv] [-c config ] [-m message] {verb} [verb args ...]
   -D, --debug         show debugging output
   -v, --verbose       show verbose output
 
-Verb is one of: ci, exec, fork, restart, snap, start, stop, up
+Verb is one of: up, lock, unlock, snap, exec, ci, fork, start, stop, restart
 
 Verb and verb args can be interleaved with other flags.
 

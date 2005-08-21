@@ -1,14 +1,14 @@
 Name       Stmts   Exec  Cover
 ------------------------------
 Config        60     53    88%
-Globals       29     20    68%
-ISFS          96     24    25%
-ISconf       148     35    23%
+Globals       36     26    72%
+ISFS         163     34    20%
+ISconf       200     39    19%
 Kernel       271    200    73%
-Main         149    106    71%
+Main         150    107    71%
 Server        69     31    44%
 Socket       150     28    18%
 __init__       0      0   100%
 fbp822       148     95    64%
 ------------------------------
-TOTAL       1120    592    52%
+TOTAL       1247    613    49%
