@@ -1,0 +1,6 @@
+digraph foo {
+
+taskfoo -> taskbaz [label="apple",samehead,headlabel="in"]
+taskbar -> taskbaz [label="pear",samehead,headlabel="in"]
+
+}

@@ -1,0 +1,12 @@
+digraph foo {
+
+node [shape=record]
+
+taskfoo [label="taskfoo|<out> out|<in>in"]
+taskbar [label="taskbar|<out> out|<in>in"]
+taskbaz [label="taskbaz|<out> out|<in>in"]
+
+taskfoo:out -> taskbaz:in [label="apple",samehead]
+taskbar:out -> taskbaz:in [label="pear",samehead]
+
+}

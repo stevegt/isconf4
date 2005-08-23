@@ -1,0 +1,8 @@
+[taskfoo]
+pin1: i busA
+pin2: o busB
+pin3: o busC
+
+[task bar]
+pinA: i busB
+pinB: o busX

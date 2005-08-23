@@ -1,0 +1,9 @@
+digraph foo {
+
+node1 [label="pear",shape="circle",style=filled,fillcolor=black,height=.1,fixedsize=true]
+
+taskfoo -> node1 [taillabel="out"]
+taskbar -> node1 [taillabel="out"]
+node1 -> taskbaz [headlabel="in"]
+
+}

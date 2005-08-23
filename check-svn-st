@@ -1,0 +1,13 @@
+#!/bin/sh
+
+if [ $LOGNAME != 'stevegt' ]
+then
+    exit 0
+fi
+
+exit `svn st | wc -l`
+
+
+
+
+

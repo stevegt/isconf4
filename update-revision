@@ -2,7 +2,14 @@
 
 if [ $LOGNAME == 'stevegt' ]
 then
+    if ! ./check-svn-st 
+    then
+        echo "not synced with svn"
+        exit 1
+    fi
     svn up | tr -d '.' | awk '{print $3}' > revision
+    release=`cat version`.`cat revision`
+    svn ci -m "release $release"
 fi
 
 cat revision

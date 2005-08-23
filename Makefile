@@ -28,6 +28,7 @@ ctags:
 	cd bin; ctags --language-force=python isconf
 
 tar: 
+	./check-svn-st
 	rm -rf $(tmpdir)
 	mkdir -p $(tmpdir)/$(tarname)
 	cp -a . $(tmpdir)/$(tarname)
@@ -40,9 +41,6 @@ pub: $(tarball)
 	scp $(tarball) root@trac.t7a.org:/var/trac/isconf/pub
 
 $(tarball): tar
-
-ci:
-	svn ci -m "checkpoint test results"
 
 test:
 	cd t && time make
