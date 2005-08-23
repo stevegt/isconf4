@@ -42,6 +42,7 @@ pub: $(tarball)
 
 $(tarball): tar
 
+
 test:
 	cd t && time make
 
@@ -52,6 +53,4 @@ mtatest:
 	# GNUPGHOME=/tmp/`ls -rt /tmp | tail -1`/foo/.gnupg; cd mta; make
 	# export GNUPGHOME=`ls -rtd /tmp/[0-9]*/A/.gnupg | tail -1`; \
 	export GNUPGHOME=/tmp/isconf-test/A/var/isconf/.gnupg; $(MAKE) -C mta all
-
-
 

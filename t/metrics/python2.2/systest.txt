@@ -1,7 +1,7 @@
 .python2.2 ./coverage.py -x ../bin/isconf -c simple.conf
 .
 ----------------------------------------------------------------------
-Ran 2 tests in 19.095s
+Ran 2 tests in 19.225s
 
 OK
 python2.2 ./coverage.py -x ../bin/isconf -c simple.conf
