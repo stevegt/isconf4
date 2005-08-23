@@ -20,8 +20,309 @@ import sha
 import shutil
 import socket
 import sys
+import tempfile
 import time
 from isconf.Globals import *
+from isconf.fbp822 import fbp822
+from isconf.Kernel import kernel
+
+class XXXFile:
+    # XXX This version stores one block per write -- this is the way
+    # we want to go.  The thing missing here is that we need to nest
+    # block write messages inside of one outer message, and
+    # write the whole thing to wip when we close.  Store blocks as they
+    # arrive, don't clean cache while volume is locked. 
+
+    # XXX only support complete file overwrite for now -- no seek, no tell
+
+    def __init__(self,volume,path,mode,message=None):
+        self.volume = volume
+        self.path = path
+        self.mode = mode
+        self.message = message
+        self.st = None
+        self._tell = 0
+
+    def setstat(self,st):
+        if self.mode != 'w':
+            return False
+        self.st = st
+        return True
+
+    def write(self,data):
+        if self.mode != 'w':
+            raise Exception("not opened for write")
+        tmp = tempfile.TemporaryFile()
+        tmp.write(data)
+        # build journal transaction message
+        fbp = fbp822()
+        msg = fbp.mkmsg('write',data,
+                pathname=self.path,
+                message=self.message,
+                seek=self._tell,
+                )
+        self.volume.addwip(msg)
+        self._tell += len(data)
+
+    def close(self):
+        fbp = fbp822()
+        # XXX only support complete file overwrite for now 
+        msg = fbp.mkmsg('truncate',
+            pathname=path,message=message,seek=self._tell)
+        self.volume.addwip(msg)
+        self.volume.closefile(self)
+
+class File:
+
+    # XXX only support complete file overwrite for now -- no seek, no tell
+
+    def __init__(self,volume,path,mode,message=None):
+        self.volume = volume
+        self.path = path
+        self.mode = mode
+        self.message = message
+        self.st = None
+        self.tmp = tempfile.TemporaryFile()
+
+    def setstat(self,st):
+        if self.mode != 'w':
+            return False
+        self.st = st
+        return True
+
+    def write(self,data):
+        if self.mode != 'w':
+            raise Exception("not opened for write")
+        self.tmp.write(data)
+
+    def close(self):
+        # build journal transaction message
+        self.tmp.seek(0)
+        data = self.tmp.read() # XXX won't work with large files
+        fbp = fbp822()
+        msg = fbp.mkmsg('snap',data,
+                pathname=self.path,
+                message=self.message,
+                st_mode = self.st.st_mode,
+                st_uid = self.st.st_uid,
+                st_gid = self.st.st_gid,
+                st_atime = self.st.st_atime,
+                st_mtime = self.st.st_mtime,
+                )
+        self.volume.addwip(msg)
+        self.volume.closefile(self)
+
+class Volume:
+
+    # XXX provide logname and mode on open, check/get lock then
+    def __init__(self,volname):  # XXX add statuspin
+
+        # set standard paths; rule 1: only absolute paths get stored
+        # in p, use mkrelative to convert as needed
+        class Path: pass
+        self.p = Path()
+        self.p.cache = os.environ['ISFS_CACHE']
+        self.p.private = os.environ['ISFS_PRIVATE']
+        domain  = os.environ['ISFS_DOMAIN']
+        domvol    = "%s/volume/%s" % (domain,volname)
+        cachevol     = "%s/%s" % (self.p.cache,domvol)
+        privatevol   = "%s/%s" % (self.p.private,domvol)
+
+        self.p.journal = "%s/journal"     % (cachevol)
+        self.p.lock    = "%s/lock"        % (cachevol)
+        self.p.block   = "%s/block"       % (cachevol)
+
+        self.p.wip     = "%s/journal.wip" % (privatevol)
+        self.p.history = "%s/history"     % (privatevol)
+        self.p.volroot = "%s/volroot"     % (privatevol)
+
+        debug("isfs cache", self.p.cache)
+        debug("journal abspath", self.p.journal)
+        debug("journal abswip", self.p.wip)
+        debug("journal abshist", self.p.history)
+        debug("lock abspath", self.p.lock)
+        debug("blockabs", self.p.block)
+
+        for dir in (cachevol,privatevol,self.p.block):
+            if not os.path.isdir(dir):
+                os.makedirs(dir,0700)
+
+        for fn in (self.p.journal,self.p.history):
+            if not os.path.isfile(fn):
+                open(fn,'w')
+                os.chmod(fn,0700)
+
+        self.openfiles = {}
+
+        self.volroot = "/"
+        # XXX temporary solution to allow for testing, really need to
+        # read from self.p.volroot
+        if os.environ.has_key('ISFS_VOLROOT'):
+            self.volroot = os.environ['ISFS_VOLROOT']
+
+    def mkabsolute(self,path):
+        if not path.startswith(self.p.cache):
+            os.path.join(self.p.cache,path)
+        return path
+
+    def mkrelative(self,path):
+        if path.startswith(self.p.cache):
+            path = path[len(self.p.cache):]
+        return path
+
+    def announce(self,path):
+        path = self.mkrelative(path)
+        udpAnnounce(path)
+
+    def pull(self,path,test=False):
+        path = self.mkrelative(path)
+        # XXX spawn?
+        udpPull(path)
+
+    def addwip(self,msg):
+        xid = "%f.%f@%s" % (time.time(),random.random(),
+                os.environ['HOSTNAME'])
+        msg['xid'] = xid
+        if msg.type() == 'snap':
+            data = msg.data()
+            s = sha.new(data)
+            m = md5.new(data)
+            blk = "%s-%s-1" % (s.hexdigest(),m.hexdigest())
+            
+            path = self.blk2path(blk)
+            # XXX check for collisions
+
+            # copy to block tree
+            open(path,'w').write(data)
+
+            # append message to journal wip
+            msg.set_payload('')
+            msg['blk'] = blk
+            open(self.p.wip,'a').write(str(msg))
+            
+    def blk2path(self,blk):
+        dir = "%s/%s" % (self.p.block,blk[:4])
+        if not os.path.isdir(dir):
+            os.makedirs(dir,0700)
+        path = "%s/%s" % (dir,blk)
+        return path
+                    
+    def ci(self):
+        if not os.path.getsize(self.p.wip):
+            return 
+        # XXX check for remote changes
+        wipdata = open(self.p.wip,'r').read()
+        journal = open(self.p.journal,'a')
+        journal.write(wipdata)
+        journal.close()
+        print "wrote to", self.p.journal, ":\n", wipdata
+        os.unlink(self.p.wip)
+        self.announce(self.p.journal)
+
+    def closefile(self,fh):
+        del self.openfiles[fh]
+
+    def locked(self):
+        self.pull(self.p.lock)
+        if os.path.exists(self.p.lock):
+            msg = open(self.p.lock,'r').read()
+            msg += ": " + time.ctime(os.path.getmtime(self.p.lock))
+            return msg
+        return False
+
+    def lockedby(self,logname=None):
+        msg = self.locked()
+        if not msg:
+            return None
+        m = re.match('(\S+@\S+):',msg)
+        if not m:
+            return None
+        actual = m.group(1)
+        if logname:
+            wanted = "%s@%s" % (logname,os.environ['HOSTNAME'])
+            debug("wanted", wanted, "actual", actual)
+            if wanted == actual:
+                return wanted
+        else:
+            return actual
+        
+    def lock(self,logname,msg):
+        msg = "%s@%s: %s" % (logname,os.environ['HOSTNAME'],str(msg))
+        if self.locked() and not self.lockedby(logname):
+            return False
+        if not msg:
+            return False
+        open(self.p.lock,'w').write(msg)
+        self.announce(self.p.lock)
+        return self.locked()
+
+    def open(self,path,mode,message=None):
+        # XXX check lock
+        if not self.wip():
+            self.pull(self.p.journal)
+        fh = File(volume=self,path=path,mode=mode,message=message)
+        self.openfiles[fh]=1
+        return fh
+
+    def setstat(path,st):
+        os.chmod(path,st.st_mode)
+        os.chown(path,st.st_uid,st.st_gid)
+        os.utime(path,(st.st_atime,st.st_mtime))
+
+    def unlock(self):
+        locker = self.lockedby()
+        if locker:
+            os.unlink(self.p.lock)
+        if self.locked():
+            return False
+        return True
+
+    def update(self):
+        fbp = fbp822()
+
+        # if self.wip():
+        #     # XXX error
+        #     return False
+        
+        # compare history with journal
+        done = open(self.p.history,'r').readlines()
+        done = map(lambda xid: xid.strip(),done)
+
+        stream = open(self.p.journal,'r')
+        messages = fbp.fromStream(stream)
+        while True:
+            try:
+                msg = messages.next()
+            except StopIteration:
+                break
+            except Error822, e:
+                raise
+            if msg in (kernel.eagain,None):
+                continue
+            if msg['xid'] in done:
+                continue
+            # update volume content 
+            if msg.type() == 'snap': self.updateSnap(msg)
+            if msg.type() == 'exec': self.updateExec(msg)
+            # update history
+            open(self.p.history,'a').write(msg['xid'] + "\n")
+
+    def updateSnap(self,msg):
+        path = self.blk2path(msg['blk'])
+        # XXX large files, atomicity, missing parent dirs
+        # XXX volroot
+        data = open(path,'r').read()
+        open(msg['pathname'],'w').write(data)
+        # XXX setstat
+
+    def updateExec(self,msg):
+        pass
+
+    def wip(self):
+        if os.path.exists(self.p.history):
+            return True
+        return False
+
 
 # XXX the following were migrated directly from 4.1.7 for now --
 # really need to be FBP components, at least in terms of logging
@@ -60,6 +361,11 @@ def httpServer(port,dir):
             svr.handle_error(request, client_address)
             svr.close_request(request)
 
+def udpAnnounce(path):
+    pass
+
+def udpPull(path):
+    pass
 
 def udpServer(udpport,httpport,dir):
     from SocketServer import UDPServer
@@ -111,97 +417,10 @@ def udpServer(udpport,httpport,dir):
             # cache flood listener 
             if type == 'ihave':
                 fname = msg['file']
-                kernel.spawn(pull(fname))
+                kernel.spawn(udpPull(fname))
             error("unsupported message type from %s: %s" % (addr,type))
         except socket.error:
             continue
         except Exception, e:
             error("%s from %s: %s" % (e,addr,data))
             continue
-
-
-def announce(relpath):
-    pass
-
-def pull(relpath,tmp=None):
-    pass
-
-class Journal:
-
-    def __init__(self,cache,private,domvol):
-        self.relpath = "%s/journal" % (domvol)
-        self.abspath = "%s/%s" % (cache,  self.relpath)
-        self.absnew  = "%s/%s.new" % (private,self.relpath)
-        debug("journal abspath", self.abspath)
-        debug("journal absnew", self.absnew)
-    
-    def XXXentries(self):
-        if self.lock.locked():
-            return False
-        pull(self.relpath)
-        
-class Lock:
-
-    def __init__(self,cache,domvol):
-        self.relpath = "%s/lock" % (domvol)
-        self.abspath = "%s/%s" % (cache,self.relpath)
-        debug("lock abspath", self.abspath)
-    
-    def locked(self):
-        pull(self.relpath)
-        if os.path.exists(self.abspath):
-            msg = open(self.abspath,'r').read()
-            msg += ": " + time.ctime(os.path.getmtime(self.abspath))
-            return msg
-        return False
-
-    def lockedby(self,logname=None):
-        msg = self.locked()
-        if not msg:
-            return None
-        m = re.match('(\S+@\S+):',msg)
-        if not m:
-            return None
-        actual = m.group(1)
-        if logname:
-            wanted = "%s@%s" % (logname,os.environ['HOSTNAME'])
-            debug("wanted", wanted, "actual", actual)
-            if wanted == actual:
-                return wanted
-        else:
-            return actual
-        
-    def lock(self,logname,msg):
-        msg = "%s@%s: %s" % (logname,os.environ['HOSTNAME'],str(msg))
-        if self.locked() and not self.lockedby(logname):
-            return False
-        if not msg:
-            return False
-        open(self.abspath,'w').write(msg)
-        announce(self.relpath)
-        return self.locked()
-
-    def unlock(self):
-        locker = self.lockedby()
-        if locker:
-            os.unlink(self.abspath)
-        if self.locked():
-            return False
-        return True
-
-class Volume:
-
-    def __init__(self,volume):
-        cache   = os.environ['ISFS_CACHE']
-        private = os.environ['ISFS_PRIVATE']
-        domain  = os.environ['ISFS_DOMAIN']
-        self.domvol    = "%s/volume/%s" % (domain,volume)
-        self.cache     = cache
-        self.private   = private
-        for dir in (self.cache,self.private):
-            if not os.path.isdir(dir):
-                os.makedirs(dir,0700)
-        self.lock    = Lock(self.cache,self.domvol)
-        self.journal = Journal(self.cache,self.private,self.domvol)
-        debug("volume cache", self.cache)
-

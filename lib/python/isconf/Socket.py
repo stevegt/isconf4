@@ -154,6 +154,8 @@ class UNIXServerFactory(ServerFactory):
             os.unlink(self.path)
         self.sock.bind(self.path)
         self.sock.listen(5)
+        # until we have gpg auth in place...
+        os.chmod(self.path,0600)
         info("UNIX domain server listening at %s" % path)
     
 class UNIXClientSocket:

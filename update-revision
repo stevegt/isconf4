@@ -1,0 +1,13 @@
+#!/bin/sh
+
+if [ $LOGNAME == 'stevegt' ]
+then
+    svn up | tr -d '.' | awk '{print $3}' > revision
+fi
+
+cat revision
+
+
+
+
+

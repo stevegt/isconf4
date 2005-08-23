@@ -2,22 +2,6 @@ import os
 import re
 import sys
 
-verbose = False
-
-# return codes/messages 
-NORMAL            = (0,  "")
-LOCKED            = (20, "resource is locked")
-NOTLOCKED         = (21, "resource is not locked")
-MESSAGE_REQUIRED  = (22, "changelog/lock message (-m) required")
-SHORT_READ        = (54, "message truncated, data contains missing byte count")
-EXCEPTION         = (92, "server-side exception")
-INVALID_VERB      = (93, "invalid subcommand verb")
-SERVER_CLOSE      = (94, "server closed socket")
-BAD_RECORD        = (95, "bad record")
-INVALID_RECTYPE   = (96, "invalid record type")
-PROTOCOL_MISMATCH = (97, "protocol mismatch")
-PANIC             = (99, "unable to continue")
-
 RE = {
     'newline': '\n',
     'size': '(\d+)\s*\n',
@@ -49,6 +33,7 @@ for (name,expr) in RE.items():
 # if True: print "True ok"
 # if False: print "False bad"
 
+# XXX syslog on server side
 def debug(*msg):
     if not os.environ.has_key('DEBUG'):
         return
@@ -63,7 +48,11 @@ def panic(*msg):
     _stderr('panic:',*msg)
     sys.exit(PANIC[0])
 def _stderr(*msg):
+    msg = ["isconf:"] + list(msg)
     for m in msg:
         print >>sys.stderr, m,
     print >>sys.stderr, "\n"
+
+# because dict() doesn't do this until 2.3...
+def mkdict(**kwargs): return kwargs
 

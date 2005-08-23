@@ -1,14 +1,14 @@
 PREFIX=/var/isconf
 tmpdir=/tmp/isconf-make.tmp
-version=$(shell cat version)
-revision=$(shell svn up | tr -d '.' | awk '{print $$3}')
+version=`cat version`
+revision=`./update-revision`
 tarname=isconf-$(version).$(revision)
 tarball=/tmp/$(tarname).tar.gz
 
 all:
 
-install:
-	# XXX this is all wrong -- use setup.py
+XXXinstall:
+	# XXX this is all wrong -- need a setup.py
 	mkdir -p $(PREFIX)
 	find . | cpio -pudvm $(PREFIX)/
 	ln -fs $(PREFIX)/bin/isconf /usr/bin/isconf
@@ -45,7 +45,7 @@ ci:
 	svn ci -m "checkpoint test results"
 
 test:
-	cd t && make
+	cd t && time make
 
 mtatest:
 	- killall isconf

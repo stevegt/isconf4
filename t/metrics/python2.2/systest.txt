@@ -1,8 +1,8 @@
-..
+.python2.2 ./coverage.py -x ../bin/isconf -c simple.conf
+.
 ----------------------------------------------------------------------
-Ran 2 tests in 32.220s
+Ran 2 tests in 19.095s
 
 OK
-running python2.2 ./coverage.py -x ../bin/isconf -c simple.conf
-running python2.2 ./coverage.py -x ../bin/isconf -c simple.conf start
-running python2.2 ./coverage.py -x ../bin/isconf -c simple.conf stop
+python2.2 ./coverage.py -x ../bin/isconf -c simple.conf
+python2.2 ./coverage.py -x ../bin/isconf -c simple.conf 'stop'

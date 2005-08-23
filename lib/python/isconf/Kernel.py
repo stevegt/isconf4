@@ -205,7 +205,6 @@ class Kernel:
     sigsleep='sleep'
     sigspawn='spawn'
     siguntil='until'
-    signals = ( sigbusy, signice, sigsleep, sigspawn, siguntil )
     eagain = 'EAGAIN'
     eof = 'EOF'
 

@@ -8,6 +8,7 @@ import time
 
 import isconf
 from isconf.Config import Config
+from isconf.Errno import iserrno
 from isconf.Globals import *
 from isconf.GPG import GPG
 from isconf.Server import Server
@@ -37,7 +38,8 @@ class Main:
             os.environ['VERBOSE'] = '1'
         os.environ.setdefault('VARISCONF',"/var/isconf")
         os.environ.setdefault('ISFS_HOME',"/var/isfs")
-        os.environ.setdefault('ISFS_DOMAIN',"example.com")
+        # XXX get domain from varisconf/domain instead of config file
+        os.environ.setdefault('ISFS_DOMAIN',"localdomain")
         os.environ.setdefault('ISFS_PORT',"65027")
         os.environ.setdefault('ISFS_HTTP_PORT',"65028")
         hostname = os.popen('hostname','r').read().strip()
@@ -123,7 +125,7 @@ class Main:
                 server = Server()
                 rc = server.start()
             except Restart:
-                error("restarting [%s]..." % ' '.join(sys.argv))
+                error("restarting: `%s`..." % ' '.join(sys.argv))
                 os.chdir(self.cwd)
                 # close everything down
                 kernel.killall()
@@ -147,7 +149,7 @@ class Main:
             self.helptxt.strip()
         )
         print >>sys.stderr, usagetxt
-        sys.exit(1)
+        sys.exit(iserrno.EINVAL)
 
 def getkwopt(argv,opt={}): 
     """
