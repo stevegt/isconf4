@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 if [ $LOGNAME == 'stevegt' ]
 then
@@ -7,9 +7,17 @@ then
         echo "not synced with svn"
         exit 1
     fi
-    svn up | tr -d '.' | awk '{print $3}' > revision
-    release=`cat version`.`cat revision`
+    changeset=$(svn up | tr -d '.' | awk '{print $3}')
+    changeset=$(( $changeset + 1 ))
+    echo $changeset > revision
+    release=$(cat version).$(cat revision)
     svn ci -m "release $release"
+    changeset=$(svn up | tr -d '.' | awk '{print $3}')
+    if [ $changeset -ne $(cat revision) ]
+    then
+        echo "revision not synced with changeset number"
+        exit 1
+    fi
 fi
 
 cat revision
