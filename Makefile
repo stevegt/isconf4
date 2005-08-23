@@ -32,7 +32,7 @@ tar:
 	rm -rf $(tmpdir)
 	mkdir -p $(tmpdir)/$(tarname)
 	cp -a . $(tmpdir)/$(tarname)
-	cd $(tmpdir); tar --exclude=*.pyc --exclude=*.swp --exclude=*.swo --exclude=.coverage -czvf $(tarball) $(tarname)
+	tar -C $(tmpdir) --exclude=*.pyc --exclude=*.swp --exclude=*.swo --exclude=.coverage -czvf $(tarball) $(tarname)
 	rm -rf $(tmpdir)
 
 ship: pub
