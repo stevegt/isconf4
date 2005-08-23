@@ -35,13 +35,8 @@ tar:
 	tar -C $(tmpdir) --exclude=*.pyc --exclude=*.swp --exclude=*.swo --exclude=.coverage -czvf $(tarball) $(tarname)
 	rm -rf $(tmpdir)
 
-ship: pub
-
-pub: $(tarball)
+ship: tar
 	scp $(tarball) root@trac.t7a.org:/var/trac/isconf/pub
-
-$(tarball): tar
-
 
 test:
 	cd t && time make
