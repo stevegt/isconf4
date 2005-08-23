@@ -1,7 +1,7 @@
 PREFIX=/var/isconf
 tmpdir=/tmp/isconf-make.tmp
 version=`cat version`
-revision=`./update-revision`
+revision=`cat revision`
 tarname=isconf-$(version).$(revision)
 tarball=/tmp/$(tarname).tar.gz
 
@@ -28,7 +28,7 @@ ctags:
 	cd bin; ctags --language-force=python isconf
 
 tar: 
-	./check-svn-st
+	./update-revision
 	rm -rf $(tmpdir)
 	mkdir -p $(tmpdir)/$(tarname)
 	cp -a . $(tmpdir)/$(tarname)
