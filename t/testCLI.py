@@ -16,7 +16,7 @@ class Test(unittest.TestCase):
 
     def isconf(self,args='',quiet=True,rc=None):
         coverage = os.environ.get('COVERAGE','')
-        cmd = '%s ../bin/isconf -c simple.conf %s' % (coverage,args)
+        cmd = '%s ../bin/isconf -c simple.conf -q %s' % (coverage,args)
         print cmd
         popen = popen2.Popen3(cmd,capturestderr=True)
         (stdin, stdout, stderr) = (
@@ -51,7 +51,7 @@ class Test(unittest.TestCase):
         content = str(random.random())
         open(file,'w').write(content)
         self.failUnless(os.path.exists(file))
-        self.isconf('lock -m "testing snap"')
+        self.isconf('-m "testing snap" lock')
         self.isconf("snap " + file)
         os.unlink(file)
         self.failIf(os.path.exists(file))

@@ -2,15 +2,13 @@ missing verb
 usage: isconf [-Dhv] [-c config ] [-m message] {verb} [verb args ...]
         
         options:
+  -q, --quiet         don't show verbose output
   -h, --help          this text
   -c, --config=/etc/is.conf
                       ISFS/ISconf configuration file
   -m, --message=None  changelog and branch lock message
   -D, --debug         show debugging output
-  -v, --verbose       show verbose output
 
 Verb is one of: up, lock, unlock, snap, exec, ci, fork, start, stop, restart
-
-Verb and verb args can be interleaved with other flags.
 
 
