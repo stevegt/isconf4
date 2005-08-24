@@ -75,6 +75,8 @@ def XXXpanic(rc,*msg):
     _log('panic',msg=msg,rc=rc)
 def _log(type,msg,rc=None):
     if BUS.log:
+        if os.environ.has_key('DEBUG'):
+            print >>sys.stderr, type, rc, msg
         if not isinstance(msg,isconf.fbp822.Message):
             msg = mkstring(msg)
             if rc:

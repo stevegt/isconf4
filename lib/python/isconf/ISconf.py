@@ -202,11 +202,7 @@ class Ops:
             busexit(outpin,iserrno.EINVAL,"missing exec command")
             return
         cwd = opt['cwd']
-        # XXX this should be a generator, show progressive stdout, stderr
-        (rc,stdout,stderr) = volume.Exec(args,cwd)
-        outpin.tx(str(fbp.mkmsg('stdout',stdout)))
-        outpin.tx(str(fbp.mkmsg('stderr',stderr)))
-        outpin.tx(str(fbp.mkmsg('rc',rc)))
+        volume.Exec(args,cwd)
 
     def lock(self,opt,args,data,inpin,outpin):
         fbp=fbp822()
@@ -227,6 +223,7 @@ class Ops:
 
     def snap(self,opt,args,data,inpin,outpin):
         fbp=fbp822()
+        debug("starting snap")
         yield None
         volname = branch()
         volume = ISFS.Volume(volname)
@@ -258,6 +255,7 @@ class Ops:
             return
         st = os.stat(path)
         src = open(path,'r')
+        debug("calling open")
         dst = volume.open(path,'w',message=message)
         dst.setstat(st)
         while True:
@@ -266,10 +264,9 @@ class Ops:
                 break
             dst.write(data)
         src.close()
+        debug("calling close")
         dst.close()
         # busexit(outpin,iserrno.OK) 
-
-
 
     def unlock(self,opt,args,data,inpin,outpin):
         fbp=fbp822()

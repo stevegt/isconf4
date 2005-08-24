@@ -186,11 +186,16 @@ class Volume:
         xid = "%f.%f@%s" % (time.time(),random.random(),
                 os.environ['HOSTNAME'])
         msg['xid'] = xid
+        message = self.lockmsg()
+        msg['message'] = message
+        msg.setheader('time',int(time.time()))
         if msg.type() == 'snap':
             data = msg.data()
             s = sha.new(data)
             m = md5.new(data)
             blk = "%s-%s-1" % (s.hexdigest(),m.hexdigest())
+            msg['blk'] = blk
+            msg.payload('')
             
             path = self.blk2path(blk)
             # XXX check for collisions
@@ -198,16 +203,29 @@ class Volume:
             # copy to block tree
             open(path,'w').write(data)
 
+            # run the update now rather than wait for up command
+            if not self.updateSnap(msg):
+                return False
+
             # append message to journal wip
-            msg.payload('')
-            msg['blk'] = blk
             open(self.p.wip,'a').write(str(msg))
 
-            # run the update now rather than wait for up command
-            self.updateSnap(msg)
+        if msg.type() == 'exec':
+            # run the command
+            if not self.updateExec(msg):
+                return False
+            # append message to journal wip
+            open(self.p.wip,'a').write(str(msg))
 
+    def Exec(self,args,cwd):
+        # XXX what about when cwd != volroot?
+        cmd = ' '.join(map(lambda a: "'%s'" % a,args))
+        msg = FBP.mkmsg('exec', cmd=cmd, cwd=cwd)
+        self.addwip(msg)
+        info("exec done:", ' '.join(map(lambda a: "'%s'" % a,args)))
             
     def blk2path(self,blk):
+        debug(blk)
         dir = "%s/%s" % (self.p.block,blk[:4])
         if not os.path.isdir(dir):
             os.makedirs(dir,0700)
@@ -238,6 +256,12 @@ class Volume:
             msg += ": " + time.ctime(os.path.getmtime(self.p.lock))
             return msg
         return False
+
+    def lockmsg(self):
+        if os.path.exists(self.p.lock):
+            msg = open(self.p.lock,'r').read()
+            return msg
+        return 'none'
 
     def lockedby(self,logname=None):
         msg = self.locked()
@@ -316,8 +340,14 @@ class Volume:
                 continue
             debug(msg['pathname'])
             i += 1
-            if msg.type() == 'snap': self.updateSnap(msg)
-            if msg.type() == 'exec': self.updateExec(msg)
+            if msg.type() == 'snap': 
+                if not self.updateSnap(msg):
+                    error("aborting update")
+                    return False
+            if msg.type() == 'exec': 
+                if not self.updateExec(msg):
+                    error("aborting update")
+                    return False
         if not i:
             info("no new updates")
         info("update done")
@@ -333,9 +363,30 @@ class Volume:
         open(self.p.history,'a').write(msg['xid'] + "\n")
         info("updated", path)
         # XXX setstat
+        return True
 
     def updateExec(self,msg):
-        pass
+        cmd = msg['cmd']
+        cwd = msg['cwd']
+        os.chdir(cwd)
+        info("running", cmd)
+        popen = popen2.Popen3(cmd,capturestderr=True)
+        (stdin, stdout, stderr) = (
+                popen.tochild, popen.fromchild, popen.childerr)
+        # XXX poll, generate messages
+        status = popen.wait()
+        rc = os.WEXITSTATUS(status)
+        out = stdout.read()
+        err = stderr.read()
+        info(out)
+        info(err)
+        if rc:
+            error("returned", rc, ": ", cmd)
+            return False
+        # update history
+        open(self.p.history,'a').write(msg['xid'] + "\n")
+        return True
+
 
     def wip(self):
         if os.path.exists(self.p.wip):

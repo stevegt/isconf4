@@ -74,13 +74,7 @@ class fbp822:
         for (var,val) in kwargs.items():
             if var.startswith("_"):
                 raise Error822("parameter names can't start with '_'")
-            msg.add_header(var,str(val))
-            # identify non-string types
-            # if isinstance(val,types.BooleanType): # doesn't work in 2.2
-            if val is True or val is False:
-                msg.add_header("_type_%s" % var,"b")
-            if isinstance(val,types.IntType):
-                msg.add_header("_type_%s" % var,"i")
+            msg.setheader(var,val)
         if self.authkey:
             msg.hmacset(self.authkey)
         return msg
@@ -322,6 +316,17 @@ class Message(email.Message.Message):
             self['_size'] = str(len(data))
         return self.get_payload()
 
+    def setheader(self,var,val):
+        if self.has_key(var):
+            del self[var]
+        self[var] = str(val)
+        # identify non-string types
+        # if isinstance(val,types.BooleanType): # doesn't work in 2.2
+        if val is True or val is False:
+            self.add_header("_type_%s" % var,"b")
+        if isinstance(val,types.IntType):
+            self.add_header("_type_%s" % var,"i")
+
     def hmac_calculated(self,key):
         h = hmac.new(key,msg=self.as_string(),digestmod=sha)
         digest = h.hexdigest()
@@ -362,11 +367,11 @@ class Message(email.Message.Message):
 class Head:
 
     def __init__(self,msg):
-        self.msg = msg
+        self.__msg = msg
 
     def __getattr__(self,var):
-        val = self.msg[var]
-        type = self.msg.get("_type_%s" % var, '')
+        val = self.__msg[var]
+        type = self.__msg.get("_type_%s" % var, '')
         if type == 'b':
             val.strip()
             if val == '1' or val == 'True':
