@@ -12,6 +12,8 @@ import sha
 import sys
 import types
 
+sigbusy='busy' # XXX
+
 class fbp822:
     """Flow-based messages via simple RFC-822-like format.  
 
@@ -40,15 +42,18 @@ class fbp822:
     '5528934b82b37f57600eb8b2fb37cc9d591033a1'
     >>> assert msg.hmacok('somekey')
     >>> factory = fbp822(authkey='somekey')
-    >>> msg = factory.mkmsg('puke green',apple='red',Is=True,notis=False)
+    >>> msg = factory.mkmsg('puke green',
+    ...     apple='red',Is=True,notis=False,answer=42)
     >>> assert not msg.hmacok('foo')
     >>> assert msg.hmacok('somekey')
     >>> assert msg['apple'] == 'red'
     >>> assert msg.head.apple == 'red'
+    >>> msg = factory.parse(str(msg))
     >>> assert msg.head.notis is False
     >>> assert msg.head.notis is not True
     >>> assert msg.head.Is is True
     >>> assert msg.head.Is is not False
+    >>> assert msg.head.answer is 42
 
     """
 
@@ -71,9 +76,11 @@ class fbp822:
                 raise Error822("parameter names can't start with '_'")
             msg.add_header(var,str(val))
             # identify non-string types
-            # if val is types.BooleanType: # doesn't work in 2.2
+            # if isinstance(val,types.BooleanType): # doesn't work in 2.2
             if val is True or val is False:
                 msg.add_header("_type_%s" % var,"b")
+            if isinstance(val,types.IntType):
+                msg.add_header("_type_%s" % var,"i")
         if self.authkey:
             msg.hmacset(self.authkey)
         return msg
@@ -175,7 +182,7 @@ class fbp822:
                 )
         return msg
 
-    def fromStream(self,stream,outpin=None):
+    def fromStream(self,stream,outpin=None,intask=True):
         """generate message objects from a file or isconf.Socket
         
         If outpin is set, then use FBP Bus API, otherwise act as ordinary
@@ -186,8 +193,10 @@ class fbp822:
         wanted = 1
         # read one message each time through complete loop
         factory = fbp822()
+        i = 0
         while True:
-            yield None
+            if intask:
+                yield None
             if hasattr(stream,'state') and stream.state == 'down':
                 if outpin: outpin.close()
                 break
@@ -209,7 +218,7 @@ class fbp822:
                 wanted = int(str(e))
                 continue
             # yay. got it all
-            if outpin:
+            if outpin is not None:
                 while not outpin.tx(msg): yield None
             else:
                 yield msg
@@ -218,6 +227,71 @@ class fbp822:
         if rxd:
             # hmm.  junk at end of stream.  XXX discard for now
             pass
+
+    def fromFile(self,stream,outpin=None):
+        """generate message objects from a file-like object
+
+        higher performance than fromStream
+        
+        If outpin is set, then use FBP Bus API, otherwise act as ordinary
+        generator, yielding messages.
+        
+        """
+        rxd = ''
+        total = 0
+        # read one message each time through complete loop
+        factory = fbp822()
+        i = 0
+        (START,HEAD,PARSE,BODY,SEND) = range(5)
+        state=START
+        for line in stream:
+            if state is START:
+                # discard leading newlines
+                if line == '\n':
+                    continue
+                if line.startswith("From "):
+                    state = HEAD
+            rxd += line
+            if state is HEAD:
+                if line == '\n':
+                    state = PARSE
+            if state is BODY:
+                if len(rxd) < total:
+                    continue
+                if len(rxd) > total:
+                    print rxd, total
+                    break
+                state = PARSE
+            if state is PARSE:
+                # try to parse a message
+                try:
+                    msg = factory.parse(rxd,trial=True)
+                    state = SEND
+                except Incomplete822, e:
+                    # nope, didn't get it all
+                    print e
+                    total = int(str(e)) + len(rxd)
+                    state = BODY
+                    continue
+                except Exception, e:
+                    print e
+                    break
+            if state is SEND:
+                # yay. got it all
+                if outpin is not None:
+                    while not outpin.tx(msg): yield None
+                else:
+                    yield msg
+                rxd = ''
+                total = 0
+                state = START
+                continue
+
+        if rxd:
+            # hmm.  junk at end of stream.  XXX discard for now
+            pass
+        if outpin: 
+            outpin.close()
 
 
 
@@ -241,7 +315,11 @@ class Message(email.Message.Message):
     def type(self):
         return self['_type']
 
-    def payload(self):
+    def payload(self,data=None):
+        if data is not None:
+            self.set_payload(data)
+            del self['_size']
+            self['_size'] = str(len(data))
         return self.get_payload()
 
     def hmac_calculated(self,key):
@@ -295,6 +373,9 @@ class Head:
                 val = True
             if val == '0' or val == 'False':
                 val = False
+        if type == 'i':
+            val.strip()
+            val = int(val)
         return val
 
 class Error822(Exception): pass

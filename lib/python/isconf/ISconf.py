@@ -53,16 +53,47 @@ class CLIServer:
         fbp = fbp822()
 
         # set up FBP buses
-        frcli = Bus()
-        tocli = Bus()
+        frcli = Bus('frcli')
+        tocli = Bus('tocli')
 
         # read messages from client
-        str = kernel.spawn(fbp.fromStream(stream=self.transport,outpin=frcli))
+        req = kernel.spawn(fbp.fromStream(stream=self.transport,outpin=frcli))
         # process messages from client
         proc = kernel.spawn(self.process(inpin=frcli,outpin=tocli))
         # send messages to client
-        res = kernel.spawn(self.respond(transport=self.transport,inpin=BUS.log))
         res = kernel.spawn(self.respond(transport=self.transport,inpin=tocli))
+        # merge in log messages
+        log = kernel.spawn(self.merge(tocli,BUS.log))
+
+        # wait for everything to quiesce
+        yield kernel.siguntil, kernel.isdone, proc.tid
+        while True:
+            yield None
+            i=0
+            for q in (frcli,BUS.log):
+                if q.busy():
+                    i+=1
+                    continue
+            if i == 0: 
+                break
+
+        debug("telling client to exit")
+        yield kernel.sigsleep, 1 # XXX 
+        tocli.tx(fbp.mkmsg('rc',0))
+        # tocli.close()
+
+    def merge(self,outbus,inbus):
+        while True:
+            mlist = []
+            yield inbus.rx(mlist)
+            for msg in mlist:
+                if msg in (kernel.eagain,None):
+                    continue
+                if outbus.state == 'down':
+                    return
+                if msg is kernel.eof:
+                    return
+                outbus.tx(msg)
 
     def process(self,inpin,outpin):
         while True:
@@ -75,7 +106,7 @@ class CLIServer:
             if outpin.state == 'down':
                 return
             if msg is kernel.eof:
-                outpin.close()
+                # outpin.close()
                 return
             debug("from client:", str(msg))
             rectype = msg.type()
@@ -103,29 +134,44 @@ class CLIServer:
                 busexit(outpin,iserrno.EINVAL,verb)
                 return
             # start command processor
-            kernel.spawn(
+            task = kernel.spawn(
                 func(opt=opt,args=args,data=data,inpin=inpin,outpin=outpin)
                 )
+            # wait for it to finish
+            yield kernel.siguntil, kernel.isdone, task.tid
             break
 
     def respond(self,transport,inpin):
         while True:
-            yield None
+            yield kernel.sigbusy
             mlist = []
             yield inpin.rx(mlist)
             for msg in mlist:
+                # if not hasattr(msg,'type'):
                 if transport.state == 'down':
                     return
                 if msg in (kernel.eagain,None):
                     continue
                 if msg is kernel.eof:
+                    # transport.close()
+                    return
+                # no logging in here!  causes a message loop...
+                # debug("to client:", str(msg))
+                transport.write(str(msg))
+                if msg.type() == 'rc':
                     transport.close()
                     return
-                debug("to client:", str(msg))
-                transport.write(str(msg))
+
 
 class Ops:
-    """ISconf server-side operations"""
+    """ISconf server-side operations
+    
+    Each of these tasks *must* continue running until their operations
+    are complete.  They or their called routines can send a non-zero rc
+    message to outpin.  If they don't, process() will follow up with a
+    zero rc.  Whichever rc message arrives at respond() first wins.
+    
+    """
 
     def ci(self,opt,args,data,inpin,outpin):
         fbp=fbp822()
@@ -135,7 +181,7 @@ class Ops:
         if not cklock(outpin,volname,opt['logname']):
             return
         volume.ci()
-        busexit(outpin,iserrno.OK) 
+        # busexit(outpin,iserrno.OK) 
 
     def Exec(self,opt,args,data,inpin,outpin):
         fbp=fbp822()
@@ -161,7 +207,6 @@ class Ops:
         outpin.tx(str(fbp.mkmsg('stdout',stdout)))
         outpin.tx(str(fbp.mkmsg('stderr',stderr)))
         outpin.tx(str(fbp.mkmsg('rc',rc)))
-        outpin.close()
 
     def lock(self,opt,args,data,inpin,outpin):
         fbp=fbp822()
@@ -175,7 +220,7 @@ class Ops:
                     volname)
             return
         if volume.lock(opt['logname'],opt['message']):
-            busexit(outpin,iserrno.OK) 
+            # busexit(outpin,iserrno.OK) 
             return
         busexit(outpin,iserrno.NOTLOCKED,'attempt to lock %s failed' % volname) 
 
@@ -222,7 +267,7 @@ class Ops:
             dst.write(data)
         src.close()
         dst.close()
-        busexit(outpin,iserrno.OK) 
+        # busexit(outpin,iserrno.OK) 
 
 
 
@@ -239,7 +284,7 @@ class Ops:
             outpin.tx(fbp.mkmsg('stderr',
                 "broke %s lock -- please notify %s\n" % (volname,locker))
                 )
-        busexit(outpin,iserrno.OK) 
+        # busexit(outpin,iserrno.OK) 
         
     def up(self,opt,args,data,inpin,outpin):
         fbp=fbp822()
@@ -247,7 +292,7 @@ class Ops:
         volname = branch()
         volume = ISFS.Volume(volname)
         volume.update()
-        busexit(outpin,iserrno.OK) 
+        # busexit(outpin,iserrno.OK) 
 
             
 def branch(val=None):
@@ -269,9 +314,9 @@ def busexit(errpin,code,msg=''):
     if msg and code:
         warn("busexit: ", msg)
         msg = "isconf: error: " + msg
-        errpin.tx(str(fbp.mkmsg('stderr',msg)))
-    errpin.tx(str(fbp.mkmsg('rc',code)))
-    errpin.close()
+        errpin.tx(fbp.mkmsg('stderr',msg))
+    errpin.tx(fbp.mkmsg('rc',code))
+    # errpin.close()
 
 # XXX this should really be moved to ISFS Volume
 def cklock(errpin,volname,logname):
@@ -316,7 +361,7 @@ def client(transport,argv,kwopt):
     # this is a blocking write...
     transport.write(str(msg))
 
-    stream = fbp.fromStream(transport)
+    stream = fbp.fromStream(transport,intask=False)
     # process one message each time through loop
     while True:
         try:
@@ -325,7 +370,7 @@ def client(transport,argv,kwopt):
             return clierr(iserrno.ECONNRESET)
         except Error822, e:
             return clierr(iserrno.EBADMSG,e)
-        if msg in (kernel.eagain,None):
+        if msg in (kernel.eagain,None,kernel.sigbusy):
             continue
         rectype = msg.type()
         data = msg.payload()
@@ -345,6 +390,8 @@ def client(transport,argv,kwopt):
             info(data)
         elif rectype == 'warn':
             warn(data)
+        elif rectype == 'error':
+            error(msg.head.rc,data)
         elif hasattr(os.environ,'DEBUG'):
             debug(str(msg))
         

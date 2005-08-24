@@ -199,9 +199,13 @@ class Volume:
             open(path,'w').write(data)
 
             # append message to journal wip
-            msg.set_payload('')
+            msg.payload('')
             msg['blk'] = blk
             open(self.p.wip,'a').write(str(msg))
+
+            # run the update now rather than wait for up command
+            self.updateSnap(msg)
+
             
     def blk2path(self,blk):
         dir = "%s/%s" % (self.p.block,blk[:4])
@@ -215,13 +219,14 @@ class Volume:
         if not wipdata:
             info("no outstanding updates")
             return 
-        info("checking in", wipdata)
         # XXX check for remote changes
         journal = open(self.p.journal,'a')
         journal.write(wipdata)
         journal.close()
         os.unlink(self.p.wip)
         self.announce(self.p.journal)
+        info("changes checked in")
+        self.unlock()
 
     def closefile(self,fh):
         del self.openfiles[fh]
@@ -258,6 +263,7 @@ class Volume:
             return False
         open(self.p.lock,'w').write(msg)
         self.announce(self.p.lock)
+        info("%s locked" % self.volname)
         return self.locked()
 
     def open(self,path,mode,message=None):
@@ -279,6 +285,7 @@ class Volume:
             os.unlink(self.p.lock)
         if self.locked():
             return False
+        info("%s unlocked" % self.volname)
         return True
 
     def update(self):
@@ -288,11 +295,12 @@ class Volume:
             error("local changes in progress")
             return False
         
+        info("checking for updates")
         done = open(self.p.history,'r').readlines()
         done = map(lambda xid: xid.strip(),done)
 
-        stream = open(self.p.journal,'r')
-        messages = fbp.fromStream(stream)
+        file = open(self.p.journal,'r')
+        messages = fbp.fromFile(file)
         i=0
         while True:
             try:
@@ -306,15 +314,13 @@ class Volume:
             # compare history with journal
             if msg['xid'] in done:
                 continue
-            debug(msg['xid'])
+            debug(msg['pathname'])
             i += 1
-            # update volume content 
             if msg.type() == 'snap': self.updateSnap(msg)
             if msg.type() == 'exec': self.updateExec(msg)
-            # update history
-            open(self.p.history,'a').write(msg['xid'] + "\n")
         if not i:
-            info("no updates checked in")
+            info("no new updates")
+        info("update done")
 
     def updateSnap(self,msg):
         path = self.blk2path(msg['blk'])
@@ -322,8 +328,10 @@ class Volume:
         # XXX volroot
         data = open(path,'r').read()
         path = msg['pathname']
-        info("updating" + path)
         open(path,'w').write(data)
+        # update history
+        open(self.p.history,'a').write(msg['xid'] + "\n")
+        info("updated", path)
         # XXX setstat
 
     def updateExec(self,msg):

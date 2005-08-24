@@ -72,7 +72,7 @@ class Main:
             'q': ('quiet',   False, "don't show verbose output"),
         }
         ps = "\nVerb is one of: %s\n" % ', '.join(self.verbs)
-        ps += "\nVerb and verb args can be interleaved with other flags."
+        # ps += "\nVerb and verb args can be interleaved with other flags."
         self.cwd = os.getcwd()
         (kwopt,args,usage) = getkwopt(sys.argv[1:],opt)
         self.helptxt = synopsis + usage + ps
@@ -154,11 +154,11 @@ class Main:
         print >>sys.stderr, usagetxt
         sys.exit(iserrno.EINVAL)
 
-def getkwopt(argv,opt={}): 
+def getkwopt(argv,opt={},interleave=False): 
     """
 
     Get command line options and positional arguments.  Positional
-    arguments can be interleaved with option flags.
+    arguments can be interleaved with option flags if interleave=True.
 
     Returns help text if help=True 
 
@@ -206,12 +206,15 @@ def getkwopt(argv,opt={}):
     opts=[]
     args=[]
     dargv = argv[:]
-    # extract flags interleaved with positional args
-    while len(dargv):
-        (o,dargv) = getopt.getopt(dargv, optstr, longopts)
-        opts += o
-        if len(dargv):
-            args.append(dargv.pop(0))
+    if interleave:
+        # extract flags interleaved with positional args
+        while len(dargv):
+            (o,dargv) = getopt.getopt(dargv, optstr, longopts)
+            opts += o
+            if len(dargv):
+                args.append(dargv.pop(0))
+    else:
+        (opts,args) = getopt.getopt(dargv, optstr, longopts)
     for (flag,value) in opts:
         if value == '': 
             value = True

@@ -55,6 +55,7 @@ BUS = _BusSet()
 
 FBP = isconf.fbp822.fbp822()
 
+# XXX this whole thing is ridiculously crufty 
 # XXX make these all uppercase
 def debug(*msg):
     _log('debug',msg=msg)
@@ -76,7 +77,10 @@ def _log(type,msg,rc=None):
     if BUS.log:
         if not isinstance(msg,isconf.fbp822.Message):
             msg = mkstring(msg)
-            fbpmsg = FBP.msg(type,msg)
+            if rc:
+                fbpmsg = FBP.msg(type,msg,rc=rc)
+            else:
+                fbpmsg = FBP.msg(type,msg)
         BUS.log.tx(fbpmsg)
         return
     msg = mkstring(msg)

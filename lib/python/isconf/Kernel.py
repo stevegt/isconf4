@@ -71,6 +71,13 @@ class Bus:
         self.minreaders = minreaders
         self.name = name
         self.state = 'up'
+    
+    def busy(self):
+        self.clean()
+        for (tid,queue) in self.readq.items():
+            if len(queue):
+                return True
+        return False
 
     def clean(self):
         for (tid,queue) in self.readq.items():
@@ -93,7 +100,7 @@ class Bus:
             if self.maxlen and len(queue) + 1 > self.maxlen:
                 raise Deadlock  # XXX need some id here
             queue.append(msg)
-        return True
+        return i
 
     def reader(self):
         """convenience generator -- read bus while not in a task"""
@@ -212,6 +219,9 @@ class Kernel:
         self._tasks = {}
         self._nextid = 1
         self.HZ = 1000
+
+    def isdone(self,tid):
+        return not self.isrunning(tid)
 
     def isrunning(self,tid):
         return self._tasks.get(tid,False)
