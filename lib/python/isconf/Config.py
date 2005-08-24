@@ -49,6 +49,7 @@ class Config:
                 continue
             self.error("unknown input, state %s: %s" % (state,line))
 
+    # XXX convert to global error
     def error(self,msg):
         raise ConfigurationError("%s line %d: %s" % (self.fname,self.i,msg))
 

@@ -44,6 +44,8 @@ class CLIServer:
 
     def __init__(self,sock):
         self.transport=sock
+        self.verbose = False
+        self.debug = False
 
     def run(self):
         yield kernel.sigbusy # speed things up a bit
@@ -59,6 +61,7 @@ class CLIServer:
         # process messages from client
         proc = kernel.spawn(self.process(inpin=frcli,outpin=tocli))
         # send messages to client
+        res = kernel.spawn(self.respond(transport=self.transport,inpin=BUS.log))
         res = kernel.spawn(self.respond(transport=self.transport,inpin=tocli))
 
     def process(self,inpin,outpin):
@@ -76,16 +79,17 @@ class CLIServer:
                 return
             debug("from client:", str(msg))
             rectype = msg.type()
+            if rectype != 'cmd':
+                busexit(iserrno.EINVAL, 
+                    "first message must be cmd, got %s" % rectype)
+                return
+            self.verbose = msg.head.verbose
+            self.debug = msg.head.debug
             data = msg.payload()
             opt = dict(msg.items())
             if opt['message'] == 'None':
                 opt['message'] = None
             debug(opt)
-            # get cmd from client
-            if rectype != 'cmd':
-                busexit(iserrno.EINVAL, 
-                    "first message must be cmd, got %s" % rectype)
-                return
             verb = msg['verb']
             if verb == 'exec': verb = 'Exec' # sigh
             args=[]
@@ -257,12 +261,13 @@ def branch(val=None):
     return val
 
 def busexit(errpin,code,msg=''):
+    # use BUS.log to simplify
     desc = iserrno.strerror(code)
     if str or msg:
         msg = "%s: %s\n" % (str(msg), desc)
     fbp=fbp822()
     if msg and code:
-        error(msg)
+        warn("busexit: ", msg)
         msg = "isconf: error: " + msg
         errpin.tx(str(fbp.mkmsg('stderr',msg)))
     errpin.tx(str(fbp.mkmsg('rc',code)))
@@ -290,10 +295,12 @@ def client(transport,argv,kwopt):
 
     argv is e.g. ('snap', '/tmp/foo') 
     """
+
+    # XXX convert to use global log funcs
     def clierr(code,msg=''):
         desc = iserrno.strerror(code)
         msg = "%s: %s" % (msg, desc)
-        print >>sys.stderr, msg
+        warn("clierr: ", msg)
         return code
 
     fbp = fbp822()
@@ -332,6 +339,12 @@ def client(transport,argv,kwopt):
                 msg = fbp.mkmsg('stdin',line)
                 transport.write(str(msg))
             transport.shutdown()
-        else:
-            return clierr(iserrno.EINVAL, rectype)
+        elif rectype == 'debug':
+            debug(data)
+        elif rectype == 'info':
+            info(data)
+        elif rectype == 'warn':
+            warn(data)
+        elif hasattr(os.environ,'DEBUG'):
+            debug(str(msg))
         

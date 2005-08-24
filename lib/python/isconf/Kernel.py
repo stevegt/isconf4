@@ -230,7 +230,7 @@ class Kernel:
         if task.errpin:
             task.errpin.tx(out)
         else:
-            error(out)
+            warn("kernel: ",out)
             raise Restart
         self.kill(tid)
 

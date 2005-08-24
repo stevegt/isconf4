@@ -3,11 +3,17 @@
 import doctest
 import os
 import re
+import shutil
 import sys
+import time
 import unittest
 
 libpath = "../lib/python"
 sys.path.append(libpath)
+
+volsrc  = "dat/volroot1"
+# daemonout = "tmp/stdout"
+# daemonerr = "tmp/stderr"
 
 def main():
     # coverage.erase()
@@ -19,7 +25,10 @@ def main():
     #     prodfiles += map(lambda f: os.path.join(dir, f), pyfiles)
     # print prodfiles
 
+    volroot = os.path.join(os.getcwd(),"tmp/volroot1")
+    startd(volroot)
     result = systemTest()
+    # stopd()
 
     # coverage.stop()
     # for f in prodfiles:
@@ -46,6 +55,36 @@ def systemTest():
     result = unittest.TestSuite(map(load, tests))          
 
     return result
+
+def startd(volroot):
+    os.environ['ISFS_VOLROOT'] = volroot
+    if os.path.exists(volroot):
+        shutil.rmtree(volroot)
+    shutil.copytree(volsrc,volroot)
+    # if os.fork(): 
+    #     time.sleep(3)
+    #     return 0
+    # XXX the server should be closing these and using syslog instead
+    # sys.stdin.close()
+    # sys.stdout.close()
+    # sys.stderr.close()
+    # sys.stdin = open("/dev/null",'r')
+    # sys.stdout = open(daemonout,'w')
+    # sys.stderr = open(daemonerr,'w')
+    # os.setsid()
+    # if os.fork(): 
+    #     sys.exit(0)
+    isconf('start')
+    time.sleep(3)
+
+def stopd():
+    isconf('stop')
+
+def isconf(args):
+    coverage = os.environ.get('COVERAGE','')
+    cmd = '%s ../bin/isconf -c simple.conf %s' % (coverage,args)
+    print cmd
+    os.system(cmd)
 
 if __name__ == "__main__":
     unittest.main(defaultTest="main")

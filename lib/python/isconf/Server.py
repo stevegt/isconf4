@@ -64,11 +64,31 @@ class Server:
         os.kill(pid,signal.SIGKILL)
         return 0
 
+    def logger(self,bus):
+        # XXX syslog
+        log = open("/tmp/isconf.log",'w')
+        while True:
+            mlist=[]
+            yield bus.rx(mlist)
+            for msg in mlist:
+                if msg in (kernel.eagain,None):
+                    continue
+                if msg is kernel.eof:
+                    log.close()
+                    return
+                log.write("%f %s: %s\n" % (time.time(), msg.type(),msg.data()))
+                log.flush()
+            
+
     def init(self):
         """parent of all server tasks"""
         # set up FBP netlist 
+        BUS.log = Bus()
         unixsocks = Bus()
         tcpsocks = Bus()
+
+        # spawn BUS.log -> syslog sender
+        kernel.spawn(self.logger(bus=BUS.log))
 
         unix = Socket.UNIXServerFactory(path=self.ctlpath)
         kernel.spawn(unix.run(out=unixsocks))
@@ -98,8 +118,8 @@ class Server:
         while True:
             yield None
             # periodic housekeeping
-            print "mark", time.time()
-            info(kernel.ps())
+            debug("mark", time.time())
+            # debug(kernel.ps())
             yield kernel.sigsleep, 10
             # XXX check all buffers for unbounded growth
 

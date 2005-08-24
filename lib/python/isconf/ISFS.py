@@ -100,6 +100,7 @@ class File:
         self.tmp.seek(0)
         data = self.tmp.read() # XXX won't work with large files
         fbp = fbp822()
+        # XXX pathname needs to be relative to volroot
         msg = fbp.mkmsg('snap',data,
                 pathname=self.path,
                 message=self.message,
@@ -111,11 +112,13 @@ class File:
                 )
         self.volume.addwip(msg)
         self.volume.closefile(self)
+        info("snapshot done:", self.path)
 
 class Volume:
 
     # XXX provide logname and mode on open, check/get lock then
-    def __init__(self,volname):  # XXX add statuspin
+    def __init__(self,volname):  
+        self.volname = volname
 
         # set standard paths; rule 1: only absolute paths get stored
         # in p, use mkrelative to convert as needed
@@ -208,14 +211,15 @@ class Volume:
         return path
                     
     def ci(self):
-        if not os.path.getsize(self.p.wip):
+        wipdata = self.wip()
+        if not wipdata:
+            info("no outstanding updates")
             return 
+        info("checking in", wipdata)
         # XXX check for remote changes
-        wipdata = open(self.p.wip,'r').read()
         journal = open(self.p.journal,'a')
         journal.write(wipdata)
         journal.close()
-        print "wrote to", self.p.journal, ":\n", wipdata
         os.unlink(self.p.wip)
         self.announce(self.p.journal)
 
@@ -280,16 +284,16 @@ class Volume:
     def update(self):
         fbp = fbp822()
 
-        # if self.wip():
-        #     # XXX error
-        #     return False
+        if self.wip():
+            error("local changes in progress")
+            return False
         
-        # compare history with journal
         done = open(self.p.history,'r').readlines()
         done = map(lambda xid: xid.strip(),done)
 
         stream = open(self.p.journal,'r')
         messages = fbp.fromStream(stream)
+        i=0
         while True:
             try:
                 msg = messages.next()
@@ -299,29 +303,37 @@ class Volume:
                 raise
             if msg in (kernel.eagain,None):
                 continue
+            # compare history with journal
             if msg['xid'] in done:
                 continue
+            debug(msg['xid'])
+            i += 1
             # update volume content 
             if msg.type() == 'snap': self.updateSnap(msg)
             if msg.type() == 'exec': self.updateExec(msg)
             # update history
             open(self.p.history,'a').write(msg['xid'] + "\n")
+        if not i:
+            info("no updates checked in")
 
     def updateSnap(self,msg):
         path = self.blk2path(msg['blk'])
         # XXX large files, atomicity, missing parent dirs
         # XXX volroot
         data = open(path,'r').read()
-        open(msg['pathname'],'w').write(data)
+        path = msg['pathname']
+        info("updating" + path)
+        open(path,'w').write(data)
         # XXX setstat
 
     def updateExec(self,msg):
         pass
 
     def wip(self):
-        if os.path.exists(self.p.history):
-            return True
-        return False
+        if os.path.exists(self.p.wip):
+            wipdata = open(self.p.wip,'r').read()
+            return wipdata
+        return []
 
 
 # XXX the following were migrated directly from 4.1.7 for now --
@@ -401,7 +413,7 @@ def udpServer(udpport,httpport,dir):
                 if dir != os.path.commonprefix((dir,os.path.abspath(fname))):
                     ok=False
                 if not ok:
-                    error("unsafe request from %s: %s" % (addr,fname))
+                    warn("unsafe request from %s: %s" % (addr,fname))
                     continue
                 if not os.path.isfile(fname):
                     debug("from %s: not found: %s" % (addr,fname))
@@ -418,9 +430,9 @@ def udpServer(udpport,httpport,dir):
             if type == 'ihave':
                 fname = msg['file']
                 kernel.spawn(udpPull(fname))
-            error("unsupported message type from %s: %s" % (addr,type))
+            warn("unsupported message type from %s: %s" % (addr,type))
         except socket.error:
             continue
         except Exception, e:
-            error("%s from %s: %s" % (e,addr,data))
+            warn("%s from %s: %s" % (e,addr,data))
             continue

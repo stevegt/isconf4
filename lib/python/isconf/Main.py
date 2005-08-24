@@ -31,10 +31,10 @@ class Main:
     )
 
     def config(self,fname):
+        if not self.kwopt['quiet']:
+            os.environ['VERBOSE'] = '1'
         if self.kwopt['debug']:
             os.environ['DEBUG'] = '1'
-            os.environ['VERBOSE'] = '1'
-        if self.kwopt['verbose']:
             os.environ['VERBOSE'] = '1'
         os.environ.setdefault('VARISCONF',"/var/isconf")
         os.environ.setdefault('ISFS_HOME',"/var/isfs")
@@ -69,7 +69,7 @@ class Main:
             'D': ('debug',   False, "show debugging output"),
             'h': ('help',    False, "this text" ),
             'm': ('message', None,  "changelog and branch lock message" ),
-            'v': ('verbose', False, "show verbose output"),
+            'q': ('quiet',   False, "don't show verbose output"),
         }
         ps = "\nVerb is one of: %s\n" % ', '.join(self.verbs)
         ps += "\nVerb and verb args can be interleaved with other flags."
@@ -125,7 +125,10 @@ class Main:
                 server = Server()
                 rc = server.start()
             except Restart:
-                error("restarting: `%s`..." % ' '.join(sys.argv))
+                warn("daemon exiting")
+                sys.exit(1)
+                # XXX
+                warn("restarting: `%s`..." % ' '.join(sys.argv))
                 os.chdir(self.cwd)
                 # close everything down
                 kernel.killall()

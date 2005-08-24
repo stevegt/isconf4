@@ -41,6 +41,9 @@ ship: tar
 test:
 	cd t && time make
 
+systest:
+	cd t && time make runsystest.py
+
 mtatest:
 	- killall isconf
 	- bin/isconf -v selftest -p

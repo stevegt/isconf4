@@ -39,6 +39,9 @@ coverage.py -a [-d dir] FILE1 FILE2 ...
     the -d option, make the copies in that directory.  Without the -d
     option, make each copy in the same directory as the original.
 
+coverage.py -u .coverage2 
+    Update (merge) the coverage database with the contents from .coverage2.
+
 Coverage data is saved in the file .coverage by default.  Set the
 COVERAGE_FILE environment variable to save it somewhere else."""
 
@@ -89,7 +92,8 @@ class coverage:
     error = "coverage error"
 
     # Name of the cache file (unless environment variable is set).
-    cache_default = ".coverage"
+    cwd = os.getcwd()
+    cache_default = os.path.join(cwd,".coverage")
 
     # Environment variable naming the cache file.
     cache_env = "COVERAGE_FILE"
@@ -133,6 +137,7 @@ class coverage:
             '-i': 'ignore-errors',
             '-m': 'show-missing',
             '-r': 'report',
+            '-u': 'update',
             '-x': 'execute',
             }
         short_opts = string.join(map(lambda o: o[1:], optmap.keys()), '')
@@ -185,6 +190,8 @@ class coverage:
             self.report(args, show_missing, ignore_errors)
         if settings.get('annotate'):
             self.annotate(args, directory, ignore_errors)
+        if settings.get('update'):
+            self.update(args[0])
 
     def start(self):
         sys.settrace(t)
@@ -204,6 +211,7 @@ class coverage:
 
     def save(self):
         self.canonicalize_filenames()
+        self.restore() # does a merge in case anyone else updated concurrently
         cache = open(self.cache, 'wb')
         import marshal
         marshal.dump(self.cexecuted, cache)
@@ -212,21 +220,34 @@ class coverage:
     # restore().  Restore coverage data from the coverage cache (if it
     # exists).
 
-    def restore(self):
+    def restore(self,updatefrom=None):
         global c
         c = {}
-        self.cexecuted = {}
-        if not os.path.exists(self.cache):
+        if not hasattr(self,'cexecuted'):
+            self.cexecuted = {}
+        if updatefrom:
+            file = updatefrom
+        else:
+            file = self.cache
+        if not os.path.exists(file):
             return
         try:
-            cache = open(self.cache, 'rb')
+            cache = open(file, 'rb')
             import marshal
             cexecuted = marshal.load(cache)
             cache.close()
             if isinstance(cexecuted, types.DictType):
-                self.cexecuted = cexecuted
+                self.merge(self.cexecuted,cexecuted)
         except:
             pass
+
+    def update(self,srcfile):
+        self.restore(updatefrom=srcfile)
+
+    def merge(self,dst,src):
+        for file in src.keys():
+            dst.setdefault(file,{})
+            dst[file].update(src[file])
 
     # canonical_filename(filename).  Return a canonical filename for the
     # file (that is, an absolute path with no redundant components and

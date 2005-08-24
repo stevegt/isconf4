@@ -1,8 +1,99 @@
-.python2.2 ./coverage.py -x ../bin/isconf -c simple.conf
-.
+.F
+======================================================================
+FAIL: testsnap (testCLI.Test)
 ----------------------------------------------------------------------
-Ran 2 tests in 19.225s
+Traceback (most recent call last):
+  File "testCLI.py", line 54, in testsnap
+    self.isconf('-D lock -m "testing snap"')
+  File "testCLI.py", line 29, in isconf
+    self.failUnless(self.quiet((realrc, stdin, stdout, stderr)))
+  File "testCLI.py", line 39, in quiet
+    self.fail("not quiet")
+  File "/usr/lib/python2.2/unittest.py", line 254, in fail
+    raise self.failureException, msg
+AssertionError: not quiet
 
-OK
-python2.2 ./coverage.py -x ../bin/isconf -c simple.conf
-python2.2 ./coverage.py -x ../bin/isconf -c simple.conf 'stop'
+----------------------------------------------------------------------
+Ran 2 tests in 9.347s
+
+FAILED (failures=1)
+python2.2 ./coverage.py -x ../bin/isconf -c simple.conf start
+python2.2 ./coverage.py -x ../bin/isconf -c simple.conf stop
+python2.2 ./coverage.py -x ../bin/isconf -c simple.conf 
+python2.2 ./coverage.py -x ../bin/isconf -c simple.conf -D lock -m "testing snap"
+isconf: debug: adding to environment: {'VARISCONF': '/tmp/var/isconf', 'ISFS_HOME': '/tmp/var/isfs', 'ISFS_DOMAIN': 'example.com', 'pages': '150'} 
+
+isconf: debug: NNTPSERVER=news.covad.net
+MANPATH=:/usr/local/man:/usr/local/bitkeeper/man:/usr/local/man:/usr/local/bitkeeper/man:/usr/local/man:/usr/local/bitkeeper/man
+HZ=100
+SSH_AGENT_PID=1419
+HOSTNAME=spirit
+SHELL=/bin/sh
+TERM=xterm
+MAKEFLAGS=w -- python=python2.2
+ISFS_DOMAIN=example.com
+CVSROOT=:ext:stevegt@scramjet:/usr/local/cvsroot
+GTK_RC_FILES=/etc/gtk/gtkrc:/home/stevegt/.gtkrc-1.2-gnome2
+HUSHLOGIN=FALSE
+WINDOWID=27263010
+USER=stevegt
+MAKEOVERRIDES=${-*-command-variables-*-}
+LD_LIBRARY_PATH=:/usr/local/lib
+LS_COLORS=no=00:fi=00:di=01;34:ln=01;36:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arj=01;31:*.taz=01;31:*.lzh=01;31:*.zip=01;31:*.z=01;31:*.Z=01;31:*.gz=01;31:*.bz2=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.jpg=01;35:*.jpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.avi=01;35:*.fli=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.ogg=01;35:*.mp3=01;35:*.wav=01;35:
+GNOME_KEYRING_SOCKET=/tmp/keyring-mhgVvO/socket
+SSH_AUTH_SOCK=/tmp/ssh-XXemXkyW/agent.1418
+TMOUT=86400
+MAKELEVEL=3
+SESSION_MANAGER=local/spirit:/tmp/.ICE-unix/1437
+VARISCONF=/tmp/var/isconf
+MFLAGS=-w
+GISDBASE=/home/stevegt/lab/grass/seeds
+ISFS_PRIVATE=/tmp/var/isfs/private
+ISFS_PORT=65027
+MAIL=/var/mail/stevegt
+PATH=/home/stevegt/bin:/usr/local/bin:/usr/bin:/bin:/usr/bin/X11:/usr/games:/usr/local/bin:/usr/sbin:/sbin:/usr/palm/bin:/usr/local/tmda/bin/:/opt/rt3/bin:/usr/local/java/IBMJava2-141/bin/:/usr/local/sbin:/sbin:/home/stevegt/bin:/usr/local/CorporateTime
+_=/usr/bin/env
+ISFS_VOLROOT=/home/stevegt/svn/isconf/trunk/t/tmp/volroot1
+JAVA=/usr/local/java/IBMJava2-141/bin/java
+PWD=/home/stevegt/svn/isconf/trunk/t
+ISFS_CACHE=/tmp/var/isfs/cache
+VERBOSE=1
+LANG=C
+SHLVL=9
+HOME=/home/stevegt
+CTIME_ROOT=/usr/local/CorporateTime
+GNOME_DESKTOP_SESSION_ID=Default
+BASH_ENV=/home/stevegt/.bashrc
+LOGNAME=stevegt
+PYTHONPATH=../lib/python
+CVS_RSH=ssh
+CLASSPATH=/home/stevegt/lab/interactivebrokers/twsapi/73/IBJts/java/
+pages=150
+ISFS_HOME=/tmp/var/isfs
+DISPLAY=:0.0
+YYMM=0508
+DEBUG=1
+ISFS_HTTP_PORT=65028
+COVERAGE=python2.2 ./coverage.py -x
+python=python2.2
+COLORTERM=gnome-terminal
+XAUTHORITY=/home/stevegt/.Xauthority
+
+
+isconf: info: connecting to /tmp/var/isconf/.ctl 
+
+Traceback (most recent call last):
+  File "./coverage.py", line 540, in ?
+    the_coverage.command_line()
+  File "./coverage.py", line 183, in command_line
+    execfile(sys.argv[0], __main__.__dict__)
+  File "../bin/isconf", line 7, in ?
+    main.main()
+  File "/home/stevegt/svn/isconf/trunk/lib/python/isconf/Main.py", line 93, in main
+    rc = self.client()
+  File "/home/stevegt/svn/isconf/trunk/lib/python/isconf/Main.py", line 101, in client
+    transport = UNIXClientSocket(path = ctl)
+  File "/home/stevegt/svn/isconf/trunk/lib/python/isconf/Socket.py", line 174, in __init__
+    self.sock.connect(self.ctl)
+socket.error: (111, 'Connection refused')
+

@@ -10,6 +10,7 @@ import inspect
 import re
 import sha
 import sys
+import types
 
 class fbp822:
     """Flow-based messages via simple RFC-822-like format.  
@@ -39,10 +40,15 @@ class fbp822:
     '5528934b82b37f57600eb8b2fb37cc9d591033a1'
     >>> assert msg.hmacok('somekey')
     >>> factory = fbp822(authkey='somekey')
-    >>> msg = factory.mkmsg('puke green',apple='red')
+    >>> msg = factory.mkmsg('puke green',apple='red',Is=True,notis=False)
     >>> assert not msg.hmacok('foo')
     >>> assert msg.hmacok('somekey')
     >>> assert msg['apple'] == 'red'
+    >>> assert msg.head.apple == 'red'
+    >>> assert msg.head.notis is False
+    >>> assert msg.head.notis is not True
+    >>> assert msg.head.Is is True
+    >>> assert msg.head.Is is not False
 
     """
 
@@ -63,11 +69,16 @@ class fbp822:
         for (var,val) in kwargs.items():
             if var.startswith("_"):
                 raise Error822("parameter names can't start with '_'")
-            # XXX convert and identify non-string types
             msg.add_header(var,str(val))
+            # identify non-string types
+            # if val is types.BooleanType: # doesn't work in 2.2
+            if val is True or val is False:
+                msg.add_header("_type_%s" % var,"b")
         if self.authkey:
             msg.hmacset(self.authkey)
         return msg
+
+    msg = mkmsg
 
     def parse(self,txt,trial=False,maxheaderlen=65536):
         """Parse an fbp822 message.
@@ -216,20 +227,13 @@ class Message(email.Message.Message):
         email.Message.Message.__init__(self)
         date = email.Utils.formatdate()
         self.set_unixfrom('From nobody %s' % (date))
+        self.head = Head(self)
 
     def data(self):
         return self.get_payload()
 
     def ok(self):
         return self['_status'] == 'ok'
-
-    def parms(self):
-        parms = dict(self.items())
-        keys = parms.keys() # avoid "dictionary changed size" error
-        for key in keys:
-            if key.startswith('_'):
-                del parms[key]
-        return parms
 
     def size(self):
         return self['_size']
@@ -277,6 +281,23 @@ class Message(email.Message.Message):
         g(self, unixfrom=unixfrom)
         return fp.getvalue()
 
+class Head:
+
+    def __init__(self,msg):
+        self.msg = msg
+
+    def __getattr__(self,var):
+        val = self.msg[var]
+        type = self.msg.get("_type_%s" % var, '')
+        if type == 'b':
+            val.strip()
+            if val == '1' or val == 'True':
+                val = True
+            if val == '0' or val == 'False':
+                val = False
+        return val
+
 class Error822(Exception): pass
 class Incomplete822(Exception): pass
+
 

@@ -170,7 +170,7 @@ class UNIXClientSocket:
         self.rxd = ''
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.sock.setblocking(1)
-        info("connecting to %s" % self.ctl)
+        debug("connecting to %s" % self.ctl)
         self.sock.connect(self.ctl)
 
     def close(self):
