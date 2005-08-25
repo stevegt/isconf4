@@ -104,7 +104,7 @@ class Server:
         kernel.spawn(mesh.run())
 
         cli = ISconf.CLIServerFactory(socks=unixsocks)
-        kernel.spawn(cli.run(mesh=mesh))
+        kernel.spawn(cli.run())
 
         kernel.spawn(ISFS.httpServer(port=self.httpport,dir=cachedir))
 

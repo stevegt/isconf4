@@ -118,12 +118,41 @@ class File:
         self.volume.closefile(self)
         info("snapshot done:", self.path)
 
+class Journal:
+
+    def __init__(self,fullpath):
+        self.path = fullpath
+        self._entries = []
+        self.mtime = 0
+
+    def entries(self):
+        mtime = os.path.getmtime(self.path)
+        if mtime != self.mtime:
+            self.reload()
+            self.mtime = mtime
+        return self._entries
+
+    def reload(self):
+        journal = open(self.path,'r')
+        messages = FBP.fromFile(journal)
+        self._entries = []
+        while True:
+            try:
+                msg = messages.next()
+            except StopIteration:
+                break
+            except Error822, e:
+                raise
+            if msg in (kernel.eagain,None):
+                continue
+            self._entries.append(msg)
+
 class Volume:
 
     # XXX provide logname and mode on open, check/get lock then
-    def __init__(self,volname,mesh):  
+    def __init__(self,volname,logname):  
         self.volname = volname
-        self.mesh = mesh
+        self.logname = logname
 
         # set standard paths; rule 1: only absolute paths get stored
         # in p, use mkrelative to convert as needed
@@ -143,6 +172,8 @@ class Volume:
         self.p.wip     = "%s/journal.wip" % (privatevol)
         self.p.history = "%s/history"     % (privatevol)
         self.p.volroot = "%s/volroot"     % (privatevol)
+        self.p.dirty   = "%s/dirty"       % (privatevol)
+        self.p.pull    = "%s/pull"        % (privatevol)
 
         debug("isfs cache", self.p.cache)
         debug("journal abspath", self.p.journal)
@@ -164,9 +195,11 @@ class Volume:
 
         self.volroot = "/"
         # XXX temporary solution to allow for testing, really need to
-        # read from self.p.volroot
+        # read from self.p.volroot instead
         if os.environ.has_key('ISFS_VOLROOT'):
             self.volroot = os.environ['ISFS_VOLROOT']
+
+        self.journal = Journal(self.p.journal)
 
     def mkabsolute(self,path):
         if not path.startswith(self.p.cache):
@@ -179,14 +212,32 @@ class Volume:
             path = path[len(self.p.cache):]
         return path
 
-    def announce(self,path):
+    def dirty(self,path):
+        # write the filename to the dirty list -- the cache manager
+        # will announce the new file and handle transfers
         path = self.mkrelative(path)
-        self.mesh.announce(path)
+        open(self.p.dirty,'a').write(path + "\n")
 
-    def syncer(self,path,test=False):
-        path = self.mkrelative(path)
-        task = kernel.spawn(self.mesh.syncer(path))
-        yield kernel.siguntil,task.isdone
+    def pull(self):
+        files = (self.p.journal,self.p.lock)
+        yield kernel.wait(self.pullfiles(files))
+        files = self.pendingfiles()
+        yield kernel.wait(self.pullfiles(files))
+
+    def pullfiles(self,files):
+        if files:
+            txt = '\n'.join(files) + "\n"
+            # add filename(s) to the pull list
+            open(self.p.pull,'a').write(txt)
+        while True:
+            yield None
+            # wait for cache manager to finish pull -- CM will remove
+            # list during pull, then touch it zero-length after pull
+            if not os.path.exists(self.p.pull):
+                # still working
+                continue
+            if os.path.getsize(self.p.pull) == 0:
+                break
 
     def addwip(self,msg):
         xid = "%f.%f@%s" % (time.time(),random.random(),
@@ -223,10 +274,13 @@ class Volume:
             # append message to journal wip
             open(self.p.wip,'a').write(str(msg))
 
-    def Exec(self,args,cwd):
+    def Exec(self,args,cwd,message):
         # XXX what about when cwd != volroot?
         cmd = ' '.join(map(lambda a: "'%s'" % a,args))
-        msg = FBP.mkmsg('exec', cmd=cmd, cwd=cwd)
+        if not self.cklock(): return 
+        if message is None:
+            message = self.lockmsg()
+        msg = FBP.mkmsg('exec', cmd=cmd, cwd=cwd, message=message)
         self.addwip(msg)
         info("exec done:", ' '.join(map(lambda a: "'%s'" % a,args)))
             
@@ -243,12 +297,21 @@ class Volume:
         if not wipdata:
             info("no outstanding updates")
             return 
-        # XXX check for remote changes
+        if not self.cklock(): return 
+        jtime = os.path.getmtime(self.p.journal)
+        yield kernel.wait(self.pull())
+        if not self.cklock(): return
+        if jtime != os.path.getmtime(self.p.journal):
+            error("someone else checked in conflicting changes -- repair wip and retry")
+            return
+        if os.path.getmtime(self.p.journal) > os.path.getmtime(self.p.wip):
+            error("journal is newer than wip -- repair and retry")
+            return
         journal = open(self.p.journal,'a')
         journal.write(wipdata)
         journal.close()
         os.unlink(self.p.wip)
-        self.announce(self.p.journal)
+        self.dirty(self.p.journal)
         info("changes checked in")
         self.unlock()
 
@@ -284,8 +347,9 @@ class Volume:
         else:
             return actual
         
-    def cklock(self,logname):
+    def cklock(self):
         """ensure that volume is locked, and locked by logname"""
+        logname = self.logname
         lockmsg = self.locked()
         volname = self.volname
         if not lockmsg:
@@ -297,22 +361,20 @@ class Volume:
             return False
         return True
 
-    def lock(self,logname,msg):
-        msg = "%s@%s: %s" % (logname,os.environ['HOSTNAME'],str(msg))
-        if self.locked() and not self.lockedby(logname):
-            return False
-        if not msg:
-            return False
-        open(self.p.lock,'w').write(msg)
-        self.announce(self.p.lock)
+    def lock(self,message):
+        logname = self.logname
+        message = "%s@%s: %s" % (logname,os.environ['HOSTNAME'],str(message))
+        yield kernel.wait(self.pull())
+        if self.locked() and not self.volume.cklock():
+            return 
+        open(self.p.lock,'w').write(message)
+        self.dirty(self.p.lock)
         info("%s locked" % self.volname)
-        return self.locked()
+        if not self.locked():
+            error(iserrno.NOTLOCKED,'attempt to lock %s failed' % self.volname) 
 
     def open(self,path,mode,message=None):
-        # XXX check lock
-        if not self.wip():
-            # self.sync(self.p.journal)
-            pass
+        if not self.cklock(): return False
         fh = File(volume=self,path=path,mode=mode,message=message)
         self.openfiles[fh]=1
         return fh
@@ -327,58 +389,61 @@ class Volume:
         if locker:
             os.unlink(self.p.lock)
         if self.locked():
+            error(iserrno.LOCKED,'attempt to unlock %s failed' % self.volname) 
             return False
-        info("%s unlocked" % self.volname)
         return True
+
 
     def update(self):
         fbp = fbp822()
-
         if self.wip():
-            error("local changes in progress")
-            return False
-        
+            error("local changes not checked in")
+            return 
         info("checking for updates")
-        # self.sync(self.p.journal)
-        # XXX wait for pull
-        done = open(self.p.history,'r').readlines()
-        done = map(lambda xid: xid.strip(),done)
-
-        file = open(self.p.journal,'r')
-        messages = fbp.fromFile(file)
-        i=0
-        while True:
-            try:
-                msg = messages.next()
-            except StopIteration:
-                break
-            except Error822, e:
-                raise
-            if msg in (kernel.eagain,None):
-                continue
-            # compare history with journal
-            if msg['xid'] in done:
-                continue
-            debug(msg['pathname'])
-            i += 1
+        yield kernel.wait(self.pull())
+        pending = self.pending()
+        if not len(pending):
+            info("no new updates")
+            return
+        for msg in pending:
+            debug(msg['pathname'],time.time())
             if msg.type() == 'snap': 
                 if not self.updateSnap(msg):
                     error("aborting update")
-                    return False
+                    return 
             if msg.type() == 'exec': 
                 if not self.updateExec(msg):
                     error("aborting update")
-                    return False
-        if not i:
-            info("no new updates")
+                    return 
         info("update done")
+
+    def pending(self):
+        """
+        Return an ordered list of the journal messages which need to be
+        processed for the next update.
+        """
+        done = open(self.p.history,'r').readlines()
+        done = map(lambda xid: xid.strip(),done)
+
+        msgs = self.journal.entries()
+        pending = []
+        for msg in msgs:
+            # compare history with journal
+            if msg['xid'] in done:
+                continue
+            pending.append(msg)
+        return pending
+
+    def pendingfiles(self):
+        files = []
+        for msg in self.pending():
+            files.append(msg.head.pathname)
+        return files
 
     def updateSnap(self,msg):
         path = self.blk2path(msg['blk'])
         # XXX large files, atomicity, missing parent dirs
         # XXX volroot
-        #
-        # self.sync(path)
         data = open(path,'r').read()
         path = msg['pathname']
         open(path,'w').write(data)

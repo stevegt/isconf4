@@ -260,6 +260,18 @@ class Kernel:
             out += str(task) + "\n"
         return out
 
+    def wait(self,genobj):
+        """Spawn a task and wait for it to finish.  For example, if
+        you do:
+        
+            yield kernel.wait(sometask())
+
+        ...the yield will not return until sometask() completes.
+
+        """
+        return self.siguntil, self.spawn(genobj).isdone
+
+    # XXX add respawn flag, only raise Restart if not set
     def spawn(self,genobj,itermode=False):
         """
         Let the kernel manage an ordinary generator object by wrapping

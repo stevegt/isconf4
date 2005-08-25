@@ -32,13 +32,13 @@ class CLIServerFactory:
     def __init__(self,socks):
         self.socks = socks
 
-    def run(self,mesh):
+    def run(self):
         while True:
             slist = []
             yield self.socks.rx(slist)
             for sock in slist:
                 server = CLIServer(sock=sock)
-                kernel.spawn(server.run(mesh=mesh))
+                kernel.spawn(server.run())
 
 class CLIServer:
 
@@ -47,7 +47,7 @@ class CLIServer:
         self.verbose = False
         self.debug = False
 
-    def run(self,mesh):
+    def run(self):
         yield kernel.sigbusy # speed things up a bit
         debug("CLIServer running")
         fbp = fbp822()
@@ -60,7 +60,7 @@ class CLIServer:
         req = kernel.spawn(fbp.fromStream(stream=self.transport,outpin=frcli))
         # process messages from client
         proc = kernel.spawn(
-                self.process(inpin=frcli,outpin=tocli,mesh=mesh))
+                self.process(inpin=frcli,outpin=tocli))
         # send messages to client
         res = kernel.spawn(self.respond(transport=self.transport,inpin=tocli))
         # merge in log messages
@@ -97,7 +97,7 @@ class CLIServer:
                     return
                 outbus.tx(msg)
 
-    def process(self,inpin,outpin,mesh):
+    def process(self,inpin,outpin):
         while True:
             yield None
             mlist = []
@@ -129,7 +129,7 @@ class CLIServer:
             if len(data):
                 data = data.strip()
                 args = data.split('\n')
-            ops = Ops(mesh=mesh,opt=opt,args=args,data=data,
+            ops = Ops(opt=opt,args=args,data=data,
                     inpin=inpin,outpin=outpin)
             try:
                 func = getattr(ops,verb)
@@ -174,62 +174,43 @@ class Ops:
     
     """
 
-    def __init__(self,mesh,opt,args,data,inpin,outpin):
-        self.mesh=mesh
-        self.volname = branch()
-        self.volume = ISFS.Volume(self.volname,mesh=mesh)
+    def __init__(self,opt,args,data,inpin,outpin):
         self.opt = opt
         self.args = args
         self.data = data
         self.inpin = inpin
         self.outpin = outpin
 
+        self.volname = branch()
+        logname = self.opt['logname']
+        self.volume = ISFS.Volume(self.volname,logname=logname)
+
     def ci(self):
-        yield None
-        if not self.volume.cklock(self.opt['logname']): return
-        self.volume.ci()
+        yield kernel.wait(self.volume.ci())
 
     def Exec(self):
         yield None
-        if not self.volume.cklock(self.opt['logname']): return
         message = self.opt['message']
-        if message is not None:
-            if not self.volume.lock(self.opt['logname'],message):
-                error(outpin,iserrno.NOTLOCKED,
-                        'failed relocking %s' % self.volname) 
-                return
-        else:
-            message=''
+        cwd = self.opt['cwd']
         if not len(self.args):
             error(iserrno.EINVAL,"missing exec command")
             return
-        cwd = self.opt['cwd']
-        self.volume.Exec(self.args,cwd)
+        self.volume.Exec(self.args,cwd,message)
+
 
     def lock(self):
-        yield None
-        if self.volume.locked() and not self.volume.cklock(self.opt['logname']):
-            return
         if not self.opt['message']:
             error(iserrno.NEEDMSG,'did not lock %s' % self.volname)
             return
-        if self.volume.lock(self.opt['logname'],self.opt['message']):
-            return
-        error(iserrno.NOTLOCKED,'attempt to lock %s failed' % self.volname) 
-
+        yield kernel.wait(self.volume.lock(self.opt['message']))
 
     def snap(self):
+        # XXX move most of this to ISFS
         debug("starting snap")
         yield None
-        if not self.volume.cklock(self.opt['logname']): return
         message = self.opt['message']
-        if message is not None:
-            if not self.volume.lock(self.opt['logname'],message):
-                error(iserrno.NOTLOCKED,'failed relocking %s' %
-                        self.volname) 
-                return
-        else:
-            message=''
+        if message is None:
+            message = self.volume.lockmsg()
         if not len(self.args):
             error(iserrno.EINVAL,"missing snapshot pathname")
             return
@@ -262,17 +243,11 @@ class Ops:
 
     def unlock(self):
         yield None
-        locker = self.volume.lockedby()
-        if locker:
-            if not self.volume.unlock():
-                error(iserrno.LOCKED,'attempt to unlock %s failed' %
-                        self.volname) 
-                return
-            info("broke %s lock -- please notify %s" % (self.volname,locker))
+        self.volume.unlock()
+        info("broke %s lock -- please notify %s" % (self.volname,locker))
 
     def up(self):
-        yield None
-        self.volume.update()
+        yield kernel.wait(self.volume.update())
 
             
 def branch(val=None):
