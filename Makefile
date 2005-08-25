@@ -44,6 +44,11 @@ test:
 systest:
 	cd t && time make runsystest.py
 
+labtest:
+	rsync -PHaSvuz . root@isconf10:/tmp/isconftest
+	rsync -PHaSvuz . root@isconf11:/tmp/isconftest
+	rsync -PHaSvuz . root@isconf12:/tmp/isconftest
+
 mtatest:
 	- killall isconf
 	- bin/isconf -v selftest -p

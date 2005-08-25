@@ -506,6 +506,11 @@ class Task:
             self.wrapper=Wrapper(self).wrapper()
         return self.wrapper.next()
 
+    def isdone(self):
+        if kernel.isdone(self.tid):
+            return True
+        return False
+
 class Wrapper:
 
     def __init__(self,task):

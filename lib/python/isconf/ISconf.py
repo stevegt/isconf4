@@ -67,7 +67,8 @@ class CLIServer:
         log = kernel.spawn(self.merge(tocli,BUS.log))
 
         # wait for everything to quiesce
-        yield kernel.siguntil, kernel.isdone, proc.tid
+        yield kernel.siguntil, proc.isdone
+        yield kernel.sigsleep, .1
         while True:
             yield None
             i=0
@@ -112,7 +113,7 @@ class CLIServer:
             debug("from client:", str(msg))
             rectype = msg.type()
             if rectype != 'cmd':
-                busexit(iserrno.EINVAL, 
+                error(iserrno.EINVAL, 
                     "first message must be cmd, got %s" % rectype)
                 return
             self.verbose = msg.head.verbose
@@ -128,16 +129,15 @@ class CLIServer:
             if len(data):
                 data = data.strip()
                 args = data.split('\n')
-            ops = Ops(mesh=mesh)
+            ops = Ops(mesh=mesh,opt=opt,args=args,data=data,
+                    inpin=inpin,outpin=outpin)
             try:
                 func = getattr(ops,verb)
             except AttributeError:
-                busexit(outpin,iserrno.EINVAL,verb)
+                error(outpin,iserrno.EINVAL,verb)
                 return
             # start command processor
-            task = kernel.spawn(
-                func(opt=opt,args=args,data=data,inpin=inpin,outpin=outpin)
-                )
+            task = kernel.spawn(func())
             # wait for it to finish
             yield kernel.siguntil, kernel.isdone, task.tid
             break
@@ -174,94 +174,82 @@ class Ops:
     
     """
 
-    def __init__(self,mesh):
+    def __init__(self,mesh,opt,args,data,inpin,outpin):
         self.mesh=mesh
+        self.volname = branch()
+        self.volume = ISFS.Volume(self.volname,mesh=mesh)
+        self.opt = opt
+        self.args = args
+        self.data = data
+        self.inpin = inpin
+        self.outpin = outpin
 
-    def ci(self,opt,args,data,inpin,outpin):
-        fbp=fbp822()
+    def ci(self):
         yield None
-        volname = branch()
-        volume = ISFS.Volume(volname,mesh=self.mesh)
-        if not cklock(outpin,volname,opt['logname'],self.mesh):
-            return
-        volume.ci()
-        # busexit(outpin,iserrno.OK) 
+        if not self.volume.cklock(self.opt['logname']): return
+        self.volume.ci()
 
-    def Exec(self,opt,args,data,inpin,outpin):
-        fbp=fbp822()
+    def Exec(self):
         yield None
-        volname = branch()
-        volume = ISFS.Volume(volname,mesh=self.mesh)
-        if not cklock(outpin,volname,opt['logname'],self.mesh):
-            return
-        message = opt['message']
+        if not self.volume.cklock(self.opt['logname']): return
+        message = self.opt['message']
         if message is not None:
-            if not volume.lock(opt['logname'],message):
-                busexit(outpin,iserrno.NOTLOCKED,
-                        'failed relocking %s' % volname) 
+            if not self.volume.lock(self.opt['logname'],message):
+                error(outpin,iserrno.NOTLOCKED,
+                        'failed relocking %s' % self.volname) 
                 return
         else:
             message=''
-        if not len(args):
-            busexit(outpin,iserrno.EINVAL,"missing exec command")
+        if not len(self.args):
+            error(iserrno.EINVAL,"missing exec command")
             return
-        cwd = opt['cwd']
-        volume.Exec(args,cwd)
+        cwd = self.opt['cwd']
+        self.volume.Exec(self.args,cwd)
 
-    def lock(self,opt,args,data,inpin,outpin):
-        fbp=fbp822()
+    def lock(self):
         yield None
-        volname = branch()
-        volume = ISFS.Volume(volname,mesh=self.mesh)
-        if volume.locked() and not cklock(
-                outpin,volname,opt['logname'],self.mesh):
+        if self.volume.locked() and not self.volume.cklock(self.opt['logname']):
             return
-        if not opt['message']:
-            busexit(outpin,iserrno.NEEDMSG,'did not lock %s' %
-                    volname)
+        if not self.opt['message']:
+            error(iserrno.NEEDMSG,'did not lock %s' % self.volname)
             return
-        if volume.lock(opt['logname'],opt['message']):
-            # busexit(outpin,iserrno.OK) 
+        if self.volume.lock(self.opt['logname'],self.opt['message']):
             return
-        busexit(outpin,iserrno.NOTLOCKED,'attempt to lock %s failed' % volname) 
+        error(iserrno.NOTLOCKED,'attempt to lock %s failed' % self.volname) 
 
 
-    def snap(self,opt,args,data,inpin,outpin):
-        fbp=fbp822()
+    def snap(self):
         debug("starting snap")
         yield None
-        volname = branch()
-        volume = ISFS.Volume(volname,mesh=self.mesh)
-        if not cklock(outpin,volname,opt['logname'],self.mesh):
-            return
-        message = opt['message']
+        if not self.volume.cklock(self.opt['logname']): return
+        message = self.opt['message']
         if message is not None:
-            if not volume.lock(opt['logname'],message):
-                busexit(outpin,iserrno.NOTLOCKED,'failed relocking %s' %
-                        volname) 
+            if not self.volume.lock(self.opt['logname'],message):
+                error(iserrno.NOTLOCKED,'failed relocking %s' %
+                        self.volname) 
                 return
         else:
             message=''
-        if not len(args):
-            busexit(outpin,iserrno.EINVAL,"missing snapshot pathname")
+        if not len(self.args):
+            error(iserrno.EINVAL,"missing snapshot pathname")
             return
-        if len(args) > 1:
-            busexit(outpin,iserrno.EINVAL,
+        if len(self.args) > 1:
+            error(iserrno.EINVAL,
                     "can only snapshot one file at a time (for now)")
             return
-        path = args[0]
-        cwd = opt['cwd']
+        path = self.args[0]
+        cwd = self.opt['cwd']
         path = os.path.join(cwd,path)
         if not os.path.exists(path):
-            busexit(outpin,iserrno.ENOENT,path)
+            error(iserrno.ENOENT,path)
             return
         if not os.path.isfile(path):
-            busexit(outpin,iserrno.EINVAL,"%s is not a file" % path)
+            error(iserrno.EINVAL,"%s is not a file" % path)
             return
         st = os.stat(path)
         src = open(path,'r')
         debug("calling open")
-        dst = volume.open(path,'w',message=message)
+        dst = self.volume.open(path,'w',message=message)
         dst.setstat(st)
         while True:
             data = src.read(1024 * 1024 * 1)
@@ -271,30 +259,20 @@ class Ops:
         src.close()
         debug("calling close")
         dst.close()
-        # busexit(outpin,iserrno.OK) 
 
-    def unlock(self,opt,args,data,inpin,outpin):
-        fbp=fbp822()
+    def unlock(self):
         yield None
-        volname = branch()
-        locker = volume.lockedby()
+        locker = self.volume.lockedby()
         if locker:
-            if not volume.unlock():
-                busexit(outpin,iserrno.LOCKED,'attempt to unlock %s failed' %
-                        volname) 
+            if not self.volume.unlock():
+                error(iserrno.LOCKED,'attempt to unlock %s failed' %
+                        self.volname) 
                 return
-            outpin.tx(fbp.mkmsg('stderr',
-                "broke %s lock -- please notify %s\n" % (volname,locker))
-                )
-        # busexit(outpin,iserrno.OK) 
-        
-    def up(self,opt,args,data,inpin,outpin):
-        fbp=fbp822()
+            info("broke %s lock -- please notify %s" % (self.volname,locker))
+
+    def up(self):
         yield None
-        volname = branch()
-        volume = ISFS.Volume(volname,mesh=self.mesh)
-        volume.update()
-        # busexit(outpin,iserrno.OK) 
+        self.volume.update()
 
             
 def branch(val=None):
@@ -307,8 +285,7 @@ def branch(val=None):
     val = open(fname,'r').read()
     return val
 
-def busexit(errpin,code,msg=''):
-    # use BUS.log to simplify
+def XXXbusexit(errpin,code,msg=''):
     desc = iserrno.strerror(code)
     if str or msg:
         msg = "%s: %s\n" % (str(msg), desc)
@@ -319,20 +296,6 @@ def busexit(errpin,code,msg=''):
         errpin.tx(fbp.mkmsg('stderr',msg))
     errpin.tx(fbp.mkmsg('rc',code))
     # errpin.close()
-
-# XXX this should really be moved to ISFS Volume
-def cklock(errpin,volname,logname,mesh):
-    """ensure that volume is locked, and locked by logname"""
-    volume = ISFS.Volume(volname,mesh=mesh)
-    lockmsg = volume.locked()
-    if not lockmsg:
-        busexit(errpin,iserrno.NOTLOCKED, "%s branch is not locked" % volname)
-        return False
-    if not volume.lockedby(logname):
-        busexit(errpin,iserrno.LOCKED,
-                "%s branch is locked by %s" % (volname,lockmsg))
-        return False
-    return True
 
 def client(transport,argv,kwopt):
 

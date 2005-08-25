@@ -25,6 +25,7 @@ import time
 import urllib2
 
 import isconf
+from isconf.Errno import iserrno
 from isconf.Globals import *
 from isconf.fbp822 import fbp822
 from isconf.Kernel import kernel
@@ -169,6 +170,7 @@ class Volume:
 
     def mkabsolute(self,path):
         if not path.startswith(self.p.cache):
+            path = path.lstrip('/')
             os.path.join(self.p.cache,path)
         return path
 
@@ -181,10 +183,10 @@ class Volume:
         path = self.mkrelative(path)
         self.mesh.announce(path)
 
-    def getlatest(self,path,test=False):
+    def syncer(self,path,test=False):
         path = self.mkrelative(path)
-        self.mesh.find(path)
-        # XXX wait for pull
+        task = kernel.spawn(self.mesh.syncer(path))
+        yield kernel.siguntil,task.isdone
 
     def addwip(self,msg):
         xid = "%f.%f@%s" % (time.time(),random.random(),
@@ -254,7 +256,6 @@ class Volume:
         del self.openfiles[fh]
 
     def locked(self):
-        self.getlatest(self.p.lock)
         if os.path.exists(self.p.lock):
             msg = open(self.p.lock,'r').read()
             msg += ": " + time.ctime(os.path.getmtime(self.p.lock))
@@ -283,6 +284,19 @@ class Volume:
         else:
             return actual
         
+    def cklock(self,logname):
+        """ensure that volume is locked, and locked by logname"""
+        lockmsg = self.locked()
+        volname = self.volname
+        if not lockmsg:
+            error(iserrno.NOTLOCKED, "%s branch is not locked" % volname)
+            return False
+        if not self.lockedby(logname):
+            error(iserrno.LOCKED,
+                    "%s branch is locked by %s" % (volname,lockmsg))
+            return False
+        return True
+
     def lock(self,logname,msg):
         msg = "%s@%s: %s" % (logname,os.environ['HOSTNAME'],str(msg))
         if self.locked() and not self.lockedby(logname):
@@ -297,7 +311,8 @@ class Volume:
     def open(self,path,mode,message=None):
         # XXX check lock
         if not self.wip():
-            self.getlatest(self.p.journal)
+            # self.sync(self.p.journal)
+            pass
         fh = File(volume=self,path=path,mode=mode,message=message)
         self.openfiles[fh]=1
         return fh
@@ -324,6 +339,8 @@ class Volume:
             return False
         
         info("checking for updates")
+        # self.sync(self.p.journal)
+        # XXX wait for pull
         done = open(self.p.history,'r').readlines()
         done = map(lambda xid: xid.strip(),done)
 
@@ -361,7 +378,7 @@ class Volume:
         # XXX large files, atomicity, missing parent dirs
         # XXX volroot
         #
-        self.sync(path)
+        # self.sync(path)
         data = open(path,'r').read()
         path = msg['pathname']
         open(path,'w').write(data)
@@ -453,16 +470,17 @@ class UDPmesh:
 
 
     def announce(self,path):
+        path = path.lstrip('/')
         fullpath = os.path.join(self.dir,path)
         mtime = 0
         if not os.path.exists(fullpath):
             warn("file gone: %s" % fullpath)
             return
-        mtime = os.getmtime(fullpath)
+        mtime = os.path.getmtime(fullpath)
         # XXX HMAC
         reply = FBP.msg('ihave',
                 file=path,mtime=mtime,port=self.httpport,scheme='http')
-        self.sock.sendto(str(reply),0,'<broadcast>')
+        self.sock.sendto(str(reply),0,('<broadcast>',self.udpport))
 
     def announceRx(self,msg,ip):
         scheme = msg['scheme']
@@ -471,10 +489,11 @@ class UDPmesh:
         mtime = msg.head.mtime
         url = "%s://%s:%s/%s" % (scheme,ip,port,path)
         # XXX HMAC
+        path = path.lstrip('/')
         fullpath = os.path.join(self.dir,path)
         mymtime = 0
         if os.path.exists(fullpath):
-            mymtime = os.getmtime(fullpath)
+            mymtime = os.path.getmtime(fullpath)
         if mtime > mymtime:
             self.pull(path,url)
             self.announce(path)
@@ -482,10 +501,11 @@ class UDPmesh:
             self.announce(path)
 
     def find(self,path,timeout=5):
+        path = path.lstrip('/')
         fullpath = os.path.join(self.dir,path)
         mtime = 0
         if os.path.exists(fullpath):
-            mtime = os.getmtime(fullpath)
+            mtime = os.path.getmtime(fullpath)
         req = FBP.msg('whohas',file=path,newer=mtime)
         # XXX HMAC
         start = time.time()
@@ -496,11 +516,12 @@ class UDPmesh:
     def pull(self,path,url):
         # XXX will hang entire server while running -- needs to be a
         # generator
+        path = path.lstrip('/')
         fullpath = os.path.join(self.dir,path)
         (dir,file) = os.path.split(fullpath)
         mtime = 0
         if os.path.exists(fullpath):
-            mtime = os.getmtime(fullpath)
+            mtime = os.path.getmtime(fullpath)
         u = urllib2.urlopen(url)
         info = u.info()
         (mod,size) = (info.get('last-modified'), info.get('content-size'))
@@ -553,28 +574,34 @@ class UDPmesh:
                 msg = factory.parse(data)
                 type = msg.type()
                 if type == 'whohas':
-                    fname = msg['file']
+                    path = msg['file']
+                    path = path.lstrip('/')
+                    fullpath = os.path.join(dir,path)
+                    fullpath = os.path.normpath(fullpath)
                     newer = int(msg.get('newer',None))
                     # security checks
                     # XXX HMAC
-                    os.chdir(dir)
-                    ok=True
-                    if fname != os.path.normpath(fname): 
-                        ok=False
+                    bad=0
+                    if fullpath != os.path.normpath(fullpath): 
+                        bad += 1
                     if dir != os.path.commonprefix(
-                            (dir,os.path.abspath(fname))):
-                        ok=False
-                    if not ok:
-                        warn("unsafe request from %s: %s" % (addr,fname))
+                            (dir,os.path.abspath(fullpath))):
+                        print dir,os.path.commonprefix(
+                            (dir,os.path.abspath(fullpath)))
+                        bad += 2
+                    if bad:
+                        warn("unsafe request %d from %s: %s" % (
+                            bad,addr,fullpath))
                         continue
-                    if not os.path.isfile(fname):
-                        debug("from %s: not found: %s" % (addr,fname))
+                    if not os.path.isfile(fullpath):
+                        debug("from %s: not found: %s" % (addr,fullpath))
                         continue
-                    if newer is not None and newer > os.path.getmtime(fname):
-                        debug("from %s: not newer: %s" % (addr,fname))
+                    if newer is not None and newer > os.path.getmtime(
+                            fullpath):
+                        debug("from %s: not newer: %s" % (addr,fullpath))
                         continue
-                    # url = "http://%s:%d/%s" % (localip,httpport,fname)
-                    self.announce(fname)
+                    # url = "http://%s:%d/%s" % (localip,httpport,path)
+                    self.announce(path)
                     continue
                 if type == 'ihave':
                     ip = addr[0]
