@@ -32,13 +32,13 @@ class CLIServerFactory:
     def __init__(self,socks):
         self.socks = socks
 
-    def run(self):
+    def run(self,mesh):
         while True:
             slist = []
             yield self.socks.rx(slist)
             for sock in slist:
                 server = CLIServer(sock=sock)
-                kernel.spawn(server.run())
+                kernel.spawn(server.run(mesh=mesh))
 
 class CLIServer:
 
@@ -47,7 +47,7 @@ class CLIServer:
         self.verbose = False
         self.debug = False
 
-    def run(self):
+    def run(self,mesh):
         yield kernel.sigbusy # speed things up a bit
         debug("CLIServer running")
         fbp = fbp822()
@@ -59,7 +59,8 @@ class CLIServer:
         # read messages from client
         req = kernel.spawn(fbp.fromStream(stream=self.transport,outpin=frcli))
         # process messages from client
-        proc = kernel.spawn(self.process(inpin=frcli,outpin=tocli))
+        proc = kernel.spawn(
+                self.process(inpin=frcli,outpin=tocli,mesh=mesh))
         # send messages to client
         res = kernel.spawn(self.respond(transport=self.transport,inpin=tocli))
         # merge in log messages
@@ -95,7 +96,7 @@ class CLIServer:
                     return
                 outbus.tx(msg)
 
-    def process(self,inpin,outpin):
+    def process(self,inpin,outpin,mesh):
         while True:
             yield None
             mlist = []
@@ -127,7 +128,7 @@ class CLIServer:
             if len(data):
                 data = data.strip()
                 args = data.split('\n')
-            ops = Ops()
+            ops = Ops(mesh=mesh)
             try:
                 func = getattr(ops,verb)
             except AttributeError:
@@ -173,12 +174,15 @@ class Ops:
     
     """
 
+    def __init__(self,mesh):
+        self.mesh=mesh
+
     def ci(self,opt,args,data,inpin,outpin):
         fbp=fbp822()
         yield None
         volname = branch()
-        volume = ISFS.Volume(volname)
-        if not cklock(outpin,volname,opt['logname']):
+        volume = ISFS.Volume(volname,mesh=self.mesh)
+        if not cklock(outpin,volname,opt['logname'],self.mesh):
             return
         volume.ci()
         # busexit(outpin,iserrno.OK) 
@@ -187,8 +191,8 @@ class Ops:
         fbp=fbp822()
         yield None
         volname = branch()
-        volume = ISFS.Volume(volname)
-        if not cklock(outpin,volname,opt['logname']):
+        volume = ISFS.Volume(volname,mesh=self.mesh)
+        if not cklock(outpin,volname,opt['logname'],self.mesh):
             return
         message = opt['message']
         if message is not None:
@@ -208,8 +212,9 @@ class Ops:
         fbp=fbp822()
         yield None
         volname = branch()
-        volume = ISFS.Volume(volname)
-        if volume.locked() and not cklock(outpin,volname,opt['logname']):
+        volume = ISFS.Volume(volname,mesh=self.mesh)
+        if volume.locked() and not cklock(
+                outpin,volname,opt['logname'],self.mesh):
             return
         if not opt['message']:
             busexit(outpin,iserrno.NEEDMSG,'did not lock %s' %
@@ -226,8 +231,8 @@ class Ops:
         debug("starting snap")
         yield None
         volname = branch()
-        volume = ISFS.Volume(volname)
-        if not cklock(outpin,volname,opt['logname']):
+        volume = ISFS.Volume(volname,mesh=self.mesh)
+        if not cklock(outpin,volname,opt['logname'],self.mesh):
             return
         message = opt['message']
         if message is not None:
@@ -287,7 +292,7 @@ class Ops:
         fbp=fbp822()
         yield None
         volname = branch()
-        volume = ISFS.Volume(volname)
+        volume = ISFS.Volume(volname,mesh=self.mesh)
         volume.update()
         # busexit(outpin,iserrno.OK) 
 
@@ -316,9 +321,9 @@ def busexit(errpin,code,msg=''):
     # errpin.close()
 
 # XXX this should really be moved to ISFS Volume
-def cklock(errpin,volname,logname):
+def cklock(errpin,volname,logname,mesh):
     """ensure that volume is locked, and locked by logname"""
-    volume = ISFS.Volume(volname)
+    volume = ISFS.Volume(volname,mesh=mesh)
     lockmsg = volume.locked()
     if not lockmsg:
         busexit(errpin,iserrno.NOTLOCKED, "%s branch is not locked" % volname)

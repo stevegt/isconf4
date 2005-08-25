@@ -96,15 +96,17 @@ class Server:
         # tcp = Socket.TCPServerFactory(port=self.port)
         # kernel.spawn(tcp.run(out=tcpsocks))
 
-        cli = ISconf.CLIServerFactory(socks=unixsocks)
-        kernel.spawn(cli.run())
-
         cachedir = os.environ['ISFS_CACHE']
-        kernel.spawn(ISFS.httpServer(port=self.httpport,dir=cachedir))
-        kernel.spawn(
-            ISFS.udpServer(
+
+        mesh = ISFS.UDPmesh(
                 udpport=self.port,httpport=self.httpport,dir=cachedir)
-            )
+        # XXX attach to CLIServerFactory
+        kernel.spawn(mesh.run())
+
+        cli = ISconf.CLIServerFactory(socks=unixsocks)
+        kernel.spawn(cli.run(mesh=mesh))
+
+        kernel.spawn(ISFS.httpServer(port=self.httpport,dir=cachedir))
 
         # kernel.spawn(UXmgr(frsock=clin,tosock=clout))
         # kernel.spawn(ISconf(cmd=clin,res=clout,fsreq=tofs,fsres=frfs))
@@ -118,7 +120,7 @@ class Server:
         while True:
             yield None
             # periodic housekeeping
-            debug("mark", time.time())
+            debug("mark")
             # debug(kernel.ps())
             yield kernel.sigsleep, 10
             # XXX check all buffers for unbounded growth

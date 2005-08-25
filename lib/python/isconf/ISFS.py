@@ -22,6 +22,9 @@ import socket
 import sys
 import tempfile
 import time
+import urllib2
+
+import isconf
 from isconf.Globals import *
 from isconf.fbp822 import fbp822
 from isconf.Kernel import kernel
@@ -117,8 +120,9 @@ class File:
 class Volume:
 
     # XXX provide logname and mode on open, check/get lock then
-    def __init__(self,volname):  
+    def __init__(self,volname,mesh):  
         self.volname = volname
+        self.mesh = mesh
 
         # set standard paths; rule 1: only absolute paths get stored
         # in p, use mkrelative to convert as needed
@@ -175,12 +179,12 @@ class Volume:
 
     def announce(self,path):
         path = self.mkrelative(path)
-        udpAnnounce(path)
+        self.mesh.announce(path)
 
-    def pull(self,path,test=False):
+    def getlatest(self,path,test=False):
         path = self.mkrelative(path)
-        # XXX spawn?
-        udpPull(path)
+        self.mesh.find(path)
+        # XXX wait for pull
 
     def addwip(self,msg):
         xid = "%f.%f@%s" % (time.time(),random.random(),
@@ -250,7 +254,7 @@ class Volume:
         del self.openfiles[fh]
 
     def locked(self):
-        self.pull(self.p.lock)
+        self.getlatest(self.p.lock)
         if os.path.exists(self.p.lock):
             msg = open(self.p.lock,'r').read()
             msg += ": " + time.ctime(os.path.getmtime(self.p.lock))
@@ -293,7 +297,7 @@ class Volume:
     def open(self,path,mode,message=None):
         # XXX check lock
         if not self.wip():
-            self.pull(self.p.journal)
+            self.getlatest(self.p.journal)
         fh = File(volume=self,path=path,mode=mode,message=message)
         self.openfiles[fh]=1
         return fh
@@ -356,6 +360,8 @@ class Volume:
         path = self.blk2path(msg['blk'])
         # XXX large files, atomicity, missing parent dirs
         # XXX volroot
+        #
+        self.sync(path)
         data = open(path,'r').read()
         path = msg['pathname']
         open(path,'w').write(data)
@@ -421,6 +427,7 @@ def httpServer(port,dir):
             # includes EAGAIN
             continue
         # XXX filter request -- e.g. do we need directory listings?
+        # XXX HMAC in path info
         try:
             # process_request does the fork...  For now we're going to
             # say that it's okay that the Kernel and other tasks fork
@@ -432,66 +439,152 @@ def httpServer(port,dir):
             svr.handle_error(request, client_address)
             svr.close_request(request)
 
-def udpAnnounce(path):
-    pass
+class UDPmesh:
 
-def udpPull(path):
-    pass
+    def __init__(self,udpport,httpport,dir):
+        self.req = {}
+        self.udpport = udpport
+        self.httpport = httpport
+        self.dir = dir
+        self.lastSend = 0
+        self.sock = None
+        if not os.path.isdir(dir):
+            os.makedirs(dir,0700)
 
-def udpServer(udpport,httpport,dir):
-    from SocketServer import UDPServer
-    from isconf.fbp822 import fbp822, Error822
 
-    if not os.path.isdir(dir):
-        os.makedirs(dir,0700)
+    def announce(self,path):
+        fullpath = os.path.join(self.dir,path)
+        mtime = 0
+        if not os.path.exists(fullpath):
+            warn("file gone: %s" % fullpath)
+            return
+        mtime = os.getmtime(fullpath)
+        # XXX HMAC
+        reply = FBP.msg('ihave',
+                file=path,mtime=mtime,port=self.httpport,scheme='http')
+        self.sock.sendto(str(reply),0,'<broadcast>')
 
-    debug("UDP server serving %s on port %d" % (dir,udpport))
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
-    sock.setblocking(0)
-    sock.bind(('',udpport))     
-    # laddr = sock.getsockname()
-    # localip = os.environ['HOSTNAME']
-    while True:
-        yield None
-        try:
-            data,addr = sock.recvfrom(8192)
-            debug("from %s: %s" % (addr,data))
-            factory = fbp822()
-            msg = factory.parse(data)
-            type = msg.type()
-            if type == 'whohas':
-                fname = msg['file']
-                tell = msg['tell']
-                newer = int(msg.get('newer',None))
-                # security checks
-                os.chdir(dir)
-                ok=True
-                if fname != os.path.normpath(fname): 
-                    ok=False
-                if dir != os.path.commonprefix((dir,os.path.abspath(fname))):
-                    ok=False
-                if not ok:
-                    warn("unsafe request from %s: %s" % (addr,fname))
-                    continue
-                if not os.path.isfile(fname):
-                    debug("from %s: not found: %s" % (addr,fname))
-                    continue
-                if newer is not None and newer > os.path.getmtime(fname):
-                    debug("from %s: not newer: %s" % (addr,fname))
-                    continue
-                # url = "http://%s:%d/%s" % (localip,httpport,fname)
-                reply = factory.mkmsg('ihave',
-                        file=fname,port=httpport,scheme='http')
-                sock.sendto(str(reply),0,addr)
+    def announceRx(self,msg,ip):
+        scheme = msg['scheme']
+        port = msg['port']
+        path = msg['file']
+        mtime = msg.head.mtime
+        url = "%s://%s:%s/%s" % (scheme,ip,port,path)
+        # XXX HMAC
+        fullpath = os.path.join(self.dir,path)
+        mymtime = 0
+        if os.path.exists(fullpath):
+            mymtime = os.getmtime(fullpath)
+        if mtime > mymtime:
+            self.pull(path,url)
+            self.announce(path)
+        if mtime < mymtime:
+            self.announce(path)
+
+    def find(self,path,timeout=5):
+        fullpath = os.path.join(self.dir,path)
+        mtime = 0
+        if os.path.exists(fullpath):
+            mtime = os.getmtime(fullpath)
+        req = FBP.msg('whohas',file=path,newer=mtime)
+        # XXX HMAC
+        start = time.time()
+        self.req.setdefault(path,{})
+        self.req[path]['msg'] = req
+        self.req[path]['expires'] = time.time() + timeout
+
+    def pull(self,path,url):
+        # XXX will hang entire server while running -- needs to be a
+        # generator
+        fullpath = os.path.join(self.dir,path)
+        (dir,file) = os.path.split(fullpath)
+        mtime = 0
+        if os.path.exists(fullpath):
+            mtime = os.getmtime(fullpath)
+        u = urllib2.urlopen(url)
+        info = u.info()
+        (mod,size) = (info.get('last-modified'), info.get('content-size'))
+        debug(url,size,mod)
+        # XXX show progress
+        # XXX large files
+        data = u.read()
+        tmp = os.path.join(dir,"...%s.tmp" % file)
+        open(tmp,'w').write(data)
+        os.chmod(tmp,0600)
+        os.rename(tmp,fullpath)
+
+    def resend(self):
+        """(re)send outstanding requests"""
+        if time.time() < self.lastSend + 1:
+            return
+        self.lastSend = time.time()
+        paths = self.req.keys()
+        for path in paths:
+            if time.time() > self.req[path]['expires']:
+                del self.req[path]
                 continue
-            # cache flood listener 
-            if type == 'ihave':
-                fname = msg['file']
-                kernel.spawn(udpPull(fname))
-            warn("unsupported message type from %s: %s" % (addr,type))
-        except socket.error:
-            continue
-        except Exception, e:
-            warn("%s from %s: %s" % (e,addr,data))
-            continue
+            req = self.req[path]['msg']
+            debug(req)
+            self.sock.sendto(str(req),0,('<broadcast>',self.udpport))
+
+    def run(self):
+        from SocketServer import UDPServer
+        from isconf.fbp822 import fbp822, Error822
+
+        dir = self.dir
+        udpport = self.udpport
+
+        debug("UDP server serving %s on port %d" % (dir,udpport))
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock = sock
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, True)
+        sock.setblocking(0)
+        sock.bind(('',udpport))     
+        # laddr = sock.getsockname()
+        # localip = os.environ['HOSTNAME']
+        while True:
+            yield None
+            self.resend()
+            try:
+                data,addr = sock.recvfrom(8192)
+                debug("from %s: %s" % (addr,data))
+                factory = fbp822()
+                msg = factory.parse(data)
+                type = msg.type()
+                if type == 'whohas':
+                    fname = msg['file']
+                    newer = int(msg.get('newer',None))
+                    # security checks
+                    # XXX HMAC
+                    os.chdir(dir)
+                    ok=True
+                    if fname != os.path.normpath(fname): 
+                        ok=False
+                    if dir != os.path.commonprefix(
+                            (dir,os.path.abspath(fname))):
+                        ok=False
+                    if not ok:
+                        warn("unsafe request from %s: %s" % (addr,fname))
+                        continue
+                    if not os.path.isfile(fname):
+                        debug("from %s: not found: %s" % (addr,fname))
+                        continue
+                    if newer is not None and newer > os.path.getmtime(fname):
+                        debug("from %s: not newer: %s" % (addr,fname))
+                        continue
+                    # url = "http://%s:%d/%s" % (localip,httpport,fname)
+                    self.announce(fname)
+                    continue
+                if type == 'ihave':
+                    ip = addr[0]
+                    self.announceRx(msg,ip)
+                    continue
+                warn("unsupported message type from %s: %s" % (addr,type))
+            except socket.error:
+                continue
+            except Exception, e:
+                warn("%s from %s: %s" % (e,addr,data))
+                continue
+
+

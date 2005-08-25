@@ -30,7 +30,6 @@ class ServerSocket:
         self.chunksize = chunksize
         self.sock = sock
         self.address = address
-        self.role = 'master'
         self.state = 'up'
         self.txd = ''
         self.rxd = ''
@@ -47,6 +46,7 @@ class ServerSocket:
         self.state = 'closing'
 
     def read(self,size):
+        # XXX also see MSG_PEEK flag in recv(2)
         actual = min(size,len(self.rxd))
         if actual == 0:
             return ''
@@ -164,7 +164,6 @@ class UNIXClientSocket:
     def __init__(self, path, chunksize=4096):
         self.chunksize = chunksize
         self.ctl = path
-        self.role = 'client'
         self.state = 'up'
         self.txd = ''
         self.rxd = ''
@@ -193,4 +192,15 @@ class UNIXClientSocket:
 
     def shutdown(self):
         self.sock.shutdown(1)
+
+class UDPClientSocket:
+    """a non-blocking UDP client socket"""
+
+    def __init__(self, port):
+        self.port = port
+        self.txd = ''
+        self.rxd = ''
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.setblocking(0)
+        debug("UDP client on port %s" % self.port)
 

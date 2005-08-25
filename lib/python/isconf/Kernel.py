@@ -243,6 +243,7 @@ class Kernel:
             msg = "kernel: %s" % out
             error(msg)
             print >>sys.stderr, msg
+            # XXX only restart task instead
             raise Restart
         self.kill(tid)
 
