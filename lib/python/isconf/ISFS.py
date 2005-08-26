@@ -485,7 +485,7 @@ class Volume:
         popen = popen2.Popen3(argv,capturestderr=True)
         (stdin, stdout, stderr) = (
                 popen.tochild, popen.fromchild, popen.childerr)
-        # XXX poll, generate messages
+        # XXX spawn tasks to generate messages
         status = popen.wait()
         rc = os.WEXITSTATUS(status)
         out = stdout.read()

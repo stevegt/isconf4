@@ -194,7 +194,7 @@ class Cache:
         u = urllib2.urlopen(url)
         uinfo = u.info()
         (mod,size) = (uinfo.get('last-modified'), uinfo.get('content-size'))
-        mod_secs = time.mktime(email.Utils.parsedate(mod))
+        mod_secs = email.Utils.mktime_tz(email.Utils.parsedate_tz(mod))
         if mod_secs <= mtime:
             warn("not newer:",url,mod,mod_secs,mtime)
             if self.req.has_key(path):
