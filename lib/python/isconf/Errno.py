@@ -7,6 +7,7 @@ def mkdict(**kwargs): return kwargs
 
 errset = mkdict(
 OK                = (0,  ""),
+LOCKED            = (220, "resource is locked"),
 NOTLOCKED         = (221, "resource is not locked"),
 NEEDMSG           = (222, "changelog/lock message (-m) required"),
 PANIC             = (223, "unable to continue"),

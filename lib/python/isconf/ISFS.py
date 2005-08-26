@@ -165,6 +165,9 @@ class Volume:
         cachevol     = "%s/%s" % (self.p.cache,domvol)
         privatevol   = "%s/%s" % (self.p.private,domvol)
 
+        self.p.dirty   = "%s/.dirty"       % (self.p.private)
+        self.p.pull    = "%s/.pull"        % (self.p.private)
+
         self.p.journal = "%s/journal"     % (cachevol)
         self.p.lock    = "%s/lock"        % (cachevol)
         self.p.block   = "%s/block"       % (cachevol)
@@ -172,8 +175,6 @@ class Volume:
         self.p.wip     = "%s/journal.wip" % (privatevol)
         self.p.history = "%s/history"     % (privatevol)
         self.p.volroot = "%s/volroot"     % (privatevol)
-        self.p.dirty   = "%s/dirty"       % (privatevol)
-        self.p.pull    = "%s/pull"        % (privatevol)
 
         debug("isfs cache", self.p.cache)
         debug("journal abspath", self.p.journal)
@@ -219,7 +220,10 @@ class Volume:
         open(self.p.dirty,'a').write(path + "\n")
 
     def pull(self):
-        files = (self.p.journal,self.p.lock)
+        files = (
+                self.mkrelative(self.p.journal),
+                self.mkrelative(self.p.lock)
+                )
         yield kernel.wait(self.pullfiles(files))
         files = self.pendingfiles()
         yield kernel.wait(self.pullfiles(files))
@@ -235,6 +239,7 @@ class Volume:
             # list during pull, then touch it zero-length after pull
             if not os.path.exists(self.p.pull):
                 # still working
+                yield kernel.sigsleep, .1
                 continue
             if os.path.getsize(self.p.pull) == 0:
                 break
@@ -259,6 +264,7 @@ class Volume:
 
             # copy to block tree
             open(path,'w').write(data)
+            self.dirty(path)
 
             # run the update now rather than wait for up command
             if not self.updateSnap(msg):
@@ -285,8 +291,8 @@ class Volume:
         info("exec done:", ' '.join(map(lambda a: "'%s'" % a,args)))
             
     def blk2path(self,blk):
-        debug(blk)
-        dir = "%s/%s" % (self.p.block,blk[:4])
+        print blk
+        dir = "%s/%s" % (self.p.block,blk[:3])
         if not os.path.isdir(dir):
             os.makedirs(dir,0700)
         path = "%s/%s" % (dir,blk)
@@ -295,7 +301,10 @@ class Volume:
     def ci(self):
         wipdata = self.wip()
         if not wipdata:
+            if not self.cklock(): 
+                return 
             info("no outstanding updates")
+            self.unlock()
             return 
         if not self.cklock(): return 
         jtime = os.path.getmtime(self.p.journal)
@@ -319,15 +328,15 @@ class Volume:
         del self.openfiles[fh]
 
     def locked(self):
-        if os.path.exists(self.p.lock):
+        if os.path.exists(self.p.lock) and os.path.getsize(self.p.lock):
             msg = open(self.p.lock,'r').read()
-            msg += ": " + time.ctime(os.path.getmtime(self.p.lock))
             return msg
         return False
 
     def lockmsg(self):
-        if os.path.exists(self.p.lock):
+        if os.path.exists(self.p.lock) and os.path.getsize(self.p.lock):
             msg = open(self.p.lock,'r').read()
+            msg += " (lock time %s)" % time.ctime(os.path.getmtime(self.p.lock))
             return msg
         return 'none'
 
@@ -350,14 +359,14 @@ class Volume:
     def cklock(self):
         """ensure that volume is locked, and locked by logname"""
         logname = self.logname
-        lockmsg = self.locked()
+        lockmsg = self.lockmsg()
         volname = self.volname
-        if not lockmsg:
-            error(iserrno.NOTLOCKED, "%s branch is not locked" % volname)
+        if not self.locked():
+            error(iserrno.NOTLOCKED, "%s is not locked" % volname)
             return False
         if not self.lockedby(logname):
             error(iserrno.LOCKED,
-                    "%s branch is locked by %s" % (volname,lockmsg))
+                    "%s is locked by: %s" % (volname,lockmsg))
             return False
         return True
 
@@ -365,7 +374,7 @@ class Volume:
         logname = self.logname
         message = "%s@%s: %s" % (logname,os.environ['HOSTNAME'],str(message))
         yield kernel.wait(self.pull())
-        if self.locked() and not self.volume.cklock():
+        if self.locked() and not self.cklock():
             return 
         open(self.p.lock,'w').write(message)
         self.dirty(self.p.lock)
@@ -379,18 +388,18 @@ class Volume:
         self.openfiles[fh]=1
         return fh
 
-    def setstat(path,st):
+    def setstat(self,path,st):
+        print st.st_mode,st.st_uid,st.st_gid,st.st_atime,st.st_mtime
         os.chmod(path,st.st_mode)
         os.chown(path,st.st_uid,st.st_gid)
         os.utime(path,(st.st_atime,st.st_mtime))
 
     def unlock(self):
         locker = self.lockedby()
-        if locker:
-            os.unlink(self.p.lock)
-        if self.locked():
-            error(iserrno.LOCKED,'attempt to unlock %s failed' % self.volname) 
-            return False
+        info("removing lock on %s set by %s" % (self.volname,locker)) 
+        open(self.p.lock,'w')
+        self.dirty(self.p.lock)
+        assert not self.locked()
         return True
 
 
@@ -437,20 +446,31 @@ class Volume:
     def pendingfiles(self):
         files = []
         for msg in self.pending():
-            files.append(msg.head.pathname)
+            if not msg.type() == 'snap':
+                continue
+            blk = msg.head.blk
+            path = self.mkrelative(self.blk2path(blk))
+            files.append(path)
         return files
 
     def updateSnap(self,msg):
-        path = self.blk2path(msg['blk'])
+        src = self.blk2path(msg['blk'])
         # XXX large files, atomicity, missing parent dirs
         # XXX volroot
-        data = open(path,'r').read()
-        path = msg['pathname']
-        open(path,'w').write(data)
+        if not os.path.exists(src):
+            error("missing block: %s" % src)
+            return False
+        data = open(src,'r').read()
+        dst = msg['pathname']
+        open(dst,'w').write(data)
         # update history
         open(self.p.history,'a').write(msg['xid'] + "\n")
-        info("updated", path)
-        # XXX setstat
+        info("updated", dst)
+        class St: pass
+        st = St()
+        for attr in "st_mode st_uid st_gid st_atime st_mtime".split():
+            setattr(st,attr,getattr(msg.head,attr))
+        self.setstat(dst,st)
         return True
 
     def updateExec(self,msg):
@@ -488,8 +508,13 @@ class Volume:
 
 def httpServer(port,dir):
     from BaseHTTPServer import HTTPServer
-    from SimpleHTTPServer import SimpleHTTPRequestHandler
+    from isconf.HTTPServer import SimpleHTTPRequestHandler
     from SocketServer import ForkingMixIn
+    
+    def logger(*args): 
+        msg = str(args)
+        open("/tmp/isconf.http.log",'a').write(msg+"\n")
+    SimpleHTTPRequestHandler.log_message = logger
     
     if not os.path.isdir(dir):
         os.makedirs(dir,0700)
@@ -506,6 +531,7 @@ def httpServer(port,dir):
         try:
             request, client_address = svr.get_request()
         except socket.error:
+            yield kernel.sigsleep, .1
             # includes EAGAIN
             continue
         # XXX filter request -- e.g. do we need directory listings?
@@ -520,163 +546,4 @@ def httpServer(port,dir):
         except:
             svr.handle_error(request, client_address)
             svr.close_request(request)
-
-class UDPmesh:
-
-    def __init__(self,udpport,httpport,dir):
-        self.req = {}
-        self.udpport = udpport
-        self.httpport = httpport
-        self.dir = dir
-        self.lastSend = 0
-        self.sock = None
-        if not os.path.isdir(dir):
-            os.makedirs(dir,0700)
-
-
-    def announce(self,path):
-        path = path.lstrip('/')
-        fullpath = os.path.join(self.dir,path)
-        mtime = 0
-        if not os.path.exists(fullpath):
-            warn("file gone: %s" % fullpath)
-            return
-        mtime = os.path.getmtime(fullpath)
-        # XXX HMAC
-        reply = FBP.msg('ihave',
-                file=path,mtime=mtime,port=self.httpport,scheme='http')
-        self.sock.sendto(str(reply),0,('<broadcast>',self.udpport))
-
-    def announceRx(self,msg,ip):
-        scheme = msg['scheme']
-        port = msg['port']
-        path = msg['file']
-        mtime = msg.head.mtime
-        url = "%s://%s:%s/%s" % (scheme,ip,port,path)
-        # XXX HMAC
-        path = path.lstrip('/')
-        fullpath = os.path.join(self.dir,path)
-        mymtime = 0
-        if os.path.exists(fullpath):
-            mymtime = os.path.getmtime(fullpath)
-        if mtime > mymtime:
-            self.pull(path,url)
-            self.announce(path)
-        if mtime < mymtime:
-            self.announce(path)
-
-    def find(self,path,timeout=5):
-        path = path.lstrip('/')
-        fullpath = os.path.join(self.dir,path)
-        mtime = 0
-        if os.path.exists(fullpath):
-            mtime = os.path.getmtime(fullpath)
-        req = FBP.msg('whohas',file=path,newer=mtime)
-        # XXX HMAC
-        start = time.time()
-        self.req.setdefault(path,{})
-        self.req[path]['msg'] = req
-        self.req[path]['expires'] = time.time() + timeout
-
-    def pull(self,path,url):
-        # XXX will hang entire server while running -- needs to be a
-        # generator
-        path = path.lstrip('/')
-        fullpath = os.path.join(self.dir,path)
-        (dir,file) = os.path.split(fullpath)
-        mtime = 0
-        if os.path.exists(fullpath):
-            mtime = os.path.getmtime(fullpath)
-        u = urllib2.urlopen(url)
-        info = u.info()
-        (mod,size) = (info.get('last-modified'), info.get('content-size'))
-        debug(url,size,mod)
-        # XXX show progress
-        # XXX large files
-        data = u.read()
-        tmp = os.path.join(dir,"...%s.tmp" % file)
-        open(tmp,'w').write(data)
-        os.chmod(tmp,0600)
-        os.rename(tmp,fullpath)
-
-    def resend(self):
-        """(re)send outstanding requests"""
-        if time.time() < self.lastSend + 1:
-            return
-        self.lastSend = time.time()
-        paths = self.req.keys()
-        for path in paths:
-            if time.time() > self.req[path]['expires']:
-                del self.req[path]
-                continue
-            req = self.req[path]['msg']
-            debug(req)
-            self.sock.sendto(str(req),0,('<broadcast>',self.udpport))
-
-    def run(self):
-        from SocketServer import UDPServer
-        from isconf.fbp822 import fbp822, Error822
-
-        dir = self.dir
-        udpport = self.udpport
-
-        debug("UDP server serving %s on port %d" % (dir,udpport))
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock = sock
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, True)
-        sock.setblocking(0)
-        sock.bind(('',udpport))     
-        # laddr = sock.getsockname()
-        # localip = os.environ['HOSTNAME']
-        while True:
-            yield None
-            self.resend()
-            try:
-                data,addr = sock.recvfrom(8192)
-                debug("from %s: %s" % (addr,data))
-                factory = fbp822()
-                msg = factory.parse(data)
-                type = msg.type()
-                if type == 'whohas':
-                    path = msg['file']
-                    path = path.lstrip('/')
-                    fullpath = os.path.join(dir,path)
-                    fullpath = os.path.normpath(fullpath)
-                    newer = int(msg.get('newer',None))
-                    # security checks
-                    # XXX HMAC
-                    bad=0
-                    if fullpath != os.path.normpath(fullpath): 
-                        bad += 1
-                    if dir != os.path.commonprefix(
-                            (dir,os.path.abspath(fullpath))):
-                        print dir,os.path.commonprefix(
-                            (dir,os.path.abspath(fullpath)))
-                        bad += 2
-                    if bad:
-                        warn("unsafe request %d from %s: %s" % (
-                            bad,addr,fullpath))
-                        continue
-                    if not os.path.isfile(fullpath):
-                        debug("from %s: not found: %s" % (addr,fullpath))
-                        continue
-                    if newer is not None and newer > os.path.getmtime(
-                            fullpath):
-                        debug("from %s: not newer: %s" % (addr,fullpath))
-                        continue
-                    # url = "http://%s:%d/%s" % (localip,httpport,path)
-                    self.announce(path)
-                    continue
-                if type == 'ihave':
-                    ip = addr[0]
-                    self.announceRx(msg,ip)
-                    continue
-                warn("unsupported message type from %s: %s" % (addr,type))
-            except socket.error:
-                continue
-            except Exception, e:
-                warn("%s from %s: %s" % (e,addr,data))
-                continue
-
 

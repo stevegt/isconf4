@@ -136,15 +136,12 @@ class CLIServer:
             except AttributeError:
                 error(outpin,iserrno.EINVAL,verb)
                 return
-            # start command processor
-            task = kernel.spawn(func())
-            # wait for it to finish
-            yield kernel.siguntil, kernel.isdone, task.tid
+            # start command processor, wait for it to finish
+            yield kernel.wait(func())
             break
 
     def respond(self,transport,inpin):
         while True:
-            yield kernel.sigbusy
             mlist = []
             yield inpin.rx(mlist)
             for msg in mlist:
@@ -231,6 +228,8 @@ class Ops:
         src = open(path,'r')
         debug("calling open")
         dst = self.volume.open(path,'w',message=message)
+        if not dst:
+            return
         dst.setstat(st)
         while True:
             data = src.read(1024 * 1024 * 1)
@@ -243,6 +242,7 @@ class Ops:
 
     def unlock(self):
         yield None
+        locker = self.volume.lockedby()
         self.volume.unlock()
         info("broke %s lock -- please notify %s" % (self.volname,locker))
 
@@ -304,6 +304,7 @@ def client(transport,argv,kwopt):
     stream = fbp.fromStream(transport,intask=False)
     # process one message each time through loop
     while True:
+        time.sleep(.1)
         try:
             msg = stream.next()
         except StopIteration:

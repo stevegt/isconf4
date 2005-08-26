@@ -14,29 +14,11 @@ import sys
 import time
 
 import isconf
-from isconf import ISconf, ISFS, Socket
+from isconf import ISconf, ISFS, Socket, Cache
 from isconf.Globals import *
 from isconf.GPG import GPG
 from isconf.Kernel import kernel, Bus
 
-
-class EchoTest:
-
-    def __init__(self,transport):
-        self.transport=transport
-
-    def run(self,*args,**kwargs):
-        info("starting EchoTest.run")
-        rxd = ''
-        while True:
-            yield None
-            # rxd = self.transport.read(1)
-            # self.transport.write(rxd)
-            rxd += self.transport.read(1)
-            if '\n' in rxd: 
-                self.transport.write(rxd)
-                rxd = ''
-        return 
 
 class Server:
 
@@ -98,10 +80,10 @@ class Server:
 
         cachedir = os.environ['ISFS_CACHE']
 
-        mesh = ISFS.UDPmesh(
+        cache = Cache.Cache(
                 udpport=self.port,httpport=self.httpport,dir=cachedir)
         # XXX attach to CLIServerFactory
-        kernel.spawn(mesh.run())
+        kernel.spawn(cache.run())
 
         cli = ISconf.CLIServerFactory(socks=unixsocks)
         kernel.spawn(cli.run())

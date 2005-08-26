@@ -361,7 +361,7 @@ class Kernel:
             if not steps:
                 self.HZ *= .99
             self.HZ = max(self.HZ,1)
-            self.HZ = min(self.HZ,999999999999)
+            self.HZ = min(self.HZ,999999)
             # if self.HZ < 100:
             #     debug("HZ", self.HZ) 
             for tid in self._tasks.keys():

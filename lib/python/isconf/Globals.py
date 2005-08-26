@@ -66,10 +66,11 @@ def warn(*msg):
 def error(rc,*msg):
     # causes client to exit; server only logs it
     if isinstance(rc,int):
-        desc = iserrno.strerror(code)
+        desc = iserrno.strerror(rc)
         if msg:
             msg = mkstring(msg)
-            msg = "%s: %s\n" % (msg, desc)
+            if not msg.endswith(desc):
+                msg = "%s: %s" % (msg, desc)
     else:
         msg = [rc] + mklist(msg)
         rc = 1 # EPERM 
