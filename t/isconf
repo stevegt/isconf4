@@ -1,4 +1,6 @@
 #!/bin/sh
 
-PYTHONPATH=lib/python bin/isconf -c t/simple.conf "$@"
+base=`dirname $0`/..
+export PYTHONPATH=$base/lib/python 
+$base/bin/isconf -c $base/t/simple.conf "$@"
 

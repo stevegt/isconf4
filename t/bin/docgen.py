@@ -112,6 +112,7 @@ class docgen:
         opt = {
             'd': ('debug', False, "debug this script"),
             'h': ('help', False, "this text"),
+            'p': ('libpath', "lib/python", "path to module under test"),
             'v': ('verbose', False, "debug the test case"),
         }
         if '-h' in sys.argv:
@@ -120,7 +121,7 @@ class docgen:
         (kwopt,args) = getkwopt(sys.argv[1:],opt)
         modulepath = args[0]
 
-        libpath = "lib/python"
+        libpath = kwopt['libpath']
         sys.path.append(libpath)
 
         m = re.match(".*%s/(.*).py" % libpath, modulepath)

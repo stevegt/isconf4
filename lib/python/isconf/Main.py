@@ -117,7 +117,13 @@ class Main:
         if os.fork(): return 0
         os.chdir('/')
         os.setsid()
-        os.umask(0)
+        os.umask(0) # XXX
+        sys.stdin.close()
+        sys.stderr.close()
+        sys.stdout.close()
+        # XXX
+        sys.stderr = open("/tmp/isconf.stderr",'w')
+        sys.stdout = open("/tmp/isconf.stdout",'w')
         if os.fork(): sys.exit(0)
         # start daemon
         while True:

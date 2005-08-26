@@ -143,11 +143,11 @@ class Bus:
         >>> b = kernel.spawn(cgen(inpin=bus1,count=1))
         >>> kernel.run(steps=1000)
         >>> bus1.tx(1)
-        1
+        2
         >>> bus1.tx(2)
-        1
+        2
         >>> bus1.tx(3)
-        1
+        2
         >>> kernel.run(steps=1000)
         99999 [1, 2, 3]
         1 [1]

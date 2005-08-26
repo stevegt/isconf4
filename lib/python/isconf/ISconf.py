@@ -155,6 +155,9 @@ class CLIServer:
                     return
                 # no logging in here!  causes a message loop...
                 # debug("to client:", str(msg))
+                rectype = msg.type()
+                if rectype == 'debug' and not self.debug:
+                    continue
                 transport.write(str(msg))
                 if msg.type() == 'rc':
                     transport.close()
@@ -189,10 +192,10 @@ class Ops:
         yield None
         message = self.opt['message']
         cwd = self.opt['cwd']
-        if not len(self.args):
+        if not len(self.data):
             error(iserrno.EINVAL,"missing exec command")
             return
-        self.volume.Exec(self.args,cwd,message)
+        self.volume.Exec(self.data,cwd,message)
 
 
     def lock(self):

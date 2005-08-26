@@ -44,10 +44,14 @@ test:
 systest:
 	cd t && time make runsystest.py
 
-labtest:
+labsync:
 	rsync -PHaSvuz --exclude=*.pyc . root@isconf10:/tmp/isconftest
 	rsync -PHaSvuz --exclude=*.pyc . root@isconf11:/tmp/isconftest
-	rsync -PHaSvuz --exclude=*.pyc . root@isconf12:/tmp/isconftest
+	# rsync -PHaSvuz --exclude=*.pyc . root@isconf12:/tmp/isconftest
+
+labtest: labsync
+	cd t && time python2.2 runlabtest.py /tmp/isconftest \
+		isconf10 isconf11 isconf12
 
 mtatest:
 	- killall isconf

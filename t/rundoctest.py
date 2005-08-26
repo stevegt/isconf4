@@ -41,7 +41,7 @@ def docTest():
     imported = []
     for modname in modules:
         # XXX not enough entropy during test -- bug #20
-        if modname == 'isconf.GPG':
+        if modname in ('isconf.GPG','isconf.Globals'):
             continue
         # aarg!  need to include fromlist when importing from package
         # -- see pydoc

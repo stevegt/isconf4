@@ -280,15 +280,19 @@ class Volume:
             # append message to journal wip
             open(self.p.wip,'a').write(str(msg))
 
-    def Exec(self,args,cwd,message):
+        # add a couple of newlines to ensure message separation
+        open(self.p.wip,'a').write("\n\n")
+
+
+    def Exec(self,argdata,cwd,message):
         # XXX what about when cwd != volroot?
-        cmd = ' '.join(map(lambda a: "'%s'" % a,args))
         if not self.cklock(): return 
         if message is None:
             message = self.lockmsg()
-        msg = FBP.mkmsg('exec', cmd=cmd, cwd=cwd, message=message)
+        msg = FBP.mkmsg('exec', argdata + "\n", cwd=cwd, message=message)
         self.addwip(msg)
-        info("exec done:", ' '.join(map(lambda a: "'%s'" % a,args)))
+        argv = argdata.split("\n")
+        info("exec done:", str(argv))
             
     def blk2path(self,blk):
         print blk
@@ -474,11 +478,11 @@ class Volume:
         return True
 
     def updateExec(self,msg):
-        cmd = msg['cmd']
+        argv = msg.data().strip().split("\n")
         cwd = msg['cwd']
         os.chdir(cwd)
-        info("running", cmd)
-        popen = popen2.Popen3(cmd,capturestderr=True)
+        info("running", str(argv))
+        popen = popen2.Popen3(argv,capturestderr=True)
         (stdin, stdout, stderr) = (
                 popen.tochild, popen.fromchild, popen.childerr)
         # XXX poll, generate messages
@@ -489,7 +493,7 @@ class Volume:
         info(out)
         info(err)
         if rc:
-            error("returned", rc, ": ", cmd)
+            error("returned", rc, ": ", str(argv))
             return False
         # update history
         open(self.p.history,'a').write(msg['xid'] + "\n")

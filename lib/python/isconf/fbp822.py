@@ -12,8 +12,6 @@ import sha
 import sys
 import types
 
-sigbusy='busy' # XXX
-
 class fbp822:
     """Flow-based messages via simple RFC-822-like format.  
 
@@ -249,6 +247,8 @@ class fbp822:
             if state is HEAD:
                 if line == '\n':
                     state = PARSE
+                else:
+                    continue
             if state is BODY:
                 if len(rxd) < total:
                     continue
@@ -280,10 +280,10 @@ class fbp822:
                 total = 0
                 state = START
                 continue
+            print >>sys.stderr, "unidentified line:", line
 
         if rxd:
-            # hmm.  junk at end of stream.  XXX discard for now
-            pass
+            print >>sys.stderr, "junk found at end of stream:", rxd
         if outpin: 
             outpin.close()
 
