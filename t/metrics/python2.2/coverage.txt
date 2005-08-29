@@ -1,6 +1,6 @@
 Name         Stmts   Exec  Cover
 --------------------------------
-Cache          238     36    15%
+Cache          253     38    15%
 Config          60      8    13%
 Errno           27     19    70%
 Globals         77     26    33%
@@ -8,10 +8,10 @@ HTTPServer      47     19    40%
 ISFS           409     66    16%
 ISconf         267     44    16%
 Kernel         287    212    73%
-Main           159     25    15%
+Main           165     26    15%
 Server          71     21    29%
 Socket         158     33    20%
 __init__         0      0   100%
 fbp822         225    124    55%
 --------------------------------
-TOTAL         2025    633    31%
+TOTAL         2046    636    31%

@@ -4,5 +4,5 @@
   22 tests in isconf.Kernel.Kernel.spawn
   19 tests in isconf.fbp822.fbp822
   18 tests in isconf.fbp822.fbp822.parse
-89 tests in 193 items.
+89 tests in 195 items.
 89 passed and 0 failed.
