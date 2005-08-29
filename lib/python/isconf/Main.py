@@ -116,7 +116,10 @@ class Main:
         # detach from parent per Stevens
         # XXX need to allow for optional foreground operation
         if os.fork(): return 0
-        os.chdir(os.environ['ISFS_HOME'])
+        home = os.environ['ISFS_HOME']
+        if not os.path.isdir(home):
+            os.makedirs(home,0700)
+        os.chdir(home)
         os.setsid()
         os.umask(0) # XXX
         signal.signal(signal.SIGHUP,signal.SIG_IGN)

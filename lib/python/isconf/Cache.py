@@ -62,13 +62,15 @@ class Cache:
 
     def readnets(self):
         # read network list
-        nets = {}
+        nets = {'udp': [], 'tcp': []}
         netsfn = os.environ.get('ISFS_NETS',None)
+        debug("netsfn", netsfn)
         if netsfn and os.path.exists(netsfn):
             netsfd = open(netsfn,'r')
             for line in netsfd:
                 (scheme,addr) = line.strip().split()
                 nets[scheme].append(addr)
+        debug("nets", str(nets))
         return nets
 
     def ihaveTx(self,path):
@@ -86,8 +88,8 @@ class Cache:
 
     def bcast(self,msg):
         # XXX only udp supported so far
-        for addr in '<broadcast>' + self.nets['udp']:
-            self.sock.sendto(msg,0,('<broadcast>',self.udpport))
+        for addr in ['<broadcast>'] + self.nets['udp']:
+            self.sock.sendto(msg,0,(addr,self.udpport))
 
     def ihaveRx(self,msg,ip):
         yield None

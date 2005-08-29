@@ -1,8 +1,25 @@
 #!/bin/sh
 
 base=`dirname $0`/..
+cd $base
+base=$PWD
+cd -
 PYTHONPATH=$base/lib/python 
-ISFS_NETS=$base/t/nets
+
+# set up network addresses to talk to in addition to UDP broadcast
+if hostname | egrep '^test' > /dev/null
+then
+    ISFS_NETS=$base/t/nets
+fi
+
+# try to use old python for compatibility testing
+python=python2.2
+if ! which python2.2 > /dev/null
+then
+    python=python
+fi
+
 export PYTHONPATH ISFS_NETS
-$base/bin/isconf -c $base/t/simple.conf "$@"
+
+$python $base/bin/isconf -c $base/t/simple.conf "$@"
 
