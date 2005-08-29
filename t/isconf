@@ -1,6 +1,8 @@
 #!/bin/sh
 
 base=`dirname $0`/..
-export PYTHONPATH=$base/lib/python 
+PYTHONPATH=$base/lib/python 
+ISFS_NETS=$base/t/nets
+export PYTHONPATH ISFS_NETS
 $base/bin/isconf -c $base/t/simple.conf "$@"
 

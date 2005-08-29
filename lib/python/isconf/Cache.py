@@ -40,6 +40,8 @@ class Cache:
         self.lastSend = 0
         self.sock = None
         self.fetched = {}
+        self.nets = self.readnets()
+
         # temporary uid -- uniquely identifies host in non-persistent
         # packets.  If we want something permanent we should store it
         # somewhere under private.
@@ -58,6 +60,17 @@ class Cache:
         self.p.dirty   = "%s/.dirty"       % (self.p.private)
         self.p.pull    = "%s/.pull"        % (self.p.private)
 
+    def readnets(self):
+        # read network list
+        nets = {}
+        netsfn = os.environ.get('ISFS_NETS',None)
+        if netsfn and os.path.exists(netsfn):
+            netsfd = open(netsfn,'r')
+            for line in netsfd:
+                (scheme,addr) = line.strip().split()
+                nets[scheme].append(addr)
+        return nets
+
     def ihaveTx(self,path):
         path = path.lstrip('/')
         fullpath = os.path.join(self.dir,path)
@@ -69,7 +82,12 @@ class Cache:
         # XXX HMAC
         reply = FBP.msg('ihave',tuid=self.tuid,
                 file=path,mtime=mtime,port=self.httpport,scheme='http')
-        self.sock.sendto(str(reply),0,('<broadcast>',self.udpport))
+        self.bcast(str(reply))
+
+    def bcast(self,msg):
+        # XXX only udp supported so far
+        for addr in '<broadcast>' + self.nets['udp']:
+            self.sock.sendto(msg,0,('<broadcast>',self.udpport))
 
     def ihaveRx(self,msg,ip):
         yield None
@@ -161,7 +179,7 @@ class Cache:
                 del self.req[path]
                 continue
             req = self.req[path]['msg']
-            self.sock.sendto(str(req),0,('<broadcast>',self.udpport))
+            self.bcast(str(req))
 
     def flush(self):
         if not os.path.exists(self.p.dirty):
