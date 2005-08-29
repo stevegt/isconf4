@@ -3,6 +3,7 @@ import copy
 import getopt
 import inspect
 import os
+import signal
 import sys
 import time
 
@@ -115,16 +116,18 @@ class Main:
         # detach from parent per Stevens
         # XXX need to allow for optional foreground operation
         if os.fork(): return 0
-        os.chdir('/')
+        os.chdir(os.environ['ISFS_HOME'])
         os.setsid()
         os.umask(0) # XXX
-        sys.stdin.close()
-        sys.stderr.close()
-        sys.stdout.close()
-        # XXX
-        sys.stderr = open("/tmp/isconf.stderr",'w')
-        sys.stdout = open("/tmp/isconf.stdout",'w')
+        signal.signal(SIGSIGHUP,signal.SIG_IGN)
         if os.fork(): sys.exit(0)
+        # XXX syslog
+        si = open("/dev/null", 'r')
+        so = open("/tmp/isconf.stdout", 'w', 0)
+        se = open("/tmp/isconf.stderr", 'w', 0)
+        os.dup2(si.fileno(), sys.stdin.fileno())
+        os.dup2(so.fileno(), sys.stdout.fileno())
+        os.dup2(se.fileno(), sys.stderr.fileno())
         # start daemon
         while True:
             try:
