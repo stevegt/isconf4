@@ -4,6 +4,7 @@ import doctest
 import os
 import popen2
 import re
+import select
 import shutil
 import sys
 import time
@@ -12,15 +13,15 @@ import unittest
 sys.path.append("t")
 
 class Result:
-    def __init__(self,rc,stdout,stderr):
+    def __init__(self,rc,out,err):
         self.rc = rc
-        self.stdout = stdout.read()
-        self.stderr = stderr.read()
+        self.out = out
+        self.err = err
     def __str__(self):
-        return self.stdout.strip()
+        return self.out.strip()
     def verbose(self):
-        out  = "stdout: %s" % self.stdout
-        out += "stderr: %s" % self.stderr
+        out  = "stdout: %s" % self.out
+        out += "stderr: %s" % self.err
         out += "return code: %d" % self.rc
         return out
 
@@ -104,9 +105,7 @@ class Host:
                 popen.tochild, popen.fromchild, popen.childerr)
         stdin.write(data)
         stdin.close()
-        status = popen.wait()
-        rc = os.WEXITSTATUS(status)
-        res = Result(rc, stdout, stderr)
+        res = self.getres(popen,stdout,stderr)
         assert res.rc == 0
         return res
     def ssh(self,args,wantrc=0):
@@ -116,14 +115,39 @@ class Host:
         (stdin, stdout, stderr) = (
                 popen.tochild, popen.fromchild, popen.childerr)
         stdin.close()
-        status = popen.wait()
-        rc = os.WEXITSTATUS(status)
-        res = Result(rc, stdout, stderr)
+        res = self.getres(popen,stdout,stderr)
         t.rc(res,wantrc)
         return res
-    def isconf(self,args):
+    def isconf(self,args=""):
         args = "%s/t/isconf %s" % (self._dir,args)
         self.ssh(args)
+    def getres(self,popen,stdout,stderr):
+        outputs = [stdout,stderr]
+        out = ''
+        err = ''
+        while True:
+            for f in outputs:
+                try:
+                    (r,w,e) = select.select([f],[],[f],.1)
+                    # print r,w,e
+                    for f in r:
+                        rxd = f.read()
+                        if len(rxd) == 0:
+                            f.close()
+                        if f is stdout: 
+                            out += rxd
+                            sys.stdout.write(rxd)
+                        if f is stderr: 
+                            err += rxd
+                            sys.stderr.write(rxd)
+                except:
+                    outputs.remove(f)
+            if not len(outputs):
+                break
+        status = popen.wait()
+        rc = os.WEXITSTATUS(status)
+        res = Result(rc, out, err)
+        return res
 
 class Test:
     def __init__(self):
@@ -186,6 +210,7 @@ def main():
     restart(a)
     restart(b)
 
+    # a.isconf()
     a.isconf("up")
     b.isconf("up")
 

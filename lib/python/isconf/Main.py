@@ -119,7 +119,7 @@ class Main:
         os.chdir(os.environ['ISFS_HOME'])
         os.setsid()
         os.umask(0) # XXX
-        signal.signal(SIGSIGHUP,signal.SIG_IGN)
+        signal.signal(signal.SIGHUP,signal.SIG_IGN)
         if os.fork(): sys.exit(0)
         # XXX syslog
         si = open("/dev/null", 'r')
