@@ -58,6 +58,8 @@ class Server:
                 if msg is kernel.eof:
                     log.close()
                     return
+                # if msg.type() == 'debug' and not hasattr(os.environ,'DEBUG'):
+                #     continue
                 log.write("%f %s: %s\n" % (time.time(), msg.type(),msg.data()))
                 log.flush()
             

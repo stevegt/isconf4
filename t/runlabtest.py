@@ -2,11 +2,14 @@
 # import coverage
 import doctest
 import os
+import pexpect
 import popen2
+import random
 import re
 import select
 import shutil
 import sys
+import tempfile
 import time
 import unittest
 
@@ -34,15 +37,15 @@ class Cmd:
     """
 
     >>> class host:
-    ...     def ssh(self,args):
-    ...         print "ssh foo", args
+    ...     def sess(self,args):
+    ...         print "> foo", args
     ... 
     >>> c = Cmd("echo",host())
     >>> c("hi")
-    ssh foo echo hi
+    > foo echo hi
     >>> c = Cmd("echo hello",host())
     >>> c()
-    ssh foo echo hello
+    > foo echo hello
 
     """
     
@@ -50,7 +53,7 @@ class Cmd:
         self.cmd = cmd
         self.host = host
     def __call__(self,args=''):
-        return self.host.ssh("%s %s" % (self.cmd,args))
+        return self.host.sess("%s %s" % (self.cmd,args))
 
 class Host:
     """
@@ -89,6 +92,16 @@ class Host:
     def __init__(self,hostname,dir=None):
         self._dir = dir
         self._hostname = hostname
+        self.s = pexpect.spawn("ssh root@%s" % self._hostname)
+        time.sleep(5)
+        self.s.sendline("stty -echo")
+        self.s.sendline("PS1=")
+        self.s.expect(".")
+        readblind(self.s)
+        self.s.sendline("echo START")
+        time.sleep(.1)
+        self.s.expect("START\r\n")
+        # self.s.expect(self.tag)
     def __call__(self,args):
         res = self.cat(args)
         if not res.rc == 0:
@@ -97,16 +110,24 @@ class Host:
     def __getattr__(self,cmd):
         return Cmd(cmd,self)
     def put(self,data,file):
-        args = "'cat > %s'" % file
-        cmd = "ssh root@%s %s" % (self._hostname,args)
+        fn = tempfile.mktemp()
+        open(fn,'w').write(data)
+        cmd = "scp %s root@%s:%s" % (fn,self._hostname,file)
         print "#", cmd
-        popen = popen2.Popen3(cmd,capturestderr=True)
-        (stdin, stdout, stderr) = (
-                popen.tochild, popen.fromchild, popen.childerr)
-        stdin.write(data)
-        stdin.close()
-        res = self.getres(popen,stdout,stderr)
-        assert res.rc == 0
+        os.system(cmd)
+        time.sleep(.1)
+    def sess(self,args,rc=0,blind=False):
+        print "%s>" % self._hostname, args
+        tag = str(random.random())
+        self.s.sendline("%s; echo errno=$?,%s" % (args,tag))
+        time.sleep(.1)
+        self.s.expect("(.*)errno=(\d+),%s\r\n" % tag)
+        m = self.s.match
+        out = m.group(1)
+        out = out.replace("\r\n","\n")
+        rc = int(m.group(2))
+        res = Result(rc,out,'')
+        if not blind: t.rc(res,rc)
         return res
     def ssh(self,args,rc=0,blind=False):
         cmd = "ssh root@%s %s" % (self._hostname,args)
@@ -120,7 +141,14 @@ class Host:
         return res
     def isconf(self,args="",rc=0,blind=False):
         args = "%s/t/isconf %s" % (self._dir,args)
-        self.ssh(args,rc=rc,blind=blind)
+        self.sess(args,rc=rc,blind=blind)
+    def restart(self):
+        if os.fork():
+            time.sleep(7)
+            return
+        # host.isconf("restart")
+        self.ssh("%s/t/isconf restart" % self._dir)
+        sys.exit(0)
     def getres(self,popen,stdout,stderr,quiet=False):
         outputs = [stdout,stderr]
         out = ''
@@ -188,12 +216,14 @@ class Test:
 
 t = Test()
 
-def restart(host):
-    if os.fork():
-        time.sleep(7)
-        return
-    host.isconf("restart")
-    sys.exit(0)
+def readblind(child):
+    out = ""
+    while True:
+        try:
+            out += child.read_nonblocking(size=8192,timeout=1)
+        except:
+            break
+    return out
 
 def main():
     dir = sys.argv[1]
@@ -208,16 +238,15 @@ def main():
     assert str(b.hostname()).strip() == host[1]
     # assert str(c.hostname()) == host[2]
 
-
     # start with clean tree
     a.isconf("stop",blind=True)
     b.isconf("stop",blind=True)
-    a.ssh("rm -rf /tmp/var")
-    b.ssh("rm -rf /tmp/var")
-    a.ssh("rm -rf " + tdir)
-    b.ssh("rm -rf " + tdir)
-    a.ssh("mkdir -p " + tdir)
-    b.ssh("mkdir -p " + tdir)
+    a.sess("rm -rf /tmp/var")
+    b.sess("rm -rf /tmp/var")
+    a.sess("rm -rf " + tdir)
+    b.sess("rm -rf " + tdir)
+    a.sess("mkdir -p " + tdir)
+    b.sess("mkdir -p " + tdir)
 
     # ordinary start 
     a.isconf("start")
@@ -226,8 +255,8 @@ def main():
     b.isconf("up")
 
     # restart
-    restart(a)
-    restart(b)
+    a.restart()
+    b.restart()
     a.isconf("up")
     b.isconf("up")
 
@@ -247,7 +276,7 @@ def main():
     echo $* > %s/2.out
     """ % tdir
     a.put(txt,"%s/2" % tdir)
-    a.ssh("exec chmod +x %s/2" % tdir)
+    a.ssh("chmod +x %s/2" % tdir)
     a.isconf("snap %s/2" % tdir)
     # a.isconf("""exec %s/2 \'hey "there" world!\'""" % tdir)
     a.isconf("exec %s/2 'hey there world!'" % tdir)
@@ -256,8 +285,8 @@ def main():
 
     # ci
     b.isconf("up")
-    b.ssh("test -f %s/1" % tdir, rc=1)
-    b.ssh("test -f %s/2.out" % tdir, rc=1)
+    b.sess("test -f %s/1" % tdir, rc=1)
+    b.sess("test -f %s/2.out" % tdir, rc=1)
     a.isconf("ci")
     b.isconf("up")
     out = b.cat("%s/1" % tdir)
@@ -266,8 +295,8 @@ def main():
     t.test(out,"hey there world!\n")
 
     # lock message
-    out = b.ssh("grep message: %s | grep test | wc -l" % journal)
-    t.test(out,"3\n")
+    out = b.sess("grep message: %s | grep test | wc -l" % journal)
+    t.test(int(str(out)),3)
 
     
     
