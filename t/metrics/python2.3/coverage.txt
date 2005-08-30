@@ -5,8 +5,8 @@ Config          60      8    13%
 Errno           27     19    70%
 Globals         77     26    33%
 HTTPServer      47     18    38%
-ISFS           409     66    16%
-ISconf         267     43    16%
+ISFS           406     66    16%
+ISconf         263     43    16%
 Kernel         287    203    70%
 Main           165     26    15%
 Server          71     21    29%
@@ -14,4 +14,4 @@ Socket         158     30    18%
 __init__         0      0   100%
 fbp822         225    121    53%
 --------------------------------
-TOTAL         2046    619    30%
+TOTAL         2039    619    30%

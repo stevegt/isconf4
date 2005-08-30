@@ -205,6 +205,7 @@ class Kernel:
 
     """
 
+    # XXX yield should return object rather than string
     sigrx='rx'
     sigbusy='busy'
     signice='nice'
@@ -434,6 +435,7 @@ class Kernel:
         sigargs = None
         if len(targv) > 1:
             sigargs = targv[1:]
+        # XXX these should all be 'is' rather than '=='
         if why == self.sigbusy:
             pass
         elif why == self.signice:

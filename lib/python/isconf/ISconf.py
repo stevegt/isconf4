@@ -120,10 +120,10 @@ class CLIServer:
             self.debug = msg.head.debug
             data = msg.payload()
             opt = dict(msg.items())
-            if opt['message'] == 'None':
-                opt['message'] = None
             debug(opt)
             verb = msg['verb']
+            if verb != 'lock' and opt['message'] != 'None':
+                error(iserrno.EINVAL, "-m is only valid on lock")
             if verb == 'exec': verb = 'Exec' # sigh
             args=[]
             if len(data):
@@ -190,12 +190,11 @@ class Ops:
 
     def Exec(self):
         yield None
-        message = self.opt['message']
         cwd = self.opt['cwd']
         if not len(self.data):
             error(iserrno.EINVAL,"missing exec command")
             return
-        self.volume.Exec(self.data,cwd,message)
+        self.volume.Exec(self.data,cwd)
 
 
     def lock(self):
@@ -208,9 +207,6 @@ class Ops:
         # XXX move most of this to ISFS
         debug("starting snap")
         yield None
-        message = self.opt['message']
-        if message is None:
-            message = self.volume.lockmsg()
         if not len(self.args):
             error(iserrno.EINVAL,"missing snapshot pathname")
             return
@@ -230,7 +226,7 @@ class Ops:
         st = os.stat(path)
         src = open(path,'r')
         debug("calling open")
-        dst = self.volume.open(path,'w',message=message)
+        dst = self.volume.open(path,'w')
         if not dst:
             return
         dst.setstat(st)

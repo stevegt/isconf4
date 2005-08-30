@@ -80,11 +80,10 @@ class File:
 
     # XXX only support complete file overwrite for now -- no seek, no tell
 
-    def __init__(self,volume,path,mode,message=None):
+    def __init__(self,volume,path,mode):
         self.volume = volume
         self.path = path
         self.mode = mode
-        self.message = message
         self.st = None
         self.tmp = tempfile.TemporaryFile()
 
@@ -107,7 +106,6 @@ class File:
         # XXX pathname needs to be relative to volroot
         msg = fbp.mkmsg('snap',data,
                 pathname=self.path,
-                message=self.message,
                 st_mode = self.st.st_mode,
                 st_uid = self.st.st_uid,
                 st_gid = self.st.st_gid,
@@ -249,7 +247,7 @@ class Volume:
                 os.environ['HOSTNAME'])
         msg['xid'] = xid
         message = self.lockmsg()
-        msg['message'] = message
+        msg.setheader('message', message)
         msg.setheader('time',int(time.time()))
         if msg.type() == 'snap':
             data = msg.data()
@@ -284,12 +282,10 @@ class Volume:
         open(self.p.wip,'a').write("\n\n")
 
 
-    def Exec(self,argdata,cwd,message):
+    def Exec(self,argdata,cwd):
         # XXX what about when cwd != volroot?
         if not self.cklock(): return 
-        if message is None:
-            message = self.lockmsg()
-        msg = FBP.mkmsg('exec', argdata + "\n", cwd=cwd, message=message)
+        msg = FBP.mkmsg('exec', argdata + "\n", cwd=cwd)
         self.addwip(msg)
         argv = argdata.split("\n")
         info("exec done:", str(argv))
@@ -386,9 +382,9 @@ class Volume:
         if not self.locked():
             error(iserrno.NOTLOCKED,'attempt to lock %s failed' % self.volname) 
 
-    def open(self,path,mode,message=None):
+    def open(self,path,mode):
         if not self.cklock(): return False
-        fh = File(volume=self,path=path,mode=mode,message=message)
+        fh = File(volume=self,path=path,mode=mode)
         self.openfiles[fh]=1
         return fh
 
