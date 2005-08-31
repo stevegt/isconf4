@@ -62,6 +62,13 @@ labtest: labsync
 	cd t && time python2.2 runlabtest.py /tmp/isconftest \
 		test1 test2 test3
 
+tarsync:
+	t/tarsync $(tarname) test1 test2 test3
+
+tartest: tarsync
+	time python2.2 t/runlabtest.py /tmp/$(tarname) \
+		test1 test2 test3
+
 mtatest:
 	- killall isconf
 	- bin/isconf -v selftest -p

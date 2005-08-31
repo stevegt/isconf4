@@ -534,6 +534,10 @@ def httpServer(port,dir):
             yield kernel.sigsleep, .1
             # includes EAGAIN
             continue
+        except Exception, e:
+            debug("get_request exception:", str(e))
+            yield kernel.sigsleep, 1
+            continue
         # XXX filter request -- e.g. do we need directory listings?
         # XXX HMAC in path info
         try:
