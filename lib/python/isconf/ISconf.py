@@ -49,7 +49,7 @@ class CLIServer:
         self.debug = False
 
     def run(self):
-        yield kernel.sigbusy # speed things up a bit
+        yield kernel.sigbusy 
         debug("CLIServer running")
         fbp = fbp822()
 
@@ -145,7 +145,7 @@ class CLIServer:
     def heartbeat(self,transport):
         msg = FBP.msg('heartbeat')
         while True:
-            yield kernel.sigsleep,3
+            yield kernel.sigsleep,1
             if transport.state == 'down':
                 return
             transport.write(str(msg))
@@ -192,7 +192,8 @@ class Ops:
 
         self.volname = branch()
         logname = self.opt['logname']
-        self.volume = ISFS.Volume(self.volname,logname=logname)
+        self.volume = ISFS.Volume(
+                self.volname,logname=logname,outpin=outpin)
 
     def ci(self):
         yield kernel.wait(self.volume.ci())
@@ -203,8 +204,7 @@ class Ops:
         if not len(self.data):
             error(iserrno.EINVAL,"missing exec command")
             return
-        self.volume.Exec(self.data,cwd)
-
+        yield kernel.wait(self.volume.Exec(self.data,cwd))
 
     def lock(self):
         if not self.opt['message']:
@@ -246,7 +246,7 @@ class Ops:
             dst.write(data)
         src.close()
         debug("calling close")
-        dst.close()
+        yield kernel.wait(dst.close())
 
     def unlock(self):
         yield None
@@ -292,7 +292,10 @@ def client(transport,argv,kwopt):
     # XXX convert to use global log funcs
     def clierr(code,msg=''):
         desc = iserrno.strerror(code)
-        msg = "%s: %s" % (msg, desc)
+        if len(msg):
+            msg = "%s: %s" % (msg, desc)
+        else:
+            msg = desc.strip()
         warn("clierr: ", msg)
         return code
 
@@ -308,16 +311,19 @@ def client(transport,argv,kwopt):
 
     # this is a blocking write...
     # XXX what happens here if daemon dies?
+    debug("sending cmd")
     transport.write(str(msg))
+    debug("cmd sent")
 
     # we should get a heartbeat message from server every few seconds  
-    transport.timeout = 10 
+    transport.timeout = 20 
 
     # sockfile = transport.sock.makefile('r')
     # stream = fbp.fromFile(sockfile,intask=False)
     stream = fbp.fromStream(transport,intask=False)
     # process one message each time through loop
     while True:
+        debug("client loop")
         time.sleep(.1)
         try:
             msg = stream.next()
@@ -327,7 +333,7 @@ def client(transport,argv,kwopt):
             return clierr(iserrno.EBADMSG,e)
         except Timeout:
             # XXX change this after logging cleaned up
-            error("server timed out -- check /tmp/isconf.stderr")
+            error("server timed out -- check /tmp/isconf.stderr and isconf.log")
         if msg in (kernel.eagain,None,kernel.sigbusy):
             continue
         rectype = msg.type()

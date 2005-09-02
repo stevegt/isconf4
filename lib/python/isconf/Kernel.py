@@ -92,6 +92,8 @@ class Bus:
         self.readq.setdefault(tid,[])
 
     def tx(self,msg):
+        if self.state == 'down':
+            return 0
         self.clean()
         i = len(self.readq) # number of subscribed readers
         if i < self.minreaders:
@@ -229,6 +231,7 @@ class Kernel:
         return self._tasks.get(tid,False)
 
     def kill(self,tid):
+        debug("killing", tid)
         self._tasks.setdefault(tid,None)
         del self._tasks[tid]
 
@@ -408,7 +411,7 @@ class Kernel:
                         continue
                 task.until = None
                 if task.itermode and task.resultReady:
-                    # we're waiting for Task._wrapper() to pick up our
+                    # we're waiting for Task.next() to pick up our
                     # previous result
                     task.priority += 1
                     continue
@@ -417,6 +420,7 @@ class Kernel:
     def step(self,task):
         obj = task.obj
         tid = task.tid
+        # debug("stepping task", tid)
         try:
             argv = obj.next()
         except StopIteration:
@@ -475,7 +479,7 @@ class Kernel:
         elif why == self.sigret:
             task.context.ret()
         else:
-            # we got an ordinary value back -- save it for Wrapper.wrapper()
+            # we got an ordinary value back -- save it for itermode
             task.result = argv
             task.resultReady = True
         task.priority = (task.priority + task.nice) / 2
@@ -522,19 +526,35 @@ class Task:
     # syntactic sugar to let us iterate on the task object as
     # if it were the generator object, while still allowing the
     # kernel to do the iteration and capture the results
-    def __iter__(self):
+    def XXX__iter__(self):
         self.wrapper=Wrapper(self).wrapper()
         return self.wrapper
-    def next(self):
+    def XXXnext(self):
         if not hasattr(self,'wrapper'):
             self.wrapper=Wrapper(self).wrapper()
         return self.wrapper.next()
+    def __iter__(self):
+        if not self.itermode:
+            raise Exception("set itermode=True if you want to iterate on this task")
+        return self
+    def next(self):
+        if not kernel.isrunning(self.tid):
+            raise StopIteration
+        if not self.resultReady:
+            return kernel.eagain
+        result = self.result
+        debug("task.resultReady",self.resultReady)
+        self.resultReady = False
+        kernel.HZ *= 10
+        return result
 
     def isdone(self):
         if kernel.isdone(self.tid):
             return True
         return False
 
+
+# XXX deprecated
 class Wrapper:
 
     def __init__(self,task):
@@ -555,6 +575,7 @@ class Wrapper:
                     continue
                 result = task.result
                 task.resultReady = False
+                debug("task.resultReady",task.resultReady)
                 kernel.HZ *= 10
                 yield result
 

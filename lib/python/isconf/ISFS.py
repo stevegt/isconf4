@@ -120,7 +120,8 @@ class File:
                 st_mtime = self.st.st_mtime,
                 pathmodes = ','.join(pathmodes)
                 )
-        self.volume.addwip(msg)
+        debug("calling addwip")
+        yield kernel.wait(self.volume.addwip(msg))
         self.volume.closefile(self)
         info("snapshot done:", self.path)
 
@@ -129,21 +130,28 @@ class Journal:
     def __init__(self,fullpath):
         self.path = fullpath
         self._entries = []
-        self.mtime = 0
+        self._mtime = 0
 
     def entries(self):
         if not hasattr(self,"_entries"):
             self._entries = []
         if os.path.exists(self.path):
             mtime = os.path.getmtime(self.path)
-            if mtime != self.mtime:
-                self._entries = self._reload()
-                self.mtime = mtime
+            if mtime != self._mtime:
+                self._entries = self._parse()
+                self._mtime = mtime
         else:
             self._entries = []
         return self._entries
 
-    def _reload(self):
+    def mtime(self):
+        # do NOT update self._mtime here -- entries() needs to do that
+        mtime = 0
+        if os.path.exists(self.path):
+            mtime = os.path.getmtime(self.path)
+        return mtime
+
+    def _parse(self):
         entries = []
         journal = open(self.path,'r')
         messages = FBP.fromFile(journal)
@@ -158,7 +166,7 @@ class History:
     def __init__(self,fullpath):
         self.path = fullpath
         self._xids = []
-        self.mtime = 0
+        self._mtime = 0
 
     def add(self,msg):
         line = "%d %s\n" % (time.time(), msg['xid'])
@@ -166,9 +174,9 @@ class History:
 
     def xidlist(self):
         mtime = os.path.getmtime(self.path)
-        if mtime != self.mtime:
+        if mtime != self._mtime:
             self.reload()
-            self.mtime = mtime
+            self._mtime = mtime
         return self._xids
 
     def reload(self):
@@ -180,9 +188,10 @@ class History:
 class Volume:
 
     # XXX provide logname and mode on open, check/get lock then
-    def __init__(self,volname,logname):  
+    def __init__(self,volname,logname,outpin):  
         self.volname = volname
         self.logname = logname
+        self.outpin = outpin
 
         # set standard paths; rule 1: only absolute paths get stored
         # in p, use mkrelative to convert as needed
@@ -276,6 +285,8 @@ class Volume:
                 break
 
     def addwip(self,msg):
+        debug("in addwip")
+        yield kernel.sigbusy
         xid = "%f.%f@%s" % (time.time(),random.random(),
                 os.environ['HOSTNAME'])
         msg['xid'] = xid
@@ -294,22 +305,31 @@ class Volume:
             # XXX check for collisions
 
             # copy to block tree
+            # XXX large files
             open(path,'w').write(data)
             self.announce(path)
 
-            # run the update now rather than wait for up command
-            if not self.updateSnap(msg):
-                return False
-
-            # append message to journal wip
-            open(self.p.wip,'a').write(str(msg))
+            # apply the update now rather than wait for up command
+            debug("spawning updateSnap")
+            task = kernel.spawn(self.updateSnap(msg),itermode=True)
 
         if msg.type() == 'exec':
             # run the command
-            if not self.updateExec(msg):
-                return False
-            # append message to journal wip
-            open(self.p.wip,'a').write(str(msg))
+            debug("spawning updateExec")
+            task = kernel.spawn(self.updateExec(msg),itermode=True)
+
+        # check results of snap or exec
+        res = None
+        # we only need the last yield value
+        for res in task: 
+            yield kernel.sigbusy
+            debug("got from updateX", repr(res), kernel.isrunning(task.tid))
+        # false result means failure
+        if not res:
+            yield res
+            return
+        # append message to journal wip
+        open(self.p.wip,'a').write(str(msg))
 
         # add a couple of newlines to ensure message separation
         open(self.p.wip,'a').write("\n\n")
@@ -319,7 +339,7 @@ class Volume:
         # XXX what about when cwd != volroot?
         if not self.cklock(): return 
         msg = FBP.mkmsg('exec', argdata + "\n", cwd=cwd)
-        self.addwip(msg)
+        yield kernel.wait(self.addwip(msg))
         argv = argdata.split("\n")
         info("exec done:", str(argv))
             
@@ -340,13 +360,14 @@ class Volume:
             self.unlock()
             return 
         if not self.cklock(): return 
-        jtime = self.journal.mtime
+        jtime = self.journal.mtime()
         yield kernel.wait(self.pull())
         if not self.cklock(): return
-        if jtime != self.journal.mtime:
+        # if jtime and jtime != self.journal.mtime():
+        if jtime != self.journal.mtime():
             error("someone else checked in conflicting changes -- repair wip and retry")
             return
-        if self.journal.mtime > os.path.getmtime(self.p.wip):
+        if self.journal.mtime() > os.path.getmtime(self.p.wip):
             error("journal is newer than wip -- repair and retry")
             return
         # XXX move to Journal
@@ -451,13 +472,9 @@ class Volume:
         for msg in pending:
             debug(msg['pathname'],time.time())
             if msg.type() == 'snap': 
-                if not self.updateSnap(msg):
-                    error("aborting update")
-                    return 
+                yield kernel.wait(self.updateSnap(msg))
             if msg.type() == 'exec': 
-                if not self.updateExec(msg):
-                    error("aborting update")
-                    return 
+                yield kernel.wait(self.updateExec(msg))
         info("update done")
 
     def pending(self):
@@ -488,23 +505,26 @@ class Volume:
 
     def updateSnap(self,msg):
         src = self.blk2path(msg['blk'])
-        # XXX large files, atomicity, missing parent dirs
-        # XXX volroot
         if not os.path.exists(src):
             error("missing block: %s" % src)
-            return False
+            yield False
+            return
+        # XXX large files, atomicity, missing parent dirs
+        debug("opening",src)
         data = open(src,'r').read()
+        # XXX volroot
         dst = msg['pathname']
         open(dst,'w').write(data)
         # update history
         self.history.add(msg)
-        info("updated", dst)
         class St: pass
         st = St()
         for attr in "st_mode st_uid st_gid st_atime st_mtime".split():
             setattr(st,attr,getattr(msg.head,attr))
         self.setstat(dst,st)
-        return True
+        info("updated", dst)
+        yield True
+        debug("updateSnap done")
 
     def updateExec(self,msg):
         argv = msg.data().strip().split("\n")
@@ -514,19 +534,37 @@ class Volume:
         popen = popen2.Popen3(argv,capturestderr=True)
         (stdin, stdout, stderr) = (
                 popen.tochild, popen.fromchild, popen.childerr)
-        # XXX spawn tasks to generate messages
+        stdin.close()
+        outputs = [stdout,stderr]
+        while True:
+            yield kernel.sigbusy
+            for f in outputs:
+                try:
+                    (r,w,e) = select.select([f],[],[f],.2)
+                    # print r,w,e
+                    for f in r:
+                        rxd = f.read()
+                        if len(rxd) == 0:
+                            f.close()
+                        if f is stdout: 
+                            outmsg = FBP.msg('stdout',rxd)
+                            self.outpin.tx(outmsg)
+                        if f is stderr: 
+                            errmsg = FBP.msg('stderr',rxd)
+                            self.outpin.tx(errmsg)
+                except:
+                    outputs.remove(f)
+            if not len(outputs):
+                break
         status = popen.wait()
         rc = os.WEXITSTATUS(status)
-        out = stdout.read()
-        err = stderr.read()
-        info(out)
-        info(err)
         if rc:
             error("returned", rc, ": ", str(argv))
-            return False
+            yield False
+            return
         # update history
         self.history.add(msg)
-        return True
+        yield True
 
 
     def wip(self):

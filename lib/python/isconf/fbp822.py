@@ -193,9 +193,11 @@ class fbp822:
                 if outpin: outpin.close()
                 break
             newrxd = stream.read(wanted)
-            if isinstance(stream,file) and not len(newrxd):
+            # if isinstance(stream,file) and not len(newrxd):
+            if not len(newrxd):
                 # at EOF
-                if outpin: outpin.close()
+                if outpin: 
+                    outpin.close()
                 break
             rxd += newrxd
             # discard leading newlines

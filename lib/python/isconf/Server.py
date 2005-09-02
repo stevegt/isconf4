@@ -43,7 +43,13 @@ class Server:
         """stop a running server"""
         # XXX should we instead ask it politely first?
         pid = int(open(self.pidpath,'r').read().strip())
-        os.kill(pid,signal.SIGINT)
+        try:
+            os.kill(pid,signal.SIGINT)
+        except OSError, e:
+            if e.errno == 3:
+                info("already stopped")
+                return 0
+            raise
         time.sleep(1)
         try:
             os.kill(pid,signal.SIGKILL)

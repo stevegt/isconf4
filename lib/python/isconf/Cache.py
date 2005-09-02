@@ -305,11 +305,11 @@ class Cache:
                             bad,addr,fullpath))
                         continue
                     if not os.path.isfile(fullpath):
-                        debug("from %s: not found: %s" % (addr,fullpath))
+                        debug("ignoring whohas from %s: not found: %s" % (addr,fullpath))
                         continue
-                    if newer is not None and newer > os.path.getmtime(
+                    if newer is not None and newer >= os.path.getmtime(
                             fullpath):
-                        debug("from %s: not newer: %s" % (addr,fullpath))
+                        debug("ignoring whohas from %s: not newer: %s" % (addr,fullpath))
                         continue
                     # url = "http://%s:%d/%s" % (localip,httpport,path)
                     self.ihaveTx(path)

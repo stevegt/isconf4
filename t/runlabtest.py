@@ -59,33 +59,39 @@ class Host:
     """
 
     >>> a = Host("localhost")
-    >>> print a.ssh("echo hi")
-    # ssh localhost echo hi
+    >>> a.ssh("echo hi").rc
+    # ssh root@localhost echo hi
     hi
+    0
     >>> a.ssh("ps > /tmp/1").rc
-    # ssh localhost ps > /tmp/1
+    # ssh root@localhost ps > /tmp/1
     0
     >>> a.date().rc
-    # ssh localhost date 
+    localhost> date 
     0
     >>> print a.echo("hi")
-    # ssh localhost echo hi
+    localhost> echo hi
     hi
     >>> print a.echo("hi > /tmp/1")
-    # ssh localhost echo hi > /tmp/1
+    localhost> echo hi > /tmp/1
     >>> a("/tmp/1")
-    # ssh localhost cat /tmp/1
+    localhost> cat /tmp/1
     'hi\\n'
-    >>> print a.ssh("'echo hi there > /tmp/1'")
-    # ssh localhost 'echo hi there > /tmp/1'
+    >>> a.ssh("'echo hi there > /tmp/1'").rc
+    # ssh root@localhost 'echo hi there > /tmp/1'
+    0
     >>> a("/tmp/1")
-    # ssh localhost cat /tmp/1
+    localhost> cat /tmp/1
     'hi there\\n'
-    >>> print a.put('foo &!%#()',"/tmp/1")
-    # ssh localhost 'cat > /tmp/1'
+    >>> a.put('foo &!%#()',"/tmp/1")
+    # scp /tmp/tmpVUdXmM root@localhost:/tmp/1
     >>> a("/tmp/1")
-    # ssh localhost cat /tmp/1
+    localhost> cat /tmp/1
     'foo &!%#()'
+    >>> a.sess("/bin/false").rc
+    localhost> /bin/false
+    FAIL '1' == '0'
+    1
 
     """
 
@@ -106,7 +112,7 @@ class Host:
         res = self.cat(args)
         if not res.rc == 0:
             raise CatError(path)
-        return res.stdout
+        return res.out
     def __getattr__(self,cmd):
         return Cmd(cmd,self)
     def put(self,data,file):
@@ -125,8 +131,8 @@ class Host:
         m = self.s.match
         out = m.group(1)
         out = out.replace("\r\n","\n")
-        rc = int(m.group(2))
-        res = Result(rc,out,'')
+        realrc = int(m.group(2))
+        res = Result(realrc,out,'')
         if not blind: t.rc(res,rc)
         return res
     def ssh(self,args,rc=0,blind=False):
@@ -304,7 +310,6 @@ def main():
     out = b.sess("grep message: %s | grep test | wc -l" % journal)
     t.test(int(str(out)),4)
 
-    
     # bug #49 -- new machines (not from same image) need to work
     # during evaluation
     b.isconf("stop")
@@ -314,9 +319,14 @@ def main():
     b.isconf("up",timeout=60)
     out = b.cat("%s/2.out" % tdir)
     t.test(out,"hey there world!\n")
-
-
-    
+    # multiple checkins broken when fixing #49
+    a.isconf("-m 'test multiple ci' lock")
+    a.put("test multiple","%s/multiple" % tdir)
+    a.isconf("snap %s/multiple" % tdir)
+    a.isconf("ci")
+    b.isconf("up",timeout=60)  # XXX why long timeout here?
+    out = b.cat("%s/multiple" % tdir)
+    t.test(out,"test multiple")
     
 
 
