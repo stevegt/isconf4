@@ -1,0 +1,20 @@
+#!/bin/bash
+
+release=$1
+a=$2
+b=$3
+c=$4
+
+ssh root@$a "cd /tmp; wget http://trac.t7a.org/isconf/pub/$release.tar.gz"
+ssh root@$b "cd /tmp; wget http://trac.t7a.org/isconf/pub/$release.tar.gz"
+# ssh root@$c "cd /tmp; wget http://trac.t7a.org/isconf/pub/$release.tar.gz"
+
+ssh root@$a "cd /tmp; tar -xzvf $release.tar.gz"
+ssh root@$b "cd /tmp; tar -xzvf $release.tar.gz"
+# ssh root@$c "cd /tmp; tar -xzvf $release.tar.gz"
+
+
+
+
+
+
