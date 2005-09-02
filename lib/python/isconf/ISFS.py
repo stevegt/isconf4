@@ -163,7 +163,7 @@ class Volume:
         cachevol     = "%s/%s" % (self.p.cache,domvol)
         privatevol   = "%s/%s" % (self.p.private,domvol)
 
-        self.p.dirty   = "%s/.dirty"       % (self.p.private)
+        self.p.announce   = "%s/.announce"       % (self.p.private)
         self.p.pull    = "%s/.pull"        % (self.p.private)
 
         self.p.journal = "%s/journal"     % (cachevol)
@@ -211,11 +211,11 @@ class Volume:
             path = path[len(self.p.cache):]
         return path
 
-    def dirty(self,path):
-        # write the filename to the dirty list -- the cache manager
+    def announce(self,path):
+        # write the filename to the announce list -- the cache manager
         # will announce the new file and handle transfers
         path = self.mkrelative(path)
-        open(self.p.dirty,'a').write(path + "\n")
+        open(self.p.announce,'a').write(path + "\n")
 
     def pull(self):
         files = (
@@ -262,7 +262,7 @@ class Volume:
 
             # copy to block tree
             open(path,'w').write(data)
-            self.dirty(path)
+            self.announce(path)
 
             # run the update now rather than wait for up command
             if not self.updateSnap(msg):
@@ -320,7 +320,7 @@ class Volume:
         journal.write(wipdata)
         journal.close()
         os.unlink(self.p.wip)
-        self.dirty(self.p.journal)
+        self.announce(self.p.journal)
         info("changes checked in")
         self.unlock()
 
@@ -377,7 +377,7 @@ class Volume:
         if self.locked() and not self.cklock():
             return 
         open(self.p.lock,'w').write(message)
-        self.dirty(self.p.lock)
+        self.announce(self.p.lock)
         info("%s locked" % self.volname)
         if not self.locked():
             error(iserrno.NOTLOCKED,'attempt to lock %s failed' % self.volname) 
@@ -398,7 +398,7 @@ class Volume:
         locker = self.lockedby()
         info("removing lock on %s set by %s" % (self.volname,locker)) 
         open(self.p.lock,'w')
-        self.dirty(self.p.lock)
+        self.announce(self.p.lock)
         assert not self.locked()
         return True
 

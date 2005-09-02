@@ -220,6 +220,7 @@ class Kernel:
         self._tasks = {}
         self._nextid = 1
         self.HZ = 1000
+        self._shutdown = False
 
     def isdone(self,tid):
         return not self.isrunning(tid)
@@ -253,6 +254,10 @@ class Kernel:
         for tid in tids:
             self.kill(tid)
         self._tasks = {}
+
+    def shutdown(self):
+        debug("shutting down")
+        self._shutdown = True
 
     def ps(self):
         out = ''
@@ -353,6 +358,8 @@ class Kernel:
             initid = self.spawn(initobj).tid
         ticks = 0
         while True:
+            if self._shutdown:
+                sys.exit(0)
             if initobj and not self.isrunning(initid): break
             if steps and steps <= ticks: 
                 break

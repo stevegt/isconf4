@@ -220,7 +220,7 @@ class fbp822:
             # hmm.  junk at end of stream.  XXX discard for now
             pass
 
-    def fromFile(self,stream,outpin=None):
+    def fromFile(self,stream,outpin=None,intask=True):
         """generate message objects from a file-like object
 
         higher performance than fromStream
@@ -237,6 +237,9 @@ class fbp822:
         (START,HEAD,PARSE,BODY,SEND) = range(5)
         state=START
         for line in stream:
+            print "alkjfdslkjdsa", state, repr(line)
+            if intask:
+                yield None
             if state is START:
                 # discard leading newlines
                 if line == '\n':

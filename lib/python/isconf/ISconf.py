@@ -53,14 +53,10 @@ class CLIServer:
         fbp = fbp822()
 
         # set up FBP buses
-        frcli = Bus('frcli')
         tocli = Bus('tocli')
 
-        # read messages from client
-        req = kernel.spawn(fbp.fromStream(stream=self.transport,outpin=frcli))
         # process messages from client
-        proc = kernel.spawn(
-                self.process(inpin=frcli,outpin=tocli))
+        proc = kernel.spawn(self.process(transport=self.transport,outpin=tocli))
         # send messages to client
         res = kernel.spawn(self.respond(transport=self.transport,inpin=tocli))
         # merge in log messages
@@ -72,7 +68,7 @@ class CLIServer:
         while True:
             yield None
             i=0
-            for q in (frcli,BUS.log):
+            for q in (tocli,BUS.log):
                 if q.busy():
                     i+=1
                     continue
@@ -80,7 +76,7 @@ class CLIServer:
                 break
 
         debug("telling client to exit")
-        yield kernel.sigsleep, 1 # XXX 
+        yield kernel.sigsleep, .1 # XXX 
         tocli.tx(fbp.mkmsg('rc',0))
         # tocli.close()
 
@@ -97,48 +93,50 @@ class CLIServer:
                     return
                 outbus.tx(msg)
 
-    def process(self,inpin,outpin):
+    def process(self,transport,outpin):
         while True:
             yield None
-            mlist = []
-            yield inpin.rx(mlist,timeout=0,count=1)
-            msg = mlist[0]
-            if msg in (kernel.eagain,None):
-                continue
-            if outpin.state == 'down':
-                return
-            if msg is kernel.eof:
-                # outpin.close()
-                return
-            debug("from client:", str(msg))
-            rectype = msg.type()
-            if rectype != 'cmd':
-                error(iserrno.EINVAL, 
-                    "first message must be cmd, got %s" % rectype)
-                return
-            self.verbose = msg.head.verbose
-            self.debug = msg.head.debug
-            data = msg.payload()
-            opt = dict(msg.items())
-            debug(opt)
-            verb = msg['verb']
-            if verb != 'lock' and opt['message'] != 'None':
-                error(iserrno.EINVAL, "-m is only valid on lock")
-            if verb == 'exec': verb = 'Exec' # sigh
-            args=[]
-            if len(data):
-                data = data.strip()
-                args = data.split('\n')
-            ops = Ops(opt=opt,args=args,data=data,
-                    inpin=inpin,outpin=outpin)
-            try:
-                func = getattr(ops,verb)
-            except AttributeError:
-                error(outpin,iserrno.EINVAL,verb)
-                return
-            # start command processor, wait for it to finish
-            yield kernel.wait(func())
-            break
+            # read messages from client
+            mlist = FBP.fromFile(stream=transport)
+            for msg in mlist:
+                if msg in (kernel.eagain,None):
+                    continue
+                if outpin.state == 'down':
+                    return
+                if msg is kernel.eof:
+                    # outpin.close()
+                    return
+                debug("from client:", str(msg))
+                rectype = msg.type()
+                if rectype != 'cmd':
+                    error(iserrno.EINVAL, 
+                        "first message must be cmd, got %s" % rectype)
+                    return
+                self.verbose = msg.head.verbose
+                self.debug = msg.head.debug
+                data = msg.payload()
+                opt = dict(msg.items())
+                debug(opt)
+                verb = msg['verb']
+                if verb != 'lock' and opt['message'] != 'None':
+                    error(iserrno.EINVAL, "-m is only valid on lock")
+                if verb == 'exec': verb = 'Exec' # sigh
+                if verb == 'shutdown': 
+                    kernel.shutdown()
+                    return
+                args=[]
+                if len(data):
+                    data = data.strip()
+                    args = data.split('\n')
+                ops = Ops(opt=opt,args=args,data=data,outpin=outpin)
+                try:
+                    func = getattr(ops,verb)
+                except AttributeError:
+                    error(outpin,iserrno.EINVAL,verb)
+                    return
+                # start command processor, wait for it to finish
+                yield kernel.wait(func())
+                return # XXX can't handle stdin yet
 
     def respond(self,transport,inpin):
         while True:
@@ -174,11 +172,10 @@ class Ops:
     
     """
 
-    def __init__(self,opt,args,data,inpin,outpin):
+    def __init__(self,opt,args,data,outpin):
         self.opt = opt
         self.args = args
         self.data = data
-        self.inpin = inpin
         self.outpin = outpin
 
         self.volname = branch()
@@ -300,6 +297,8 @@ def client(transport,argv,kwopt):
     # this is a blocking write...
     transport.write(str(msg))
 
+    # sockfile = transport.sock.makefile('r')
+    # stream = fbp.fromFile(sockfile,intask=False)
     stream = fbp.fromStream(transport,intask=False)
     # process one message each time through loop
     while True:

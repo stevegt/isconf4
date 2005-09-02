@@ -4,6 +4,7 @@ import errno
 import os
 import select
 import socket
+import time
 from isconf.Globals import *
 from isconf.Kernel import kernel
 
@@ -35,6 +36,20 @@ class ServerSocket:
         self.rxd = ''
         self.protocol = None
     
+    def __iter__(self):
+        # reads one line at a time
+        while True:
+            if self.state == 'down':
+                return
+            nl = self.rxd.find("\n")
+            if nl < 0:
+                # raises StopIteration if more data needed
+                return
+            nl += 1
+            rxd = self.rxd[:nl]
+            self.rxd = self.rxd[nl:]
+            yield rxd
+
     def abort(self,msg=''):
         self.write(msg + "\n")
         self.close()
@@ -63,72 +78,76 @@ class ServerSocket:
     def shutdown(self):
         self.sock.shutdown(1)
 
-    def run(self,*args,**kwargs):
+    def run(self):
         busy = False
         while True:
+            if self.state == 'down':
+                break
             if busy:
                 yield kernel.sigbusy
             else:
                 yield None
-            # XXX peer timeout ck
-            busy = False
+            busy = self.txrx()
 
-            # find pending reads and writes 
-            s = self.sock
+    def txrx(self):
+        busy = False
+
+        # find pending reads and writes 
+        s = self.sock
+        try:
+            (readable, writeable, inerror) = \
+                select.select([s],[s],[s],0)
+        except Exception, e:
+            debug("socket exception", e)
+            inerror = [s]
+    
+        # handle errors
+        if s in inerror or self.state == 'close':
             try:
-                (readable, writeable, inerror) = \
-                    select.select([s],[s],[s],0)
-            except Exception, e:
-                debug("socket exception", e)
-                inerror = [s]
-        
-            # handle errors
-            if s in inerror or self.state == 'close':
+                s.close()
+            except:
+                pass
+            self.state = 'down'
+            return
+
+        # do reads
+        if s in readable:
+            # read a chunk
+            try:
+                rxd = self.sock.recv(self.chunksize)
+            except:
+                pass
+            # print "receiving", rxd
+            self.rxd += rxd
+            if self.rxd:
+                busy = True
+            else:
                 try:
-                    s.close()
+                    s.shutdown(0)
                 except:
                     pass
-                self.state = 'down'
-                break
+                self.state = 'closing'
 
-            # do reads
-            if s in readable:
-                # read a chunk
+        # do writes
+        if s in writeable:
+            if len(self.txd) <= 0:
+                if self.state == 'closing':
+                    self.state = 'close'
+                return
+            # print "sending", self.txd
+            try:
+                sent = self.sock.send(self.txd)
+                # print "sent " + self.txd
+            except:
                 try:
-                    rxd = self.sock.recv(self.chunksize)
+                    s.shutdown(1)
                 except:
                     pass
-                # print "receiving", rxd
-                self.rxd += rxd
-                if self.rxd:
-                    busy = True
-                else:
-                    try:
-                        s.shutdown(0)
-                    except:
-                        pass
-                    self.state = 'closing'
-
-            # do writes
-            if s in writeable:
-                if len(self.txd) <= 0:
-                    if self.state == 'closing':
-                        self.state = 'close'
-                    continue
-                # print "sending", self.txd
-                try:
-                    sent = self.sock.send(self.txd)
-                    # print "sent " + self.txd
-                except:
-                    try:
-                        s.shutdown(1)
-                    except:
-                        pass
-                    self.state = 'closing'
-                if sent:
-                    busy = True
-                    # txd is a fifo -- clear as we send bytes off the front
-                    self.txd = self.txd[sent:]
+                self.state = 'closing'
+            if sent:
+                busy = True
+                # txd is a fifo -- clear as we send bytes off the front
+                self.txd = self.txd[sent:]
                 
 class TCPServerFactory(ServerFactory):
 

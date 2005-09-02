@@ -43,7 +43,12 @@ class Server:
         """stop a running server"""
         # XXX should we instead ask it politely first?
         pid = int(open(self.pidpath,'r').read().strip())
-        os.kill(pid,signal.SIGKILL)
+        os.kill(pid,signal.SIGINT)
+        time.sleep(1)
+        try:
+            os.kill(pid,signal.SIGKILL)
+        except:
+            pass
         return 0
 
     def logger(self,bus):

@@ -29,7 +29,19 @@ from isconf.Kernel import kernel
 (START,IHAVE,SENDME) = range(3)
 
 class Cache:
-    # a combined cache manager and UDP mesh -- needs to be split
+    """a combined cache manager and UDP mesh -- XXX needs to be split
+
+    >>> pid = os.fork()
+    >>> if not pid:
+    ...     time.sleep(999)
+    ...     sys.exit(0)
+    >>> os.environ["HOSTNAME"] = "testhost"
+    >>> os.environ["ISFS_PRIVATE"] = "/tmp/var/isfs/private"
+    >>> cache = Cache(54321,54322,"/tmp/var")
+    >>> assert cache
+    >>> os.kill(pid,9)
+
+    """
 
     def __init__(self,udpport,httpport,dir,timeout=5):
         self.req = {}
@@ -51,13 +63,14 @@ class Cache:
         class Path: pass
         self.p = Path()
 
+        # XXX either pass this in or stop passing in 'dir'
         self.p.private = os.environ['ISFS_PRIVATE']
 
         for d in (self.dir,self.p.private):
             if not os.path.isdir(d):
                 os.makedirs(d,0700)
 
-        self.p.dirty   = "%s/.dirty"       % (self.p.private)
+        self.p.announce   = "%s/.announce"       % (self.p.private)
         self.p.pull    = "%s/.pull"        % (self.p.private)
 
     def readnets(self):
@@ -184,10 +197,10 @@ class Cache:
             self.bcast(str(req))
 
     def flush(self):
-        if not os.path.exists(self.p.dirty):
+        if not os.path.exists(self.p.announce):
             return
-        tmp = "%s.tmp" % self.p.dirty
-        os.rename(self.p.dirty,tmp)
+        tmp = "%s.tmp" % self.p.announce
+        os.rename(self.p.announce,tmp)
         files = open(tmp,'r').read().strip().split("\n")
         for path in files:
             self.ihaveTx(path)

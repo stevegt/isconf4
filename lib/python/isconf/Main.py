@@ -7,6 +7,11 @@ import signal
 import sys
 import time
 
+try:
+    import profile
+except:
+    pass
+
 import isconf
 from isconf.Config import Config
 from isconf.Errno import iserrno
@@ -87,6 +92,7 @@ class Main:
         if not verb in self.verbs:
             self.usage("unknown verb")
         if verb in ('start','stop','restart'):
+        # if verb in ('start','restart'):
             func = getattr(self,verb)
             rc = func(args)
             sys.exit(rc)
@@ -115,39 +121,43 @@ class Main:
     def start(self,argv):
         # detach from parent per Stevens
         # XXX need to allow for optional foreground operation
-        if os.fork(): return 0
         home = os.environ['ISFS_HOME']
         if not os.path.isdir(home):
             os.makedirs(home,0700)
-        os.chdir(home)
-        os.setsid()
-        os.umask(0) # XXX
-        signal.signal(signal.SIGHUP,signal.SIG_IGN)
-        if os.fork(): sys.exit(0)
-        # XXX syslog
-        si = open("/dev/null", 'r')
-        so = open("/tmp/isconf.stdout", 'w', 0)
-        se = open("/tmp/isconf.stderr", 'w', 0)
-        os.dup2(si.fileno(), sys.stdin.fileno())
-        os.dup2(so.fileno(), sys.stdout.fileno())
-        os.dup2(se.fileno(), sys.stderr.fileno())
+        # os.chdir(home)
+        if not os.environ.has_key('NOFORK'):
+            if os.fork(): return 0
+            os.chdir(home)
+            os.setsid()
+            os.umask(0) # XXX
+            signal.signal(signal.SIGHUP,signal.SIG_IGN)
+            if os.fork(): sys.exit(0)
+            # XXX syslog
+            si = open("/dev/null", 'r')
+            so = open("/tmp/isconf.stdout", 'w', 0)
+            se = open("/tmp/isconf.stderr", 'w', 0)
+            os.dup2(si.fileno(), sys.stdin.fileno())
+            os.dup2(so.fileno(), sys.stdout.fileno())
+            os.dup2(se.fileno(), sys.stderr.fileno())
         # start daemon
-        while True:
-            try:
-                server = Server()
-                rc = server.start()
-            except Restart:
-                warn("daemon exiting")
-                sys.exit(1)
-                # XXX
-                warn("restarting: `%s`..." % ' '.join(sys.argv))
-                os.chdir(self.cwd)
-                # close everything down
-                kernel.killall()
-                server = None 
-                time.sleep(1)
-                os.execvp(sys.argv[0],sys.argv)
-        sys.exit(rc)
+        try:
+            server = Server()
+            rc = server.start()
+            sys.exit(rc)
+        except Restart:
+            warn("daemon exiting")
+            sys.exit(1)
+            # XXX
+            warn("restarting: `%s`..." % ' '.join(sys.argv))
+            os.chdir(self.cwd)
+            # close everything down
+            kernel.killall()
+            server = None 
+            time.sleep(1)
+            os.execvp(sys.argv[0],sys.argv)
+        except SystemExit, e:
+            sys.exit(e)
+        sys.exit(0)
 
     def stop(self,argv):
         server = Server()
