@@ -234,9 +234,15 @@ def main():
     a = Host(host[0],dir)
     b = Host(host[1],dir)
     # c = Host(host[2],dir)
-    assert str(a.hostname()).strip() == host[0]
-    assert str(b.hostname()).strip() == host[1]
-    # assert str(c.hostname()) == host[2]
+    aname = str(a.hostname()).strip()
+    bname = str(b.hostname()).strip()
+    # cname = str(c.hostname()).strip()
+    print "a.hostname", aname
+    print "b.hostname", bname
+    # print "c.hostname", cname
+    assert aname == host[0]
+    assert bname == host[1]
+    # assert cname == host[2]
 
     # start with clean tree
     a.isconf("stop",blind=True)
@@ -245,8 +251,6 @@ def main():
     b.sess("rm -rf /tmp/var")
     a.sess("rm -rf " + tdir)
     b.sess("rm -rf " + tdir)
-    a.sess("mkdir -p " + tdir)
-    b.sess("mkdir -p " + tdir)
 
     # ordinary start 
     a.isconf("start")
@@ -267,6 +271,7 @@ def main():
     a.isconf("snap %s/1" % tdir, rc=221)
     a.isconf("snap foo",rc=2)
     a.isconf("-m 'test' lock")
+    a.isconf("exec mkdir -p " + tdir)
 
     # snap
     a.isconf("snap %s/1" % tdir)

@@ -1,8 +1,9 @@
-5 items passed all tests:
+6 items passed all tests:
+   7 tests in isconf.Cache.Cache
   21 tests in isconf.Kernel.Bus
    9 tests in isconf.Kernel.Bus.rx
   22 tests in isconf.Kernel.Kernel.spawn
   19 tests in isconf.fbp822.fbp822
   18 tests in isconf.fbp822.fbp822.parse
-89 tests in 195 items.
-89 passed and 0 failed.
+96 tests in 198 items.
+96 passed and 0 failed.
