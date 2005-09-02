@@ -26,6 +26,7 @@ from isconf.Globals import *
 from isconf import ISFS
 from isconf.Kernel import kernel, Bus
 from isconf.fbp822 import fbp822, Error822
+from isconf.Socket import Timeout
 
 class CLIServerFactory:
 
@@ -61,6 +62,9 @@ class CLIServer:
         res = kernel.spawn(self.respond(transport=self.transport,inpin=tocli))
         # merge in log messages
         log = kernel.spawn(self.merge(tocli,BUS.log))
+
+        # heartbeat to client
+        kernel.spawn(self.heartbeat(transport=self.transport))
 
         # wait for everything to quiesce
         yield kernel.siguntil, proc.isdone
@@ -137,6 +141,14 @@ class CLIServer:
                 # start command processor, wait for it to finish
                 yield kernel.wait(func())
                 return # XXX can't handle stdin yet
+
+    def heartbeat(self,transport):
+        msg = FBP.msg('heartbeat')
+        while True:
+            yield kernel.sigsleep,3
+            if transport.state == 'down':
+                return
+            transport.write(str(msg))
 
     def respond(self,transport,inpin):
         while True:
@@ -295,7 +307,11 @@ def client(transport,argv,kwopt):
     msg = fbp.mkmsg('cmd',payload,verb=verb,logname=logname,cwd=cwd,**kwopt)
 
     # this is a blocking write...
+    # XXX what happens here if daemon dies?
     transport.write(str(msg))
+
+    # we should get a heartbeat message from server every few seconds  
+    transport.timeout = 10 
 
     # sockfile = transport.sock.makefile('r')
     # stream = fbp.fromFile(sockfile,intask=False)
@@ -309,11 +325,16 @@ def client(transport,argv,kwopt):
             return clierr(iserrno.ECONNRESET)
         except Error822, e:
             return clierr(iserrno.EBADMSG,e)
+        except Timeout:
+            # XXX change this after logging cleaned up
+            error("server timed out -- check /tmp/isconf.stderr")
         if msg in (kernel.eagain,None,kernel.sigbusy):
             continue
         rectype = msg.type()
         data = msg.payload()
-        if rectype == 'rc':
+        if rectype == 'heartbeat':
+            debug("heartbeat from server")
+        elif rectype == 'rc':
             code = int(data)
             return code
         elif rectype == 'stdout': sys.stdout.write(data)

@@ -116,12 +116,12 @@ class Host:
         print "#", cmd
         os.system(cmd)
         time.sleep(.1)
-    def sess(self,args,rc=0,blind=False):
+    def sess(self,args,rc=0,blind=False,timeout=-1):
         print "%s>" % self._hostname, args
         tag = str(random.random())
         self.s.sendline("%s; echo errno=$?,%s" % (args,tag))
         time.sleep(.1)
-        self.s.expect("(.*)errno=(\d+),%s\r\n" % tag)
+        self.s.expect("(.*)errno=(\d+),%s\r\n" % tag,timeout=timeout)
         m = self.s.match
         out = m.group(1)
         out = out.replace("\r\n","\n")
@@ -139,9 +139,9 @@ class Host:
         res = self.getres(popen,stdout,stderr,quiet=blind)
         if not blind: t.rc(res,rc)
         return res
-    def isconf(self,args="",rc=0,blind=False):
+    def isconf(self,args="",rc=0,blind=False,timeout=-1):
         args = "%s/t/isconf %s" % (self._dir,args)
-        self.sess(args,rc=rc,blind=blind)
+        self.sess(args,rc=rc,blind=blind,timeout=timeout)
     def restart(self):
         if os.fork():
             time.sleep(7)
@@ -265,6 +265,7 @@ def main():
     b.isconf("up")
 
     # lock
+    a.sess("mkdir -p " + tdir)
     a.put("hello\n", "%s/1" % tdir)
     out = a.cat("%s/1" % tdir)
     t.test(out,"hello\n")
@@ -301,10 +302,18 @@ def main():
 
     # lock message
     out = b.sess("grep message: %s | grep test | wc -l" % journal)
-    t.test(int(str(out)),3)
+    t.test(int(str(out)),4)
 
     
-    
+    # bug #49 -- new machines (not from same image) need to work
+    # during evaluation
+    b.isconf("stop")
+    b.sess("rm -rf /tmp/var")
+    b.sess("rm -rf " + tdir)
+    b.isconf("start")
+    b.isconf("up",timeout=60)
+    out = b.cat("%s/2.out" % tdir)
+    t.test(out,"hey there world!\n")
 
 
     

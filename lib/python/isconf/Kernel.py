@@ -426,6 +426,7 @@ class Kernel:
             if e == 'generator already executing':
                 # kernel.run() is nested -- that's okay to do
                 return
+            raise
         except Exception, e:
             # XXX add traceback
             self.abort(task,e)
@@ -444,7 +445,9 @@ class Kernel:
             sigargs = targv[1:]
         # XXX these should all be 'is' rather than '=='
         if why == self.sigbusy:
-            pass
+            task.nice -= 1
+            if task.nice < 0: 
+                task.nice = 0
         elif why == self.signice:
             task.nice = sigargs[0]
         elif why == self.sigsleep:

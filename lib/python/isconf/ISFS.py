@@ -103,6 +103,13 @@ class File:
         self.tmp.seek(0)
         data = self.tmp.read() # XXX won't work with large files
         fbp = fbp822()
+        parent = os.path.dirname(self.path)
+        pathmodes = []
+        while len(parent) > 1:
+            pstat = os.stat(parent)
+            mug = "%d:%d:%d" % (pstat.st_mode,pstat.st_uid,pstat.st_gid)
+            pathmodes.insert(0,mug)
+            parent = os.path.dirname(parent)
         # XXX pathname needs to be relative to volroot
         msg = fbp.mkmsg('snap',data,
                 pathname=self.path,
@@ -111,6 +118,7 @@ class File:
                 st_gid = self.st.st_gid,
                 st_atime = self.st.st_atime,
                 st_mtime = self.st.st_mtime,
+                pathmodes = ','.join(pathmodes)
                 )
         self.volume.addwip(msg)
         self.volume.closefile(self)
@@ -124,26 +132,50 @@ class Journal:
         self.mtime = 0
 
     def entries(self):
+        if not hasattr(self,"_entries"):
+            self._entries = []
+        if os.path.exists(self.path):
+            mtime = os.path.getmtime(self.path)
+            if mtime != self.mtime:
+                self._entries = self._reload()
+                self.mtime = mtime
+        else:
+            self._entries = []
+        return self._entries
+
+    def _reload(self):
+        entries = []
+        journal = open(self.path,'r')
+        messages = FBP.fromFile(journal)
+        for msg in messages:
+            if msg in (kernel.eagain,None):
+                continue
+            entries.append(msg)
+        return entries
+
+class History:
+
+    def __init__(self,fullpath):
+        self.path = fullpath
+        self._xids = []
+        self.mtime = 0
+
+    def add(self,msg):
+        line = "%d %s\n" % (time.time(), msg['xid'])
+        open(self.path,'a').write(line)
+
+    def xidlist(self):
         mtime = os.path.getmtime(self.path)
         if mtime != self.mtime:
             self.reload()
             self.mtime = mtime
-        return self._entries
+        return self._xids
 
     def reload(self):
-        journal = open(self.path,'r')
-        messages = FBP.fromFile(journal)
-        self._entries = []
-        while True:
-            try:
-                msg = messages.next()
-            except StopIteration:
-                break
-            except Error822, e:
-                raise
-            if msg in (kernel.eagain,None):
-                continue
-            self._entries.append(msg)
+        self._xids = []
+        for line in open(self.path,'r').readlines():
+            (time,xid) = line.strip().split()
+            self._xids.append(xid)
 
 class Volume:
 
@@ -168,7 +200,7 @@ class Volume:
 
         self.p.journal = "%s/journal"     % (cachevol)
         self.p.lock    = "%s/lock"        % (cachevol)
-        self.p.block   = "%s/block"       % (cachevol)
+        self.p.block   = "%s/%s/block"    % (self.p.cache,domain)
 
         self.p.wip     = "%s/journal.wip" % (privatevol)
         self.p.history = "%s/history"     % (privatevol)
@@ -185,7 +217,7 @@ class Volume:
             if not os.path.isdir(dir):
                 os.makedirs(dir,0700)
 
-        for fn in (self.p.journal,self.p.history):
+        for fn in (self.p.history,):
             if not os.path.isfile(fn):
                 open(fn,'w')
                 os.chmod(fn,0700)
@@ -199,6 +231,7 @@ class Volume:
             self.volroot = os.environ['ISFS_VOLROOT']
 
         self.journal = Journal(self.p.journal)
+        self.history = History(self.p.history)
 
     def mkabsolute(self,path):
         if not path.startswith(self.p.cache):
@@ -307,15 +340,16 @@ class Volume:
             self.unlock()
             return 
         if not self.cklock(): return 
-        jtime = os.path.getmtime(self.p.journal)
+        jtime = self.journal.mtime
         yield kernel.wait(self.pull())
         if not self.cklock(): return
-        if jtime != os.path.getmtime(self.p.journal):
+        if jtime != self.journal.mtime:
             error("someone else checked in conflicting changes -- repair wip and retry")
             return
-        if os.path.getmtime(self.p.journal) > os.path.getmtime(self.p.wip):
+        if self.journal.mtime > os.path.getmtime(self.p.wip):
             error("journal is newer than wip -- repair and retry")
             return
+        # XXX move to Journal
         journal = open(self.p.journal,'a')
         journal.write(wipdata)
         journal.close()
@@ -431,8 +465,7 @@ class Volume:
         Return an ordered list of the journal messages which need to be
         processed for the next update.
         """
-        done = open(self.p.history,'r').readlines()
-        done = map(lambda xid: xid.strip(),done)
+        done = self.history.xidlist()
 
         msgs = self.journal.entries()
         pending = []
@@ -464,7 +497,7 @@ class Volume:
         dst = msg['pathname']
         open(dst,'w').write(data)
         # update history
-        open(self.p.history,'a').write(msg['xid'] + "\n")
+        self.history.add(msg)
         info("updated", dst)
         class St: pass
         st = St()
@@ -492,7 +525,7 @@ class Volume:
             error("returned", rc, ": ", str(argv))
             return False
         # update history
-        open(self.p.history,'a').write(msg['xid'] + "\n")
+        self.history.add(msg)
         return True
 
 

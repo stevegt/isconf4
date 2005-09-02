@@ -8,6 +8,8 @@ import time
 from isconf.Globals import *
 from isconf.Kernel import kernel
 
+class Timeout(Exception): pass
+
 class ServerFactory:
 
     def run(self,out):
@@ -86,7 +88,7 @@ class ServerSocket:
             if busy:
                 yield kernel.sigbusy
             else:
-                yield None
+                yield kernel.signice,10
             busy = self.txrx()
 
     def txrx(self):
@@ -96,7 +98,7 @@ class ServerSocket:
         s = self.sock
         try:
             (readable, writeable, inerror) = \
-                select.select([s],[s],[s],0)
+                select.select([s],[s],[s],0.01)
         except Exception, e:
             debug("socket exception", e)
             inerror = [s]
@@ -112,6 +114,7 @@ class ServerSocket:
 
         # do reads
         if s in readable:
+            rxd = ''
             # read a chunk
             try:
                 rxd = self.sock.recv(self.chunksize)
@@ -144,6 +147,7 @@ class ServerSocket:
                 except:
                     pass
                 self.state = 'closing'
+                return
             if sent:
                 busy = True
                 # txd is a fifo -- clear as we send bytes off the front
@@ -190,18 +194,26 @@ class UNIXClientSocket:
         self.sock.setblocking(1)
         debug("connecting to %s" % self.ctl)
         self.sock.connect(self.ctl)
+        self.timeout = None
 
     def close(self):
         self.sock.close()
 
     def read(self,size):
         rxd = ''
+        s = self.sock
         while len(rxd) < size:
-            newrxd = self.sock.recv(size - len(rxd))
-            if not newrxd:
+            (readable, writeable, inerror) = \
+                select.select([s],[],[s],self.timeout)
+            # do reads
+            if s in readable:
+                newrxd = self.sock.recv(size - len(rxd))
+                if not newrxd:
+                    return rxd
+                rxd += newrxd
                 return rxd
-            rxd += newrxd
-        return rxd
+            # handle timeout
+            raise Timeout
 
     def write(self,txd):
         sent = 0
