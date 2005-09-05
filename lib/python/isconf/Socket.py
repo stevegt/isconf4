@@ -203,12 +203,12 @@ class UNIXClientSocket:
         rxd = ''
         s = self.sock
         while len(rxd) < size:
-            debug("UNIXClientSocket select")
+            # debug("UNIXClientSocket select")
             (readable, writeable, inerror) = \
                 select.select([s],[],[s],self.timeout)
             # do reads
             if s in readable:
-                debug("UNIXClientSocket readable")
+                # debug("UNIXClientSocket readable")
                 newrxd = self.sock.recv(size - len(rxd))
                 if not newrxd:
                     return rxd

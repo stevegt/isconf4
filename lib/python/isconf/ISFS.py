@@ -320,8 +320,8 @@ class Volume:
             if os.path.isfile(self.p.oldhistory):
                 os.rename(self.p.oldhistory,self.p.history)
             else:
-                open(fn,'w')
-                os.chmod(fn,0700)
+                open(self.p.history,'w')
+                os.chmod(self.p.history,0700)
 
         self.openfiles = {}
 
