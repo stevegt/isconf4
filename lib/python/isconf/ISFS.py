@@ -132,6 +132,40 @@ class Journal:
         self._entries = []
         self._mtime = 0
 
+    def addraw(self,data):
+        fh = open(self.path,'a')
+        fh.write(data)
+        fh.close()
+        self._mtime = 0
+
+    def copy(self,other):
+        """Given another journal object, ensure self is empty, then 
+        copy its entire contents into this one.  Return True if
+        success.
+
+        >>> raw  = str(FBP.msg('test',xid='abcd'))
+        >>> raw += str(FBP.msg('test',xid='defg'))
+        >>> raw += str(FBP.msg('test',xid='efgh'))
+        >>> afn = tempfile.mktemp()
+        >>> bfn = tempfile.mktemp()
+        >>> a = Journal(afn)
+        >>> b = Journal(bfn)
+        >>> a.addraw(raw)
+        >>> assert b.copy(a)
+        >>> [ x.head.xid for x in a.entries() ]
+        ['abcd', 'defg', 'efgh']
+        >>> [ x.head.xid for x in b.entries() ]
+        ['abcd', 'defg', 'efgh']
+        >>> assert not b.copy(a)
+
+        """
+        if self.entries():
+            return False
+        ofn = other.path
+        shutil.copy(ofn,self.path)
+        self._mtime = 0
+        return True
+
     def entries(self):
         if not hasattr(self,"_entries"):
             self._entries = []
@@ -143,6 +177,60 @@ class Journal:
         else:
             self._entries = []
         return self._entries
+
+    def migrate(self,other,append=False):
+        """Given another journal object, ensure other is a superset of
+        self, then if append=True, append remaining entries from other 
+        to self.  Return True if success, False otherwise.
+
+        >>> raw  = str(FBP.msg('test',xid='abcd'))
+        >>> raw += str(FBP.msg('test',xid='defg'))
+        >>> raw += str(FBP.msg('test',xid='efgh'))
+        >>> afn = tempfile.mktemp()
+        >>> bfn = tempfile.mktemp()
+        >>> a = Journal(afn)
+        >>> b = Journal(bfn)
+        >>> a.addraw(raw)
+        >>> assert len(a.entries()) == 3
+        >>> assert b.migrate(a)
+        >>> assert len(b.entries()) == 0
+        >>> assert b.migrate(a,append=True)
+        >>> assert len(b.entries()) == 3
+        >>> raw = str(FBP.msg('test',xid='hijk'))
+        >>> a.addraw(raw)
+        >>> assert len(a.entries()) == 4
+        >>> assert b.migrate(a)
+        >>> assert len(b.entries()) == 3
+        >>> assert b.migrate(a)
+        >>> assert len(b.entries()) == 3
+        >>> assert not a.migrate(b)
+        >>> raw = str(FBP.msg('test',xid='jklm'))
+        >>> b.addraw(raw)
+        >>> assert len(b.entries()) == 4
+        >>> assert not b.migrate(a)
+        >>> [ x.head.xid for x in a.entries() ]
+        ['abcd', 'defg', 'efgh', 'hijk']
+        >>> [ x.head.xid for x in b.entries() ]
+        ['abcd', 'defg', 'efgh', 'jklm']
+
+        """
+        sentries = self.entries()
+        oentries = other.entries()
+        # make sure other is a superset
+        if len(sentries) > len(oentries):
+            return False
+        i=0
+        while i < len(sentries):
+            if str(sentries[i]) != str(oentries[i]):
+                return False
+            i += 1
+        if not append:
+            return True
+        # append new entries from other
+        while i < len(oentries):
+            self.addraw(str(oentries[i]))
+            i += 1
+        return True
 
     def mtime(self):
         # do NOT update self._mtime here -- entries() needs to do that
@@ -188,7 +276,7 @@ class History:
 class Volume:
 
     # XXX provide logname and mode on open, check/get lock then
-    def __init__(self,volname,logname,outpin):  
+    def __init__(self,volname,logname,outpin,histfile):  
         self.volname = volname
         self.logname = logname
         self.outpin = outpin
@@ -197,6 +285,7 @@ class Volume:
         # in p, use mkrelative to convert as needed
         class Path: pass
         self.p = Path()
+        self.p.history = histfile
         self.p.cache = os.environ['ISFS_CACHE']
         self.p.private = os.environ['ISFS_PRIVATE']
         domain  = os.environ['ISFS_DOMAIN']
@@ -212,7 +301,8 @@ class Volume:
         self.p.block   = "%s/%s/block"    % (self.p.cache,domain)
 
         self.p.wip     = "%s/journal.wip" % (privatevol)
-        self.p.history = "%s/history"     % (privatevol)
+        # XXX for upgrade of test machines -- deprecate after release
+        self.p.oldhistory = "%s/history"     % (privatevol)
         self.p.volroot = "%s/volroot"     % (privatevol)
 
         debug("isfs cache", self.p.cache)
@@ -226,8 +316,10 @@ class Volume:
             if not os.path.isdir(dir):
                 os.makedirs(dir,0700)
 
-        for fn in (self.p.history,):
-            if not os.path.isfile(fn):
+        if not os.path.isfile(self.p.history):
+            if os.path.isfile(self.p.oldhistory):
+                os.rename(self.p.oldhistory,self.p.history)
+            else:
                 open(fn,'w')
                 os.chmod(fn,0700)
 
@@ -259,14 +351,17 @@ class Volume:
         path = self.mkrelative(path)
         open(self.p.announce,'a').write(path + "\n")
 
-    def pull(self):
+    def pull(self,bg=False):
         files = (
                 self.mkrelative(self.p.journal),
                 self.mkrelative(self.p.lock)
                 )
         yield kernel.wait(self.pullfiles(files))
         files = self.pendingfiles()
-        yield kernel.wait(self.pullfiles(files))
+        if bg:
+            kernel.spawn(self.pullfiles(files))
+        else:
+            yield kernel.wait(self.pullfiles(files))
 
     def pullfiles(self,files):
         if files:
@@ -370,10 +465,7 @@ class Volume:
         if self.journal.mtime() > os.path.getmtime(self.p.wip):
             error("journal is newer than wip -- repair and retry")
             return
-        # XXX move to Journal
-        journal = open(self.p.journal,'a')
-        journal.write(wipdata)
-        journal.close()
+        self.journal.addraw(wipdata)
         os.unlink(self.p.wip)
         self.announce(self.p.journal)
         info("changes checked in")

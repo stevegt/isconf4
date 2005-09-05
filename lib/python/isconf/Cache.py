@@ -168,7 +168,7 @@ class Cache:
                 # send requests
                 yield None
                 self.resend()
-                yield kernel.sigsleep, timeout/10
+                yield kernel.sigsleep, timeout/5
                 # see if they've all been filled or timed out
                 # debug(str(self.req))
                 if not self.req:
@@ -178,7 +178,7 @@ class Cache:
 
     def resend(self):
         """(re)send outstanding requests"""
-        if time.time() < self.lastSend + .1:
+        if time.time() < self.lastSend + .5:
             return
         self.lastSend = time.time()
         paths = self.req.keys()

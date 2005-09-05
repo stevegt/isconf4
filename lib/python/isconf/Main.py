@@ -24,13 +24,14 @@ from isconf.Kernel import kernel, Restart
 class Main:
 
     verbs = (
-            'up',
             'lock',
             'unlock',
             'snap',
             'exec',   
             'ci',     
+            'up',
             'fork',    
+            'migrate',    
             'start',
             'stop',
             'restart',
@@ -126,6 +127,7 @@ class Main:
             os.makedirs(home,0700)
         # os.chdir(home)
         if not os.environ.has_key('NOFORK'):
+            # XXX don't return until server responds to ping msg
             if os.fork(): return 0
             os.chdir(home)
             os.setsid()

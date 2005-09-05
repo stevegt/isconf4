@@ -47,11 +47,12 @@ systest:
 umlsync:
 	rsync -PHaSvuz --exclude=*.pyc . root@isconf10:/tmp/isconftest
 	rsync -PHaSvuz --exclude=*.pyc . root@isconf11:/tmp/isconftest
-	# rsync -PHaSvuz --exclude=*.pyc . root@isconf12:/tmp/isconftest
+	rsync -PHaSvuz --exclude=*.pyc . root@isconf12:/tmp/isconftest
+	rsync -PHaSvuz --exclude=*.pyc . root@isconf13:/tmp/isconftest
 
 umltest: umlsync
 	cd t && time python2.2 runlabtest.py /tmp/isconftest \
-		isconf10 isconf11 isconf12
+		isconf10 isconf11 isconf12 isconf13
 
 labsync:
 	rsync -PHaSvuz --exclude=*.pyc . root@test1:/tmp/isconftest

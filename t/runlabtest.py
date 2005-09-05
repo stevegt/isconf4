@@ -233,22 +233,26 @@ def readblind(child):
 
 def main():
     dir = sys.argv[1]
-    host = sys.argv[2:5]
+    host = sys.argv[2:6]
     tdir = "/tmp/labtest"
     vdir = "/tmp/var"
     journal = "%s/isfs/cache/example.com/volume/generic/journal" % vdir
     a = Host(host[0],dir)
     b = Host(host[1],dir)
-    # c = Host(host[2],dir)
+    c = Host(host[2],dir)
+    d = Host(host[3],dir)
     aname = str(a.hostname()).strip()
     bname = str(b.hostname()).strip()
-    # cname = str(c.hostname()).strip()
+    cname = str(c.hostname()).strip()
+    dname = str(d.hostname()).strip()
     print "a.hostname", aname
     print "b.hostname", bname
-    # print "c.hostname", cname
+    print "c.hostname", cname
+    print "d.hostname", dname
     assert aname == host[0]
     assert bname == host[1]
-    # assert cname == host[2]
+    assert cname == host[2]
+    assert dname == host[3]
 
     # start with clean tree
     a.isconf("stop",blind=True)
@@ -261,12 +265,8 @@ def main():
     # ordinary start 
     a.isconf("start")
     b.isconf("start")
-    a.isconf("up")
-    b.isconf("up")
-
-    # restart
-    a.restart()
-    b.restart()
+    c.isconf("start")
+    d.isconf("start")
     a.isconf("up")
     b.isconf("up")
 
@@ -316,6 +316,7 @@ def main():
     b.sess("rm -rf /tmp/var")
     b.sess("rm -rf " + tdir)
     b.isconf("start")
+    time.sleep(7)
     b.isconf("up",timeout=60)
     out = b.cat("%s/2.out" % tdir)
     t.test(out,"hey there world!\n")
@@ -328,7 +329,30 @@ def main():
     out = b.cat("%s/multiple" % tdir)
     t.test(out,"test multiple")
     
+    # fork 
+    c.isconf("up",timeout=60)
+    c.isconf("fork branch2")
+    c.isconf("up")
+    c.isconf("-m 'test fork' lock")
+    c.put("test fork","%s/fork" % tdir)
+    c.isconf("ci")
+    # migrate
+    d.isconf("migrate branch2")
+    d.isconf("up")
+    out = d.cat("%s/multiple" % tdir)
+    t.test(out,"test multiple")
+    out = d.cat("%s/fork" % tdir)
+    t.test(out,"test fork")
+    a.isconf("up")
+    a.sess("test -f %s/fork" % tdir, rc=1)
+    b.isconf("up")
+    b.sess("test -f %s/fork" % tdir, rc=1)
 
+    # restart
+    a.restart()
+    b.restart()
+    a.isconf("up")
+    b.isconf("up")
 
     rc = t.results()
     sys.exit(rc)

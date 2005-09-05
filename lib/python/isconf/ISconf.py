@@ -120,9 +120,12 @@ class CLIServer:
                 self.debug = msg.head.debug
                 data = msg.payload()
                 opt = dict(msg.items())
+                if opt['message'] == 'None':
+                    opt['message'] = None
                 debug(opt)
                 verb = msg['verb']
-                if verb != 'lock' and opt['message'] != 'None':
+                debug("verb in process",verb)
+                if verb != 'lock' and opt['message'] != None:
                     error(iserrno.EINVAL, "-m is only valid on lock")
                 if verb == 'exec': verb = 'Exec' # sigh
                 if verb == 'shutdown': 
@@ -139,6 +142,7 @@ class CLIServer:
                     error(outpin,iserrno.EINVAL,verb)
                     return
                 # start command processor, wait for it to finish
+                debug("process calling",verb)
                 yield kernel.wait(func())
                 return # XXX can't handle stdin yet
 
@@ -189,11 +193,14 @@ class Ops:
         self.args = args
         self.data = data
         self.outpin = outpin
+        self.histfile = "%s/history" % os.environ['VARISCONF']
 
         self.volname = branch()
-        logname = self.opt['logname']
+        self.logname = self.opt['logname']
         self.volume = ISFS.Volume(
-                self.volname,logname=logname,outpin=outpin)
+                self.volname,logname=self.logname,outpin=outpin,
+                histfile=self.histfile)
+        info("%s is on %s branch" % (os.environ['HOSTNAME'],branch()) )
 
     def ci(self):
         yield kernel.wait(self.volume.ci())
@@ -206,11 +213,50 @@ class Ops:
             return
         yield kernel.wait(self.volume.Exec(self.data,cwd))
 
+    def fork(self,migrate=False):
+        debug("fork args",self.args)
+        if self.volume.wip(): 
+            error("local changes not checked in")
+            return 
+        if len(self.args) < 1:
+            error("missing new branch name")
+            return
+        newbranch = self.args[0]
+        debug("newbranch",newbranch)
+        if migrate and newbranch == self.volname:
+            error("%s is already on %s branch" % (
+                    os.environ['HOSTNAME'], newbranch)
+                    )
+            return
+        newvolume = ISFS.Volume(
+                newbranch,logname=self.logname,outpin=self.outpin,
+                histfile=self.histfile)
+        yield kernel.wait(self.volume.pull(bg=True))
+        yield kernel.wait(newvolume.pull(bg=True))
+        if not migrate:
+            if not newvolume.journal.copy(self.volume.journal):
+                error("%s already exists -- did you mean 'migrate'?" % newbranch)
+                return
+            info("branch %s created" % (newbranch))
+        else:
+            if not self.volume.journal.migrate(newvolume.journal):
+                error("migration of this host to %s failed: conflicting changes: %s is not a superset of %s" % (newbranch,newbranch,self.volname))
+                return
+        branch(newbranch)
+        self.volname = newbranch
+        self.volume = newvolume
+        info("%s migrated to %s" % (os.environ['HOSTNAME'], newbranch))
+        
     def lock(self):
         if not self.opt['message']:
             error(iserrno.NEEDMSG,'did not lock %s' % self.volname)
             return
         yield kernel.wait(self.volume.lock(self.opt['message']))
+
+    def migrate(self):
+        yield None
+        debug("migrate calling fork")
+        yield kernel.wait(self.fork(migrate=True))
 
     def snap(self):
         # XXX move most of this to ISFS

@@ -239,7 +239,6 @@ class fbp822:
         (START,HEAD,PARSE,BODY,SEND) = range(5)
         state=START
         for line in stream:
-            print "alkjfdslkjdsa", state, repr(line)
             if intask:
                 yield None
             if state is START:
