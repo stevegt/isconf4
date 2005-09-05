@@ -43,7 +43,7 @@ class Cache:
 
     """
 
-    def __init__(self,udpport,httpport,dir,timeout=5):
+    def __init__(self,udpport,httpport,dir,timeout=2):
         self.req = {}
         self.udpport = udpport
         self.httpport = httpport
@@ -178,7 +178,7 @@ class Cache:
 
     def resend(self):
         """(re)send outstanding requests"""
-        if time.time() < self.lastSend + 1:
+        if time.time() < self.lastSend + .1:
             return
         self.lastSend = time.time()
         paths = self.req.keys()
