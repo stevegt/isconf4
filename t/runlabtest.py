@@ -255,20 +255,15 @@ def main():
     assert dname == host[3]
 
     # start with clean tree
-    a.isconf("stop",blind=True)
-    b.isconf("stop",blind=True)
-    a.sess("rm -rf /tmp/var")
-    b.sess("rm -rf /tmp/var")
-    a.sess("rm -rf " + tdir)
-    b.sess("rm -rf " + tdir)
+    for h in (a,b,c,d):
+        h.isconf("stop",blind=True)
+        h.sess("rm -rf /tmp/var")
+        h.sess("rm -rf " + tdir)
 
     # ordinary start 
-    a.isconf("start")
-    b.isconf("start")
-    c.isconf("start")
-    d.isconf("start")
-    a.isconf("up")
-    b.isconf("up")
+    for h in (a,b,c,d):
+        h.isconf("start")
+        h.isconf("up")
 
     # lock
     a.sess("mkdir -p " + tdir)
@@ -317,7 +312,7 @@ def main():
     b.sess("rm -rf " + tdir)
     b.isconf("start")
     time.sleep(7)
-    b.isconf("up",timeout=60)
+    b.isconf("up",timeout=90)
     out = b.cat("%s/2.out" % tdir)
     t.test(out,"hey there world!\n")
     # multiple checkins broken when fixing #49
@@ -335,6 +330,7 @@ def main():
     c.isconf("up")
     c.isconf("-m 'test fork' lock")
     c.put("test fork","%s/fork" % tdir)
+    c.isconf("snap %s/fork" % tdir)
     c.isconf("ci")
     # migrate
     d.isconf("migrate branch2")

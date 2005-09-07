@@ -57,11 +57,12 @@ umltest: umlsync
 labsync:
 	rsync -PHaSvuz --exclude=*.pyc . root@test1:/tmp/isconftest
 	rsync -PHaSvuz --exclude=*.pyc . root@test2:/tmp/isconftest
-	# rsync -PHaSvuz --exclude=*.pyc . root@test3:/tmp/isconftest
+	rsync -PHaSvuz --exclude=*.pyc . root@test3:/tmp/isconftest
+	rsync -PHaSvuz --exclude=*.pyc . root@test4:/tmp/isconftest
 
 labtest: labsync
 	cd t && time python2.2 runlabtest.py /tmp/isconftest \
-		test1 test2 test3
+		test1 test2 test3 test4
 
 tarsync:
 	t/tarsync $(tarname) test1 test2 test3

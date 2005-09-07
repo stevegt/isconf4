@@ -668,6 +668,7 @@ class Volume:
 
 # XXX the following were migrated directly from 4.1.7 for now --
 # really need to be FBP components, at least in terms of logging
+# XXX move to Cache
 
 def httpServer(port,dir):
     from BaseHTTPServer import HTTPServer
