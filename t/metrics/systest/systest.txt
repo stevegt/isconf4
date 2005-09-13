@@ -1,0 +1,234 @@
+test1> hostname 
+test2> hostname 
+test3> hostname 
+test4> hostname 
+a.hostname test1
+b.hostname test2
+c.hostname test3
+d.hostname test4
+test1> /tmp/isconftest/t/isconf stop
+test1> rm -rf /tmp/var
+test1> rm -rf /tmp/labtest
+test2> /tmp/isconftest/t/isconf stop
+test2> rm -rf /tmp/var
+test2> rm -rf /tmp/labtest
+test3> /tmp/isconftest/t/isconf stop
+test3> rm -rf /tmp/var
+test3> rm -rf /tmp/labtest
+test4> /tmp/isconftest/t/isconf stop
+test4> rm -rf /tmp/var
+test4> rm -rf /tmp/labtest
+test1> /tmp/isconftest/t/isconf start
+test1> /tmp/isconftest/t/isconf up
+test2> /tmp/isconftest/t/isconf start
+test2> /tmp/isconftest/t/isconf up
+test3> /tmp/isconftest/t/isconf start
+test3> /tmp/isconftest/t/isconf up
+test4> /tmp/isconftest/t/isconf start
+test4> /tmp/isconftest/t/isconf up
+test1> mkdir -p /tmp/labtest
+# scp /tmp/@1877.0 root@test1:/tmp/labtest/1
+test1> cat /tmp/labtest/1
+test1> /tmp/isconftest/t/isconf snap /tmp/labtest/1
+test1> /tmp/isconftest/t/isconf snap foo
+test1> /tmp/isconftest/t/isconf -m 'test' lock
+test1> /tmp/isconftest/t/isconf exec mkdir -p /tmp/labtest
+test1> /tmp/isconftest/t/isconf snap /tmp/labtest/1
+# scp /tmp/@1877.1 root@test1:/tmp/labtest/2
+# ssh root@test1 chmod +x /tmp/labtest/2
+test1> /tmp/isconftest/t/isconf snap /tmp/labtest/2
+test1> /tmp/isconftest/t/isconf exec /tmp/labtest/2 'hey there world!'
+test1> cat /tmp/labtest/2.out
+test2> /tmp/isconftest/t/isconf up
+test2> test -f /tmp/labtest/1
+test2> test -f /tmp/labtest/2.out
+test1> /tmp/isconftest/t/isconf ci
+test2> /tmp/isconftest/t/isconf up
+test2> cat /tmp/labtest/1
+test2> cat /tmp/labtest/2.out
+test2> grep message: /tmp/var/isfs/cache/example.com/volume/generic/journal | grep test | wc -l
+test2> /tmp/isconftest/t/isconf stop
+test2> rm -rf /tmp/var
+test2> rm -rf /tmp/labtest
+test2> /tmp/isconftest/t/isconf start
+test2> /tmp/isconftest/t/isconf up
+test2> cat /tmp/labtest/2.out
+test1> /tmp/isconftest/t/isconf -m 'test multiple ci' lock
+# scp /tmp/@1877.2 root@test1:/tmp/labtest/multiple
+test1> /tmp/isconftest/t/isconf snap /tmp/labtest/multiple
+test1> /tmp/isconftest/t/isconf ci
+test2> /tmp/isconftest/t/isconf up
+test2> cat /tmp/labtest/multiple
+test3> /tmp/isconftest/t/isconf up
+test3> /tmp/isconftest/t/isconf fork branch2
+test3> /tmp/isconftest/t/isconf up
+test3> /tmp/isconftest/t/isconf -m 'test fork' lock
+# scp /tmp/@1877.3 root@test3:/tmp/labtest/fork
+test3> /tmp/isconftest/t/isconf snap /tmp/labtest/fork
+test3> /tmp/isconftest/t/isconf ci
+test4> /tmp/isconftest/t/isconf migrate branch2
+test4> /tmp/isconftest/t/isconf up
+test4> cat /tmp/labtest/multiple
+test4> cat /tmp/labtest/fork
+test1> /tmp/isconftest/t/isconf up
+test1> test -f /tmp/labtest/fork
+test2> /tmp/isconftest/t/isconf up
+test2> test -f /tmp/labtest/fork
+# ssh root@test1 /tmp/isconftest/t/isconf restart
+test1> hostname 
+test2> hostname 
+test3> hostname 
+test4> hostname 
+a.hostname test1
+b.hostname test2
+c.hostname test3
+d.hostname test4
+test1> /tmp/isconftest/t/isconf stop
+test1> rm -rf /tmp/var
+test1> rm -rf /tmp/labtest
+test2> /tmp/isconftest/t/isconf stop
+test2> rm -rf /tmp/var
+test2> rm -rf /tmp/labtest
+test3> /tmp/isconftest/t/isconf stop
+test3> rm -rf /tmp/var
+test3> rm -rf /tmp/labtest
+test4> /tmp/isconftest/t/isconf stop
+test4> rm -rf /tmp/var
+test4> rm -rf /tmp/labtest
+test1> /tmp/isconftest/t/isconf start
+test1> /tmp/isconftest/t/isconf up
+test2> /tmp/isconftest/t/isconf start
+test2> /tmp/isconftest/t/isconf up
+test3> /tmp/isconftest/t/isconf start
+test3> /tmp/isconftest/t/isconf up
+test4> /tmp/isconftest/t/isconf start
+test4> /tmp/isconftest/t/isconf up
+test1> mkdir -p /tmp/labtest
+# scp /tmp/@1877.0 root@test1:/tmp/labtest/1
+test1> cat /tmp/labtest/1
+test1> /tmp/isconftest/t/isconf snap /tmp/labtest/1
+test1> /tmp/isconftest/t/isconf snap foo
+test1> /tmp/isconftest/t/isconf -m 'test' lock
+test1> /tmp/isconftest/t/isconf exec mkdir -p /tmp/labtest
+test1> /tmp/isconftest/t/isconf snap /tmp/labtest/1
+# scp /tmp/@1877.1 root@test1:/tmp/labtest/2
+# ssh root@test1 chmod +x /tmp/labtest/2
+test1> /tmp/isconftest/t/isconf snap /tmp/labtest/2
+test1> /tmp/isconftest/t/isconf exec /tmp/labtest/2 'hey there world!'
+test1> cat /tmp/labtest/2.out
+test2> /tmp/isconftest/t/isconf up
+test2> test -f /tmp/labtest/1
+test2> test -f /tmp/labtest/2.out
+test1> /tmp/isconftest/t/isconf ci
+test2> /tmp/isconftest/t/isconf up
+test2> cat /tmp/labtest/1
+test2> cat /tmp/labtest/2.out
+test2> grep message: /tmp/var/isfs/cache/example.com/volume/generic/journal | grep test | wc -l
+test2> /tmp/isconftest/t/isconf stop
+test2> rm -rf /tmp/var
+test2> rm -rf /tmp/labtest
+test2> /tmp/isconftest/t/isconf start
+test2> /tmp/isconftest/t/isconf up
+test2> cat /tmp/labtest/2.out
+test1> /tmp/isconftest/t/isconf -m 'test multiple ci' lock
+# scp /tmp/@1877.2 root@test1:/tmp/labtest/multiple
+test1> /tmp/isconftest/t/isconf snap /tmp/labtest/multiple
+test1> /tmp/isconftest/t/isconf ci
+test2> /tmp/isconftest/t/isconf up
+test2> cat /tmp/labtest/multiple
+test3> /tmp/isconftest/t/isconf up
+test3> /tmp/isconftest/t/isconf fork branch2
+test3> /tmp/isconftest/t/isconf up
+test3> /tmp/isconftest/t/isconf -m 'test fork' lock
+# scp /tmp/@1877.3 root@test3:/tmp/labtest/fork
+test3> /tmp/isconftest/t/isconf snap /tmp/labtest/fork
+test3> /tmp/isconftest/t/isconf ci
+test4> /tmp/isconftest/t/isconf migrate branch2
+test4> /tmp/isconftest/t/isconf up
+test4> cat /tmp/labtest/multiple
+test4> cat /tmp/labtest/fork
+test1> /tmp/isconftest/t/isconf up
+test1> test -f /tmp/labtest/fork
+test2> /tmp/isconftest/t/isconf up
+test2> test -f /tmp/labtest/fork
+# ssh root@test2 /tmp/isconftest/t/isconf restart
+test1> hostname 
+test2> hostname 
+test3> hostname 
+test4> hostname 
+a.hostname test1
+b.hostname test2
+c.hostname test3
+d.hostname test4
+test1> /tmp/isconftest/t/isconf stop
+test1> rm -rf /tmp/var
+test1> rm -rf /tmp/labtest
+test2> /tmp/isconftest/t/isconf stop
+test2> rm -rf /tmp/var
+test2> rm -rf /tmp/labtest
+test3> /tmp/isconftest/t/isconf stop
+test3> rm -rf /tmp/var
+test3> rm -rf /tmp/labtest
+test4> /tmp/isconftest/t/isconf stop
+test4> rm -rf /tmp/var
+test4> rm -rf /tmp/labtest
+test1> /tmp/isconftest/t/isconf start
+test1> /tmp/isconftest/t/isconf up
+test2> /tmp/isconftest/t/isconf start
+test2> /tmp/isconftest/t/isconf up
+test3> /tmp/isconftest/t/isconf start
+test3> /tmp/isconftest/t/isconf up
+test4> /tmp/isconftest/t/isconf start
+test4> /tmp/isconftest/t/isconf up
+test1> mkdir -p /tmp/labtest
+# scp /tmp/@1877.0 root@test1:/tmp/labtest/1
+test1> cat /tmp/labtest/1
+test1> /tmp/isconftest/t/isconf snap /tmp/labtest/1
+test1> /tmp/isconftest/t/isconf snap foo
+test1> /tmp/isconftest/t/isconf -m 'test' lock
+test1> /tmp/isconftest/t/isconf exec mkdir -p /tmp/labtest
+test1> /tmp/isconftest/t/isconf snap /tmp/labtest/1
+# scp /tmp/@1877.1 root@test1:/tmp/labtest/2
+# ssh root@test1 chmod +x /tmp/labtest/2
+test1> /tmp/isconftest/t/isconf snap /tmp/labtest/2
+test1> /tmp/isconftest/t/isconf exec /tmp/labtest/2 'hey there world!'
+test1> cat /tmp/labtest/2.out
+test2> /tmp/isconftest/t/isconf up
+test2> test -f /tmp/labtest/1
+test2> test -f /tmp/labtest/2.out
+test1> /tmp/isconftest/t/isconf ci
+test2> /tmp/isconftest/t/isconf up
+test2> cat /tmp/labtest/1
+test2> cat /tmp/labtest/2.out
+test2> grep message: /tmp/var/isfs/cache/example.com/volume/generic/journal | grep test | wc -l
+test2> /tmp/isconftest/t/isconf stop
+test2> rm -rf /tmp/var
+test2> rm -rf /tmp/labtest
+test2> /tmp/isconftest/t/isconf start
+test2> /tmp/isconftest/t/isconf up
+test2> cat /tmp/labtest/2.out
+test1> /tmp/isconftest/t/isconf -m 'test multiple ci' lock
+# scp /tmp/@1877.2 root@test1:/tmp/labtest/multiple
+test1> /tmp/isconftest/t/isconf snap /tmp/labtest/multiple
+test1> /tmp/isconftest/t/isconf ci
+test2> /tmp/isconftest/t/isconf up
+test2> cat /tmp/labtest/multiple
+test3> /tmp/isconftest/t/isconf up
+test3> /tmp/isconftest/t/isconf fork branch2
+test3> /tmp/isconftest/t/isconf up
+test3> /tmp/isconftest/t/isconf -m 'test fork' lock
+# scp /tmp/@1877.3 root@test3:/tmp/labtest/fork
+test3> /tmp/isconftest/t/isconf snap /tmp/labtest/fork
+test3> /tmp/isconftest/t/isconf ci
+test4> /tmp/isconftest/t/isconf migrate branch2
+test4> /tmp/isconftest/t/isconf up
+test4> cat /tmp/labtest/multiple
+test4> cat /tmp/labtest/fork
+test1> /tmp/isconftest/t/isconf up
+test1> test -f /tmp/labtest/fork
+test2> /tmp/isconftest/t/isconf up
+test2> test -f /tmp/labtest/fork
+test1> /tmp/isconftest/t/isconf up
+test2> /tmp/isconftest/t/isconf up
+
+75 tests: 0 failed, 75 passed (100%)

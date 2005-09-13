@@ -1,0 +1,7 @@
+#!/bin/sh
+
+for h in test1 test2 test3 test4
+do
+    rsync -Pavz root@$h:/tmp/isconftest/.coverage .coverage.$h
+    python ./coverage/py -u .coverage.$h
+done
