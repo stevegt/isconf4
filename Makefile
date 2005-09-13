@@ -41,41 +41,5 @@ ship: tar
 test:
 	cd t && time make
 
-systest:
-	cd t && time make runsystest.py
-
-umlsync:
-	rsync -PHaSvuz --exclude=*.pyc . root@isconf10:/tmp/isconftest
-	rsync -PHaSvuz --exclude=*.pyc . root@isconf11:/tmp/isconftest
-	rsync -PHaSvuz --exclude=*.pyc . root@isconf12:/tmp/isconftest
-	rsync -PHaSvuz --exclude=*.pyc . root@isconf13:/tmp/isconftest
-
-umltest: umlsync
-	cd t && time python2.2 runlabtest.py /tmp/isconftest \
-		isconf10 isconf11 isconf12 isconf13
-
-labsync:
-	rsync -PHaSvuz --exclude=*.pyc . root@test1:/tmp/isconftest
-	rsync -PHaSvuz --exclude=*.pyc . root@test2:/tmp/isconftest
-	rsync -PHaSvuz --exclude=*.pyc . root@test3:/tmp/isconftest
-	rsync -PHaSvuz --exclude=*.pyc . root@test4:/tmp/isconftest
-
-labtest: labsync
-	cd t && time python2.2 runlabtest.py /tmp/isconftest \
-		test1 test2 test3 test4
-
-tarsync:
-	t/tarsync $(tarname) test1 test2 test3
-
-tartest: tarsync
-	time python2.2 t/runlabtest.py /tmp/$(tarname) \
-		test1 test2 test3
-
-mtatest:
-	- killall isconf
-	- bin/isconf -v selftest -p
-	sleep 5
-	# GNUPGHOME=/tmp/`ls -rt /tmp | tail -1`/foo/.gnupg; cd mta; make
-	# export GNUPGHOME=`ls -rtd /tmp/[0-9]*/A/.gnupg | tail -1`; \
-	export GNUPGHOME=/tmp/isconf-test/A/var/isconf/.gnupg; $(MAKE) -C mta all
-
+%:
+	cd t && $(MAKE) $*

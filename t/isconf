@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh 
 
 base=`dirname $0`/..
 cd $base
@@ -19,7 +19,13 @@ then
     python=python
 fi
 
+coverage=''
+if test -n "$COVERAGE"
+then
+    coverage="$base/t/coverage.py -x"
+fi
+
 export PYTHONPATH ISFS_NETS
 
-$python $base/bin/isconf -c $base/t/simple.conf "$@"
+$python $coverage $base/bin/isconf -c $base/t/simple.conf "$@"
 

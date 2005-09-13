@@ -14,6 +14,12 @@ import time
 import unittest
 
 sys.path.append("t")
+logfn="runlabtest.log"
+logfh = open(logfn,'w')
+
+TIMEOUT=30
+if os.environ.get('COVERAGE',False):
+    TIMEOUT=60
 
 class Result:
     def __init__(self,rc,out,err):
@@ -99,6 +105,7 @@ class Host:
         self._dir = dir
         self._hostname = hostname
         self.s = pexpect.spawn("ssh root@%s" % self._hostname)
+        self.s.timeout=TIMEOUT
         time.sleep(5)
         self.s.sendline("stty -echo")
         self.s.sendline("PS1=")
@@ -108,6 +115,8 @@ class Host:
         time.sleep(.1)
         self.s.expect("START\r\n")
         # self.s.expect(self.tag)
+        if os.environ.get('COVERAGE',False):
+            self.sess("COVERAGE=1; export COVERAGE")
     def __call__(self,args):
         res = self.cat(args)
         if not res.rc == 0:
@@ -119,11 +128,11 @@ class Host:
         fn = tempfile.mktemp()
         open(fn,'w').write(data)
         cmd = "scp %s root@%s:%s" % (fn,self._hostname,file)
-        print "#", cmd
+        log("#", cmd)
         os.system(cmd)
         time.sleep(.1)
     def sess(self,args,rc=0,blind=False,timeout=-1):
-        print "%s>" % self._hostname, args
+        log("%s>" % self._hostname, args)
         tag = str(random.random())
         self.s.sendline("%s; echo errno=$?,%s" % (args,tag))
         time.sleep(.1)
@@ -137,7 +146,9 @@ class Host:
         return res
     def ssh(self,args,rc=0,blind=False):
         cmd = "ssh root@%s %s" % (self._hostname,args)
-        print "#", cmd
+        if os.environ.get('COVERAGE',False):
+            cmd = "COVERAGE=1 %s" % cmd
+        log("#", cmd)
         popen = popen2.Popen3(cmd,capturestderr=True)
         (stdin, stdout, stderr) = (
                 popen.tochild, popen.fromchild, popen.childerr)
@@ -200,14 +211,15 @@ class Test:
         # print ".",
     def failed(self,condition):
         self._failed += 1
-        print "FAIL", condition
+        log("FAIL", condition)
     def results(self):
         total = self._passed + self._failed
-        print "\n%d tests: %d failed, %d passed (%d%%)" % (
+        log("\n%d tests: %d failed, %d passed (%d%%)" % (
                 total,
                 self._failed, self._passed,
                 (self._passed/float(total)) * 100
             )
+        )
         return self._failed
     def test(self,got,want,equal=True):
         passed=False
@@ -221,6 +233,12 @@ class Test:
             self.failed("%s == %s" % (repr(str(got)),repr(str(want))))
 
 t = Test()
+
+def log(*msg):
+    if isinstance(msg,list) or isinstance(msg,tuple):
+        msg = ' '.join(msg)
+    print msg
+    print >>logfh, msg
 
 def readblind(child):
     out = ""
@@ -245,10 +263,10 @@ def main():
     bname = str(b.hostname()).strip()
     cname = str(c.hostname()).strip()
     dname = str(d.hostname()).strip()
-    print "a.hostname", aname
-    print "b.hostname", bname
-    print "c.hostname", cname
-    print "d.hostname", dname
+    log("a.hostname", aname)
+    log("b.hostname", bname)
+    log("c.hostname", cname)
+    log("d.hostname", dname)
     assert aname == host[0]
     assert bname == host[1]
     assert cname == host[2]
@@ -312,7 +330,7 @@ def main():
     b.sess("rm -rf " + tdir)
     b.isconf("start")
     time.sleep(7)
-    b.isconf("up",timeout=90)
+    b.isconf("up",timeout=TIMEOUT*3)
     out = b.cat("%s/2.out" % tdir)
     t.test(out,"hey there world!\n")
     # multiple checkins broken when fixing #49
@@ -320,12 +338,12 @@ def main():
     a.put("test multiple","%s/multiple" % tdir)
     a.isconf("snap %s/multiple" % tdir)
     a.isconf("ci")
-    b.isconf("up",timeout=60)  # XXX why long timeout here?
+    b.isconf("up",timeout=TIMEOUT*2)  # XXX why long timeout here?
     out = b.cat("%s/multiple" % tdir)
     t.test(out,"test multiple")
     
     # fork 
-    c.isconf("up",timeout=60)
+    c.isconf("up",timeout=TIMEOUT*2)
     c.isconf("fork branch2")
     c.isconf("up")
     c.isconf("-m 'test fork' lock")

@@ -164,10 +164,11 @@ class coverage:
                               "options at the same time." % (i, j))
         args_needed = (settings.get('execute')
                        or settings.get('annotate')
-                       or settings.get('report'))
+                       or settings.get('report')
+                       or settings.get('update'))
         action = settings.get('erase') or args_needed
         if not action:
-            self.help("You must specify at least one of -e, -x, -r, "
+            self.help("You must specify at least one of -e, -x, -r, -u, "
                       "or -a.")
         if not args_needed and args:
             self.help("Unexpected arguments %s." % args)

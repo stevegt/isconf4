@@ -42,19 +42,23 @@ class Server:
     def stop(self):
         """stop a running server"""
         # XXX should we instead ask it politely first?
-        pid = int(open(self.pidpath,'r').read().strip())
         try:
+            pid = int(open(self.pidpath,'r').read().strip())
             os.kill(pid,signal.SIGINT)
+            time.sleep(1)
+            try:
+                os.kill(pid,signal.SIGKILL)
+            except:
+                pass
+        except IOError, e:
+            if e.errno == 2:
+                info("no pid file found")
+                return 1
         except OSError, e:
             if e.errno == 3:
                 info("already stopped")
                 return 0
             raise
-        time.sleep(1)
-        try:
-            os.kill(pid,signal.SIGKILL)
-        except:
-            pass
         return 0
 
     def logger(self,bus):

@@ -3,13 +3,24 @@ files=$(shell find $(lib) -type f -name "*.py" | grep -v GPG.py | sort)
 pythons=$(shell ./pythondetect)
 export PYTHONPATH=$(lib)
 # export ISFS_HOME=/tmp/var/isfs
+python=python2.2
+mdir=metrics/$(python)
+tdir=/tmp/isconftest
+labhosts=test1 test2 test3 test4
+COVERAGE=
 
-all: $(pythons)
+all: unittest report
+	
+unittest: $(pythons)
+
+systest: python2.2 labtest
+	./fetch-coverage test1 test2 test3 test4
+	python2.2 ./coverage.py -r $(files) 2>&1 | tee metrics/systest/coverage.txt
+	python2.2 ./coverage.py -rm $(files) 2>&1 | tee metrics/systest/missing.txt
 
 python2.2 python2.3 python2.4 python2.5: 
 	$(MAKE) run python=$@
 
-run: mdir=metrics/$(python)
 run:
 	# - killall isconf
 	$(python) ./coverage.py -e
@@ -23,5 +34,48 @@ run:
 
 %.py: FORCE
 	python $@
+
+XXXsystest:
+	cd t && time make runsystest.py
+
+umlsync:
+	cd .. && rsync -PHaSvuz --exclude=*.pyc . root@isconf10:/tmp/isconftest
+	cd .. && rsync -PHaSvuz --exclude=*.pyc . root@isconf11:/tmp/isconftest
+	cd .. && rsync -PHaSvuz --exclude=*.pyc . root@isconf12:/tmp/isconftest
+	cd .. && rsync -PHaSvuz --exclude=*.pyc . root@isconf13:/tmp/isconftest
+
+umltest: umlsync
+	time python2.2 runlabtest.py /tmp/isconftest \
+		isconf10 isconf11 isconf12 isconf13
+
+labsync:
+	rm -f ../.coverage
+	$(MAKE) -j 4 $(labhosts)
+
+$(labhosts):
+	cd .. && rsync -PHaSvuz --delete --exclude=*.pyc . root@$@:$(tdir)
+
+coverage: COVERAGE=1
+coverage: labtest
+
+labtest: labsync
+	COVERAGE=$(COVERAGE) time python2.2 runlabtest.py /tmp/isconftest \
+		$(labhosts) 
+	mv runlabtest.log metrics/systest/systest.txt 
+
+tarsync:
+	t/tarsync $(tarname) test1 test2 test3
+
+tartest: tarsync
+	time python2.2 t/runlabtest.py /tmp/$(tarname) \
+		test1 test2 test3
+
+mtatest:
+	- killall isconf
+	- bin/isconf -v selftest -p
+	sleep 5
+	# GNUPGHOME=/tmp/`ls -rt /tmp | tail -1`/foo/.gnupg; cd mta; make
+	# export GNUPGHOME=`ls -rtd /tmp/[0-9]*/A/.gnupg | tail -1`; \
+	export GNUPGHOME=/tmp/isconf-test/A/var/isconf/.gnupg; $(MAKE) -C mta all
 
 FORCE:
