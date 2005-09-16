@@ -1,4 +1,4 @@
-include LICENSE MANIFEST.in Makefile README check-svn-st
+include LICENSE MANIFEST MANIFEST.in Makefile README check-svn-st
 include revision update-revision version
 include setup.py
 
