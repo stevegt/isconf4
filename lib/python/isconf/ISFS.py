@@ -698,7 +698,7 @@ class Volume:
         if not reboot_ok:
             error("reboot needed: rerun update with -r flag")
             return
-        cmd = os.environ.get('ISFS_REBOOT_CMD','shutdown -r now')
+        cmd = os.environ.get('ISCONF_REBOOT_CMD','shutdown -r now')
         info("running `%s`" % cmd)
         self.history.add(msg)
         yield kernel.sigsleep, 2

@@ -113,6 +113,12 @@ class Cache:
         url = "%s://%s:%s/%s" % (scheme,ip,port,path)
         # XXX HMAC
         path = path.lstrip('/')
+        # simple check to ignore foreign domains 
+        # XXX probably want to make this a list of domains
+        domain  = os.environ['ISFS_DOMAIN']
+        if not path.startswith(domain + '/'):
+            debug("foreign domain, ignoring: %s" % path)
+            return
         fullpath = os.path.join(self.dir,path)
         mymtime = 0
         debug("checking",url)

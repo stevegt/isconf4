@@ -132,10 +132,10 @@ class Host:
         log("#", cmd)
         os.system(cmd)
         time.sleep(.1)
-    def sess(self,args,rc=0,blind=False,timeout=-1):
+    def sess(self,args,rc=0,blind=False,timeout=-1,sleep=0):
         log("%s>" % self._hostname, args)
         tag = str(random.random())
-        self.s.sendline("%s; echo errno=$?,%s" % (args,tag))
+        self.s.sendline("%s; sleep %d; echo errno=$?,%s" % (args,sleep,tag))
         time.sleep(.1)
         self.s.expect("(.*)errno=(\d+),%s\r\n" % tag,timeout=timeout)
         m = self.s.match
@@ -157,9 +157,9 @@ class Host:
         res = self.getres(popen,stdout,stderr,quiet=blind)
         if not blind: t.rc(res,rc)
         return res
-    def isconf(self,args="",rc=0,blind=False,timeout=-1):
+    def isconf(self,args="",rc=0,blind=False,timeout=-1,sleep=0):
         args = "%s/t/isconf %s" % (self._dir,args)
-        self.sess(args,rc=rc,blind=blind,timeout=timeout)
+        self.sess(args,rc=rc,blind=blind,timeout=timeout,sleep=sleep)
     def restart(self):
         if os.fork():
             time.sleep(7)

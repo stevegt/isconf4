@@ -328,7 +328,7 @@ class Message(email.Message.Message):
         # if isinstance(val,types.BooleanType): # doesn't work in 2.2
         if val is True or val is False:
             self.add_header("_type_%s" % var,"b")
-        if isinstance(val,types.IntType):
+        elif isinstance(val,types.IntType):
             self.add_header("_type_%s" % var,"i")
 
     def hmac_calculated(self,key):

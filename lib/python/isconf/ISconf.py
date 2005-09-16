@@ -122,6 +122,8 @@ class CLIServer:
                 opt = dict(msg.items())
                 if opt['message'] == 'None':
                     opt['message'] = None
+                # XXX why don't we just pass the whole message to Ops()?
+                opt['reboot_ok'] = msg.head.reboot_ok
                 debug(opt)
                 verb = msg['verb']
                 debug("verb in process",verb)
@@ -308,6 +310,7 @@ class Ops:
     def up(self):
         reboot_ok = bool(self.opt.get('reboot_ok',False))
         if reboot_ok:
+            debug("reboot_ok", repr(self.opt['reboot_ok']))
             info("may reboot...")
         yield kernel.wait(self.volume.update(reboot_ok=reboot_ok))
 

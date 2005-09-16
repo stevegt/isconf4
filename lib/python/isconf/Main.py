@@ -44,8 +44,8 @@ class Main:
         if self.kwopt['debug']:
             os.environ['DEBUG'] = '1'
             os.environ['VERBOSE'] = '1'
-        if self.kwopt['reboot_ok']:
-            os.environ['ISFS_REBOOT_OK'] = '1'
+        # if self.kwopt['reboot_ok']:
+        #     os.environ['ISFS_REBOOT_OK'] = '1'
         os.environ.setdefault('LOGNAME',"root")
         os.environ.setdefault('VARISCONF',"/var/isconf")
         os.environ.setdefault('ISFS_HOME',"/var/isfs")
@@ -63,6 +63,8 @@ class Main:
             debug("adding to environment: %s" % str(vars))
             for (var,val) in vars.items():
                 os.environ[var]=val
+        else:
+            debug("%s not found -- using defaults" % fname)
 
         isfshome=os.environ['ISFS_HOME']
         os.environ.setdefault('ISFS_CACHE',"%s/cache" % isfshome)
