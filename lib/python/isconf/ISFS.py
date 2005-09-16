@@ -105,11 +105,15 @@ class File:
         fbp = fbp822()
         parent = os.path.dirname(self.path)
         pathmodes = []
-        while len(parent) > 1:
+        while True:
             pstat = os.stat(parent)
             mug = "%d:%d:%d" % (pstat.st_mode,pstat.st_uid,pstat.st_gid)
             pathmodes.insert(0,mug)
+            if len(parent) == 1:
+                assert parent == '/'
+                break
             parent = os.path.dirname(parent)
+            assert len(parent) >= 1
         # XXX pathname needs to be relative to volroot
         msg = fbp.mkmsg('snap',data,
                 pathname=self.path,
@@ -606,6 +610,23 @@ class Volume:
         data = open(src,'r').read()
         # XXX volroot
         dst = msg['pathname']
+        dstdir = os.path.dirname(dst)
+        dstpath = dstdir.split('/')
+        pathmodes = msg['pathmodes'].split(',')
+        debug("dstpath %s" % repr(dstpath))
+        debug("pathmodes %s" % repr(pathmodes))
+        assert len(dstpath) == len(pathmodes)
+        # create any missing parent dirs
+        for i in range(len(pathmodes)):
+            pathmode = pathmodes[i]
+            (st_mode,st_uid,st_gid) = pathmode.split(':')
+            curpath = '/'.join(dstpath[:i+1]) + '/'
+            assert curpath[0] == '/'
+            debug("checking %s" % curpath)
+            if not os.path.isdir(curpath):
+                debug('creating path %s as %s' % (curpath,pathmode))
+                os.mkdir(curpath,int(st_mode))
+                os.chown(curpath,int(st_uid),int(st_gid))
         open(dst,'w').write(data)
         # update history
         self.history.add(msg)

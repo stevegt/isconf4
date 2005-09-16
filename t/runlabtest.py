@@ -370,6 +370,17 @@ def main():
     a.isconf("up")
     b.isconf("up")
 
+    # bug #46: missing parent dirs
+    a.sess("mkdir %s/dira" % tdir)
+    a.sess("mkdir %s/dira/dirb" % tdir)
+    a.put("pdir","%s/dira/dirb/foo" % tdir)
+    a.isconf("-m 'test missing parent dirs' lock")
+    a.isconf("snap %s/dira/dirb/foo" % tdir)
+    a.isconf("ci")
+    b.isconf("up")
+    out = b.cat("%s/dira/dirb/foo" % tdir)
+    t.test(out,"pdir")
+
     rc = t.results()
     sys.exit(rc)
 

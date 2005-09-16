@@ -1,11 +1,7 @@
 n4h1> cd /tmp/isconftest
-n4h1> COVERAGE=1; export COVERAGE
 n4h2> cd /tmp/isconftest
-n4h2> COVERAGE=1; export COVERAGE
 n4h3> cd /tmp/isconftest
-n4h3> COVERAGE=1; export COVERAGE
 n4h4> cd /tmp/isconftest
-n4h4> COVERAGE=1; export COVERAGE
 n4h1> hostname 
 n4h2> hostname 
 n4h3> hostname 
@@ -35,15 +31,15 @@ n4h3> /tmp/isconftest/t/isconf up
 n4h4> /tmp/isconftest/t/isconf start
 n4h4> /tmp/isconftest/t/isconf up
 n4h1> mkdir -p /tmp/labtest
-# scp /tmp/@31688.0 root@n4h1:/tmp/labtest/1
+# scp /tmp/@10497.0 root@n4h1:/tmp/labtest/1
 n4h1> cat /tmp/labtest/1
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/1
 n4h1> /tmp/isconftest/t/isconf snap foo
 n4h1> /tmp/isconftest/t/isconf -m 'test' lock
 n4h1> /tmp/isconftest/t/isconf exec mkdir -p /tmp/labtest
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/1
-# scp /tmp/@31688.1 root@n4h1:/tmp/labtest/2
-# COVERAGE=1 ssh root@n4h1 chmod +x /tmp/labtest/2
+# scp /tmp/@10497.1 root@n4h1:/tmp/labtest/2
+# ssh root@n4h1 chmod +x /tmp/labtest/2
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/2
 n4h1> /tmp/isconftest/t/isconf exec /tmp/labtest/2 'hey there world!'
 n4h1> cat /tmp/labtest/2.out
@@ -62,7 +58,7 @@ n4h2> /tmp/isconftest/t/isconf start
 n4h2> /tmp/isconftest/t/isconf up
 n4h2> cat /tmp/labtest/2.out
 n4h1> /tmp/isconftest/t/isconf -m 'test multiple ci' lock
-# scp /tmp/@31688.2 root@n4h1:/tmp/labtest/multiple
+# scp /tmp/@10497.2 root@n4h1:/tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf ci
 n4h2> /tmp/isconftest/t/isconf up
@@ -71,7 +67,7 @@ n4h3> /tmp/isconftest/t/isconf up
 n4h3> /tmp/isconftest/t/isconf fork branch2
 n4h3> /tmp/isconftest/t/isconf up
 n4h3> /tmp/isconftest/t/isconf -m 'test fork' lock
-# scp /tmp/@31688.3 root@n4h3:/tmp/labtest/fork
+# scp /tmp/@10497.3 root@n4h3:/tmp/labtest/fork
 n4h3> /tmp/isconftest/t/isconf snap /tmp/labtest/fork
 n4h3> /tmp/isconftest/t/isconf ci
 n4h4> /tmp/isconftest/t/isconf migrate branch2
@@ -82,15 +78,11 @@ n4h1> /tmp/isconftest/t/isconf up
 n4h1> test -f /tmp/labtest/fork
 n4h2> /tmp/isconftest/t/isconf up
 n4h2> test -f /tmp/labtest/fork
-# COVERAGE=1 ssh root@n4h1 /tmp/isconftest/t/isconf restart
+# ssh root@n4h1 /tmp/isconftest/t/isconf restart
 n4h1> cd /tmp/isconftest
-n4h1> COVERAGE=1; export COVERAGE
 n4h2> cd /tmp/isconftest
-n4h2> COVERAGE=1; export COVERAGE
 n4h3> cd /tmp/isconftest
-n4h3> COVERAGE=1; export COVERAGE
 n4h4> cd /tmp/isconftest
-n4h4> COVERAGE=1; export COVERAGE
 n4h1> hostname 
 n4h2> hostname 
 n4h3> hostname 
@@ -120,15 +112,15 @@ n4h3> /tmp/isconftest/t/isconf up
 n4h4> /tmp/isconftest/t/isconf start
 n4h4> /tmp/isconftest/t/isconf up
 n4h1> mkdir -p /tmp/labtest
-# scp /tmp/@31688.0 root@n4h1:/tmp/labtest/1
+# scp /tmp/@10497.0 root@n4h1:/tmp/labtest/1
 n4h1> cat /tmp/labtest/1
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/1
 n4h1> /tmp/isconftest/t/isconf snap foo
 n4h1> /tmp/isconftest/t/isconf -m 'test' lock
 n4h1> /tmp/isconftest/t/isconf exec mkdir -p /tmp/labtest
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/1
-# scp /tmp/@31688.1 root@n4h1:/tmp/labtest/2
-# COVERAGE=1 ssh root@n4h1 chmod +x /tmp/labtest/2
+# scp /tmp/@10497.1 root@n4h1:/tmp/labtest/2
+# ssh root@n4h1 chmod +x /tmp/labtest/2
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/2
 n4h1> /tmp/isconftest/t/isconf exec /tmp/labtest/2 'hey there world!'
 n4h1> cat /tmp/labtest/2.out
@@ -147,7 +139,7 @@ n4h2> /tmp/isconftest/t/isconf start
 n4h2> /tmp/isconftest/t/isconf up
 n4h2> cat /tmp/labtest/2.out
 n4h1> /tmp/isconftest/t/isconf -m 'test multiple ci' lock
-# scp /tmp/@31688.2 root@n4h1:/tmp/labtest/multiple
+# scp /tmp/@10497.2 root@n4h1:/tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf ci
 n4h2> /tmp/isconftest/t/isconf up
@@ -156,7 +148,7 @@ n4h3> /tmp/isconftest/t/isconf up
 n4h3> /tmp/isconftest/t/isconf fork branch2
 n4h3> /tmp/isconftest/t/isconf up
 n4h3> /tmp/isconftest/t/isconf -m 'test fork' lock
-# scp /tmp/@31688.3 root@n4h3:/tmp/labtest/fork
+# scp /tmp/@10497.3 root@n4h3:/tmp/labtest/fork
 n4h3> /tmp/isconftest/t/isconf snap /tmp/labtest/fork
 n4h3> /tmp/isconftest/t/isconf ci
 n4h4> /tmp/isconftest/t/isconf migrate branch2
@@ -167,15 +159,11 @@ n4h1> /tmp/isconftest/t/isconf up
 n4h1> test -f /tmp/labtest/fork
 n4h2> /tmp/isconftest/t/isconf up
 n4h2> test -f /tmp/labtest/fork
-# COVERAGE=1 ssh root@n4h2 /tmp/isconftest/t/isconf restart
+# ssh root@n4h2 /tmp/isconftest/t/isconf restart
 n4h1> cd /tmp/isconftest
-n4h1> COVERAGE=1; export COVERAGE
 n4h2> cd /tmp/isconftest
-n4h2> COVERAGE=1; export COVERAGE
 n4h3> cd /tmp/isconftest
-n4h3> COVERAGE=1; export COVERAGE
 n4h4> cd /tmp/isconftest
-n4h4> COVERAGE=1; export COVERAGE
 n4h1> hostname 
 n4h2> hostname 
 n4h3> hostname 
@@ -205,15 +193,15 @@ n4h3> /tmp/isconftest/t/isconf up
 n4h4> /tmp/isconftest/t/isconf start
 n4h4> /tmp/isconftest/t/isconf up
 n4h1> mkdir -p /tmp/labtest
-# scp /tmp/@31688.0 root@n4h1:/tmp/labtest/1
+# scp /tmp/@10497.0 root@n4h1:/tmp/labtest/1
 n4h1> cat /tmp/labtest/1
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/1
 n4h1> /tmp/isconftest/t/isconf snap foo
 n4h1> /tmp/isconftest/t/isconf -m 'test' lock
 n4h1> /tmp/isconftest/t/isconf exec mkdir -p /tmp/labtest
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/1
-# scp /tmp/@31688.1 root@n4h1:/tmp/labtest/2
-# COVERAGE=1 ssh root@n4h1 chmod +x /tmp/labtest/2
+# scp /tmp/@10497.1 root@n4h1:/tmp/labtest/2
+# ssh root@n4h1 chmod +x /tmp/labtest/2
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/2
 n4h1> /tmp/isconftest/t/isconf exec /tmp/labtest/2 'hey there world!'
 n4h1> cat /tmp/labtest/2.out
@@ -232,7 +220,7 @@ n4h2> /tmp/isconftest/t/isconf start
 n4h2> /tmp/isconftest/t/isconf up
 n4h2> cat /tmp/labtest/2.out
 n4h1> /tmp/isconftest/t/isconf -m 'test multiple ci' lock
-# scp /tmp/@31688.2 root@n4h1:/tmp/labtest/multiple
+# scp /tmp/@10497.2 root@n4h1:/tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf ci
 n4h2> /tmp/isconftest/t/isconf up
@@ -241,7 +229,7 @@ n4h3> /tmp/isconftest/t/isconf up
 n4h3> /tmp/isconftest/t/isconf fork branch2
 n4h3> /tmp/isconftest/t/isconf up
 n4h3> /tmp/isconftest/t/isconf -m 'test fork' lock
-# scp /tmp/@31688.3 root@n4h3:/tmp/labtest/fork
+# scp /tmp/@10497.3 root@n4h3:/tmp/labtest/fork
 n4h3> /tmp/isconftest/t/isconf snap /tmp/labtest/fork
 n4h3> /tmp/isconftest/t/isconf ci
 n4h4> /tmp/isconftest/t/isconf migrate branch2
@@ -254,5 +242,13 @@ n4h2> /tmp/isconftest/t/isconf up
 n4h2> test -f /tmp/labtest/fork
 n4h1> /tmp/isconftest/t/isconf up
 n4h2> /tmp/isconftest/t/isconf up
+n4h1> mkdir /tmp/labtest/dira
+n4h1> mkdir /tmp/labtest/dira/dirb
+# scp /tmp/@10497.4 root@n4h1:/tmp/labtest/dira/dirb/foo
+n4h1> /tmp/isconftest/t/isconf -m 'test missing parent dirs' lock
+n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/dira/dirb/foo
+n4h1> /tmp/isconftest/t/isconf ci
+n4h2> /tmp/isconftest/t/isconf up
+n4h2> cat /tmp/labtest/dira/dirb/foo
 
-83 tests: 0 failed, 83 passed (100%)
+87 tests: 0 failed, 87 passed (100%)
