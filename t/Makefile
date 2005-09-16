@@ -6,15 +6,16 @@ export PYTHONPATH=$(lib)
 python=python2.2
 mdir=metrics/$(python)
 tdir=/tmp/isconftest
-labhosts=test1 test2 test3 test4
+# labhosts=test1 test2 test3 test4
+labhosts=n4h1 n4h2 n4h3 n4h4
 COVERAGE=
 
 all: unittest report
 	
 unittest: $(pythons)
 
-systest: python2.2 labtest
-	./fetch-coverage test1 test2 test3 test4
+XXXsystest: python2.2 labtest
+	./fetch-coverage $(labhosts)
 	python2.2 ./coverage.py -r $(files) 2>&1 | tee metrics/systest/coverage.txt
 	python2.2 ./coverage.py -rm $(files) 2>&1 | tee metrics/systest/missing.txt
 
@@ -35,9 +36,6 @@ run:
 %.py: FORCE
 	python $@
 
-XXXsystest:
-	cd t && time make runsystest.py
-
 umlsync:
 	cd .. && rsync -PHaSvuz --exclude=*.pyc . root@isconf10:/tmp/isconftest
 	cd .. && rsync -PHaSvuz --exclude=*.pyc . root@isconf11:/tmp/isconftest
@@ -56,7 +54,10 @@ $(labhosts):
 	cd .. && rsync -PHaSvuz --delete --exclude=*.pyc . root@$@:$(tdir)
 
 coverage: COVERAGE=1
-coverage: labtest
+coverage: python2.2 labtest
+	./fetch-coverage $(labhosts)
+	python2.2 ./coverage.py -r $(files) 2>&1 | tee metrics/systest/coverage.txt
+	python2.2 ./coverage.py -rm $(files) 2>&1 | tee metrics/systest/missing.txt
 
 labtest: labsync
 	COVERAGE=$(COVERAGE) time python2.2 runlabtest.py /tmp/isconftest \

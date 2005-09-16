@@ -115,6 +115,7 @@ class Host:
         time.sleep(.1)
         self.s.expect("START\r\n")
         # self.s.expect(self.tag)
+        self.sess("cd %s" % dir)
         if os.environ.get('COVERAGE',False):
             self.sess("COVERAGE=1; export COVERAGE")
     def __call__(self,args):
@@ -164,6 +165,7 @@ class Host:
             time.sleep(7)
             return
         # host.isconf("restart")
+        # XXX coverage
         self.ssh("%s/t/isconf restart" % self._dir)
         sys.exit(0)
     def getres(self,popen,stdout,stderr,quiet=False):
