@@ -35,14 +35,12 @@ XXXtar:
 	tar -C $(tmpdir) --exclude=*.pyc --exclude=*.swp --exclude=*.swo --exclude=.coverage -czvf $(tarball) $(tarname)
 	rm -rf $(tmpdir)
 
-tar: sdist
-
 sdist:
 	./update-revision
 	python setup.py sdist
 	mv dist/$(tarname).tar.gz $(tarball)
 
-ship: tar
+ship: sdist
 	scp $(tarball) root@trac.t7a.org:/var/trac/isconf/pub
 
 test:
