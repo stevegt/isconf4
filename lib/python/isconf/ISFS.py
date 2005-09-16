@@ -423,7 +423,7 @@ class Volume:
             # append now, since we never expect this to return
             open(self.p.wip,'a').write(str(msg))
             open(self.p.wip,'a').write("\n\n")
-            task = kernel.spawn(self.updateReboot(msg),itermode=True)
+            task = kernel.spawn(self.updateReboot(msg,reboot_ok=True),itermode=True)
 
         # check results of snap or exec
         res = None
@@ -550,7 +550,6 @@ class Volume:
     def reboot(self):
         if not self.cklock(): return 
         msg = FBP.mkmsg('reboot')
-        os.environ['ISFS_REBOOT_OK'] = '1'
         yield kernel.wait(self.addwip(msg))
             
     def setstat(self,path,st):

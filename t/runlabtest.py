@@ -276,6 +276,7 @@ def main():
 
     # start with clean tree
     for h in (a,b,c,d):
+        h.sess("isconf stop",blind=True)
         h.isconf("stop",blind=True)
         h.sess("rm -rf /tmp/var")
         h.sess("rm -rf " + tdir)

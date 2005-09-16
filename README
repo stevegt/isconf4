@@ -9,6 +9,7 @@ make install
 cp etc/rc.isconf /etc/init.d/isconf
 (make symlink(s) from /etc/rc*)
 (create /etc/is.conf)
+chmod 755 /usr/bin/isconf
 isconf start
 isconf up
 
@@ -24,6 +25,7 @@ cd isconf-4.2.6
 isconf exec make install
 isconf exec cp etc/rc.isconf /etc/init.d/isconf
 (...and make /etc/rc* symlinks, again using isconf exec)
-isconf restart
+isconf exec chmod 755 /usr/bin/isconf
+isconf reboot
 isconf ci
 
