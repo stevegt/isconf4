@@ -6,7 +6,7 @@ case "$1" in
 		isconf start
 		sleep 10
 		echo -n "Running isconf update"
-		isconf up
+		isconf -r up
   		;;
 	stop)
 		echo "Stopping isconf daemon"

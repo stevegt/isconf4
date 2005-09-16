@@ -307,6 +307,8 @@ class Ops:
 
     def up(self):
         reboot_ok = bool(self.opt.get('reboot_ok',False))
+        if reboot_ok:
+            info("may reboot...")
         yield kernel.wait(self.volume.update(reboot_ok=reboot_ok))
 
             
