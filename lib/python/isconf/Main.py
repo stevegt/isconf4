@@ -28,6 +28,7 @@ class Main:
             'unlock',
             'snap',
             'exec',   
+            'reboot',   
             'ci',     
             'up',
             'fork',    
@@ -43,6 +44,8 @@ class Main:
         if self.kwopt['debug']:
             os.environ['DEBUG'] = '1'
             os.environ['VERBOSE'] = '1'
+        if self.kwopt['reboot_ok']:
+            os.environ['ISFS_REBOOT_OK'] = '1'
         os.environ.setdefault('VARISCONF',"/var/isconf")
         os.environ.setdefault('ISFS_HOME',"/var/isfs")
         # XXX get domain from varisconf/domain instead of config file
@@ -53,12 +56,12 @@ class Main:
         os.environ.setdefault('HOSTNAME',hostname)
         hostname = os.environ['HOSTNAME']
         
-        conf = Config(fname)
-        vars = conf.match(hostname)
-        debug("adding to environment: %s" % str(vars))
-
-        for (var,val) in vars.items():
-            os.environ[var]=val
+        if os.path.exists(fname):
+            conf = Config(fname)
+            vars = conf.match(hostname)
+            debug("adding to environment: %s" % str(vars))
+            for (var,val) in vars.items():
+                os.environ[var]=val
 
         isfshome=os.environ['ISFS_HOME']
         os.environ.setdefault('ISFS_CACHE',"%s/cache" % isfshome)
@@ -68,7 +71,7 @@ class Main:
 
     def main(self):
         synopsis = """
-        isconf [-Dhv] [-c config ] [-m message] {verb} [verb args ...]
+        isconf [-Dhrv] [-c config ] [-m message] {verb} [verb args ...]
         
         """
         opt = {
@@ -76,6 +79,7 @@ class Main:
             'D': ('debug',   False, "show debugging output"),
             'h': ('help',    False, "this text" ),
             'm': ('message', None,  "changelog and branch lock message" ),
+            'r': ('reboot_ok',False,"reboot during update if needed" ),
             'q': ('quiet',   False, "don't show verbose output"),
         }
         ps = "\nVerb is one of: %s\n" % ', '.join(self.verbs)

@@ -417,6 +417,14 @@ class Volume:
             debug("spawning updateExec")
             task = kernel.spawn(self.updateExec(msg),itermode=True)
 
+        if msg.type() == 'reboot':
+            # run the command
+            debug("spawning updateReboot")
+            # append now, since we never expect this to return
+            open(self.p.wip,'a').write(str(msg))
+            open(self.p.wip,'a').write("\n\n")
+            task = kernel.spawn(self.updateReboot(msg),itermode=True)
+
         # check results of snap or exec
         res = None
         # we only need the last yield value
@@ -539,6 +547,12 @@ class Volume:
         self.openfiles[fh]=1
         return fh
 
+    def reboot(self):
+        if not self.cklock(): return 
+        msg = FBP.mkmsg('reboot')
+        os.environ['ISFS_REBOOT_OK'] = '1'
+        yield kernel.wait(self.addwip(msg))
+            
     def setstat(self,path,st):
         print st.st_mode,st.st_uid,st.st_gid,st.st_atime,st.st_mtime
         os.chmod(path,st.st_mode)
@@ -553,25 +567,6 @@ class Volume:
         assert not self.locked()
         return True
 
-
-    def update(self):
-        fbp = fbp822()
-        if self.wip():
-            error("local changes not checked in")
-            return 
-        info("checking for updates")
-        yield kernel.wait(self.pull())
-        pending = self.pending()
-        if not len(pending):
-            info("no new updates")
-            return
-        for msg in pending:
-            debug(msg['pathname'],time.time())
-            if msg.type() == 'snap': 
-                yield kernel.wait(self.updateSnap(msg))
-            if msg.type() == 'exec': 
-                yield kernel.wait(self.updateExec(msg))
-        info("update done")
 
     def pending(self):
         """
@@ -598,6 +593,27 @@ class Volume:
             path = self.mkrelative(self.blk2path(blk))
             files.append(path)
         return files
+
+    def update(self,reboot_ok=False):
+        fbp = fbp822()
+        if self.wip():
+            error("local changes not checked in")
+            return 
+        info("checking for updates")
+        yield kernel.wait(self.pull())
+        pending = self.pending()
+        if not len(pending):
+            info("no new updates")
+            return
+        for msg in pending:
+            debug(msg['pathname'],time.time())
+            if msg.type() == 'snap': 
+                yield kernel.wait(self.updateSnap(msg))
+            if msg.type() == 'exec': 
+                yield kernel.wait(self.updateExec(msg))
+            if msg.type() == 'reboot': 
+                yield kernel.wait(self.updateReboot(msg,reboot_ok))
+        info("update done")
 
     def updateSnap(self,msg):
         src = self.blk2path(msg['blk'])
@@ -679,6 +695,19 @@ class Volume:
         self.history.add(msg)
         yield True
 
+    def updateReboot(self,msg,reboot_ok):
+        if not reboot_ok:
+            error("reboot needed: rerun update with -r flag")
+            return
+        cmd = os.environ.get('ISFS_REBOOT_CMD','shutdown -r now')
+        info("running `%s`" % cmd)
+        self.history.add(msg)
+        yield kernel.sigsleep, 2
+        os.system('sync')
+        os.system('sync')
+        os.system(cmd)
+        info("reboot started: going to sleep")
+        yield kernel.sigsleep(9999)
 
     def wip(self):
         if os.path.exists(self.p.wip):

@@ -258,6 +258,11 @@ class Ops:
         debug("migrate calling fork")
         yield kernel.wait(self.fork(migrate=True))
 
+    def reboot(self):
+        yield None
+        debug("calling reboot")
+        yield kernel.wait(self.volume.reboot())
+
     def snap(self):
         # XXX move most of this to ISFS
         debug("starting snap")
@@ -301,7 +306,8 @@ class Ops:
         info("broke %s lock -- please notify %s" % (self.volname,locker))
 
     def up(self):
-        yield kernel.wait(self.volume.update())
+        reboot_ok = bool(self.opt.get('reboot_ok',False))
+        yield kernel.wait(self.volume.update(reboot_ok=reboot_ok))
 
             
 def branch(val=None):
