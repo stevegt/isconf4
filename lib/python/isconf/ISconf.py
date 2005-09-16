@@ -316,8 +316,8 @@ def branch(val=None):
     if not os.path.exists(fname):
         val = 'generic'
     if val is not None:
-        open(fname,'w').write(val)
-    val = open(fname,'r').read()
+        open(fname,'w').write(val+"\n")
+    val = open(fname,'r').read().strip()
     return val
 
 def XXXbusexit(errpin,code,msg=''):

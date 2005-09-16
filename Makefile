@@ -7,14 +7,8 @@ tarball=/tmp/$(tarname).tar.gz
 
 all:
 
-XXXinstall:
-	# XXX this is all wrong -- need a setup.py
-	mkdir -p $(PREFIX)
-	find . | cpio -pudvm $(PREFIX)/
-	ln -fs $(PREFIX)/bin/isconf /usr/bin/isconf
-	ln -fs $(PREFIX)/etc/rc.isconf /etc/init.d/isconf
-	# XXX not portable
-	ln -fs /etc/init.d/isconf /etc/rc2.d/S19isconf
+install:
+	python ./setup.py install
 
 start:
 	/etc/init.d/isconf stop

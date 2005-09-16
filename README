@@ -1,25 +1,29 @@
 
-Changeset 102 fixes two bugs (28 and 34) which involve changes to the
-repository.  Since we're still in prerelease versions, I haven't
-provided automatic upgrade code.  Here are the changes:
+Install:
+========
 
-mv cache/example.com/volume/generic/block cache/example.com/
-
-    ...you can do this by hand on one machine, and it will propogate
-    to the rest.
-
-Add a timestamp (seconds since epoch) as the first column of history.
-
-    ...if you're just testing, you can blow away history and it will
-    get recreated (all of the transactions will be re-run, of course),
-    or you can run it through perl, awk, whatever to add a bogus
-    timestamp sometime in the recent past (the timestamp shows the
-    time the change was applied on the local machine).
-
-There is one more set of bugs (33 and 38) which are likely to cause
-incompatible changes in the repository.  These will need to get closed
-before 4.2.6 goes into final release; after that any repository layout
-changes must be detected and handled by the code itself.
+cd /tmp
+tar -xzvf isconf-4.2.6.tar.gz
+cd isconf-4.2.6
+make install
+cp etc/rc.isconf /etc/init.d/isconf
+(make symlink(s) from /etc/rc*)
+(create /etc/is.conf)
+isconf start
+isconf up
 
 
+Upgrade:
+========
+
+cd /tmp
+isconf -m 'upgrade to isconf-4.2.6' lock
+isconf snap isconf-4.2.6.tar.gz
+isconf exec tar -xzvf isconf-4.2.6.tar.gz
+cd isconf-4.2.6
+isconf exec make install
+isconf exec cp etc/rc.isconf /etc/init.d/isconf
+(...and make /etc/rc* symlinks, again using isconf exec)
+isconf restart
+isconf ci
 

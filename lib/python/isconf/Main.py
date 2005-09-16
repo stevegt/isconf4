@@ -46,6 +46,7 @@ class Main:
             os.environ['VERBOSE'] = '1'
         if self.kwopt['reboot_ok']:
             os.environ['ISFS_REBOOT_OK'] = '1'
+        os.environ.setdefault('LOGNAME',"root")
         os.environ.setdefault('VARISCONF',"/var/isconf")
         os.environ.setdefault('ISFS_HOME',"/var/isfs")
         # XXX get domain from varisconf/domain instead of config file
