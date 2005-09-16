@@ -1,0 +1,17 @@
+include LICENSE MANIFEST.in Makefile README check-svn-st
+include revision update-revision version
+include setup.py
+
+recursive-include bin *
+recursive-include doc *
+recursive-include etc *
+recursive-include lab *
+recursive-include lib *
+recursive-include t *
+
+global-exclude *.pyc
+global-exclude *.swp
+global-exclude *.swo
+global-exclude .coverage
+
+

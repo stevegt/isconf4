@@ -1,9 +1,14 @@
 #!/usr/bin/env python
 
 from distutils.core import setup
+import sys
 
-setup(name="ISconf",
-        version="4.2.6",
+ver=open("version").read().strip()
+rev=open("revision").read().strip()
+version="%s.%s" % (ver,rev)
+
+setup(name="isconf",
+        version=version,
         description="Infrastructure configuration management tool",
         author="Steve Traugott",
         author_email="stevegt@infrastructures.org",

@@ -2,24 +2,24 @@
 
 case "$1" in
 	start)
-		echo -n "Starting isconf file server: netstore"
-		isconf netstore -d &
-		# sleep 5
-		# isconf -v update
-		echo "."
+		echo -n "Starting isconf daemon"
+		isconf start
+		sleep 10
+		echo -n "Running isconf update"
+		isconf up
   		;;
 	stop)
-		echo -n "Stopping isconf file server: netstore"
-		killall netstore
-		echo "."
+		echo "Stopping isconf daemon"
+		isconf stop
   		;;
 	restart|force-reload)
-		killall netstore
-		isconf netstore -d &
-		echo "done."
+		echo "Restarting isconf daemon"
+		isconf stop
+		sleep 10
+		isconf start
   		;;
 	*)
-  		echo "Usage: /etc/init.d/isconf {start|stop|restart|force-reload}"
+  		echo "Usage: $0 {start|stop|restart|force-reload}"
   		exit 1
 		;;
 esac

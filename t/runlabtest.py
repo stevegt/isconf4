@@ -381,6 +381,20 @@ def main():
     out = b.cat("%s/dira/dirb/foo" % tdir)
     t.test(out,"pdir")
 
+    # bug #35: large exec output
+    # b.sess("tar -C /tmp -czf /tmp/isconftest.tar.gz isconftest")
+    # b.isconf("-m 'large exec output' lock")
+    # b.isconf("snap /tmp/isconftest.tar.gz")
+    # b.sess("cd %s/dira" % tdir)
+    # XXX expect times out here
+    # b.isconf("exec tar -xzvf /tmp/isconftest.tar.gz")
+    # b.sess("cd -")
+    # b.isconf("ci")
+    # a.isconf("up")
+    # out = a.cat("%s/dira/isconftest/t/isconf" % tdir)
+    # t.test(out[:2],"#!")
+
+
     rc = t.results()
     sys.exit(rc)
 
