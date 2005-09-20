@@ -27,8 +27,8 @@ isconf exec ln /etc/is.conf /etc/is/main.cf
 # migrate to new var tree
 isconf exec mkdir /var/is
 cd /var/is
-isconf exec sh -c "mv /var/isconf conf && ln -s conf /var/isconf"
-isconf exec sh -c "mv /var/isfs fs && ln -s fs /var/isfs"
+isconf exec sh -c "mv /var/isconf conf && ln -s /var/is/conf /var/isconf"
+isconf exec sh -c "mv /var/isfs fs && ln -s /var/is/fs /var/isfs"
 # fix domain dirname
 cd /var/is/fs/cache/
 isconf exec sh -c "mv localdomain $domain && ln -s $domain localdomain"
@@ -48,12 +48,15 @@ isconf exec chmod 755 /usr/bin/isconf
 isconf reboot
 # cleanup and ci
 isconf exec rm /etc/is.conf
-isconf exec rm /var/isconf
+isconf exec rm /var/isconf  # skip this if 4.1.7 is still running
 isconf exec rm /var/isfs
-isconf exec rm /var/is/fs/cache/localdomain
 isconf exec rm /var/is/fs/private/localdomain
 isconf ci
 
+# after all machines are upgraded...
+isconf lock clean up after upgrade to $newversion
+isconf exec rm /var/is/fs/cache/localdomain  
+isconf ci
 
 Upgrade from later versions:
 ============================
