@@ -10,7 +10,7 @@ import time
 
 from isconf.Errno import iserrno
 
-volroot = os.environ['ISFS_VOLROOT'] 
+volroot = os.environ['IS_VOLROOT'] 
 
 class Test(unittest.TestCase):
 

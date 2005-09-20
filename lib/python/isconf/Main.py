@@ -45,14 +45,12 @@ class Main:
             os.environ['DEBUG'] = '1'
             os.environ['VERBOSE'] = '1'
         # if self.kwopt['reboot_ok']:
-        #     os.environ['ISFS_REBOOT_OK'] = '1'
+        #     os.environ['IS_REBOOT_OK'] = '1'
         os.environ.setdefault('LOGNAME',"root")
-        os.environ.setdefault('VARISCONF',"/var/isconf")
-        os.environ.setdefault('ISFS_HOME',"/var/isfs")
-        # XXX get domain from varisconf/domain instead of config file
-        os.environ.setdefault('ISFS_DOMAIN',"localdomain")
-        os.environ.setdefault('ISFS_PORT',"65027")
-        os.environ.setdefault('ISFS_HTTP_PORT',"65028")
+        os.environ.setdefault('IS_HOME',"/var/is")
+        # os.environ.setdefault('IS_DOMAIN',"localdomain")
+        os.environ.setdefault('IS_PORT',"65027")
+        os.environ.setdefault('IS_HTTP_PORT',"65028")
         hostname = os.popen('hostname','r').read().strip()
         os.environ.setdefault('HOSTNAME',hostname)
         hostname = os.environ['HOSTNAME']
@@ -66,10 +64,12 @@ class Main:
         else:
             debug("%s not found -- using defaults" % fname)
 
-        isfshome=os.environ['ISFS_HOME']
-        os.environ.setdefault('ISFS_CACHE',"%s/cache" % isfshome)
-        os.environ.setdefault('ISFS_PRIVATE',"%s/private" % isfshome)
-
+        domfn = os.path.join(os.environ['IS_HOME'],"conf/domain")
+        if os.path.exists(domfn):
+            os.environ['IS_DOMAIN'] = open(domfn,'r').read().strip()
+        elif not os.environ['IS_DOMAIN']:
+            error("%s is missing -- see install instructions" % domfn)
+        
         debug(os.popen("env").read())
 
     def main(self):
@@ -78,7 +78,7 @@ class Main:
         
         """
         opt = {
-            'c': ('config', '/etc/is.conf', "ISFS/ISconf configuration file" ),
+            'c': ('config', '/etc/is/main.cf', "top-level configuration file" ),
             'D': ('debug',   False, "show debugging output"),
             'h': ('help',    False, "this text" ),
             'm': ('message', None,  "changelog and branch lock message" ),
@@ -112,7 +112,7 @@ class Main:
 
 
     def client(self):
-        ctl = "%s/.ctl" % os.environ['VARISCONF']
+        ctl = "%s/conf/.ctl" % os.environ['IS_HOME']
         transport = UNIXClientSocket(path = ctl)
         rc = isconf.ISconf.client(
                 transport=transport,argv=self.args,kwopt=self.kwopt)
@@ -129,7 +129,7 @@ class Main:
     def start(self,argv):
         # detach from parent per Stevens
         # XXX need to allow for optional foreground operation
-        home = os.environ['ISFS_HOME']
+        home = os.environ['IS_HOME']
         if not os.path.isdir(home):
             os.makedirs(home,0700)
         # os.chdir(home)

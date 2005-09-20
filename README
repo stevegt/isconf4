@@ -1,4 +1,5 @@
 
+
 Install:
 ========
 
@@ -8,24 +9,60 @@ cd isconf-4.2.6
 make install
 cp etc/rc.isconf /etc/init.d/isconf
 (make symlink(s) from /etc/rc*)
-(create /etc/is.conf)
+(create /etc/is/conf)
 chmod 755 /usr/bin/isconf
 isconf start
 isconf up
 
 
-Upgrade:
-========
+Upgrade from <= 4.2.6pre.133:
+=============================
 
+domain=foo.com
+newversion=isconf-4.2.6.N
 cd /tmp
-isconf -m 'upgrade to isconf-4.2.6' lock
-isconf snap isconf-4.2.6.tar.gz
-isconf exec tar -xzvf isconf-4.2.6.tar.gz
-cd isconf-4.2.6
+isconf -m "upgrade to $newversion" lock
+# migrate to new config pathname
+isconf exec mkdir /etc/is
+isconf exec ln /etc/is.conf /etc/is/main.cf
+# migrate to new var tree
+isconf exec mkdir /var/is
+cd /var/is
+isconf exec sh -c "mv /var/isconf conf && ln -s conf /var/isconf"
+isconf exec sh -c "mv /var/isfs fs && ln -s fs /var/isfs"
+# create domain config
+echo $domain > /var/is/conf/domain
+isconf snap /var/is/conf/domain
+# install
+isconf snap $newversion.tar.gz
+isconf exec tar -xzvf $newversion.tar.gz
+cd $newversion
+isconf exec make install
+isconf exec cp etc/rc.isconf /etc/init.d/isconf
+isconf exec chmod 755 /usr/bin/isconf
+isconf reboot
+# cleanup and ci
+isconf exec rm /etc/is.conf
+isconf exec rm /var/isconf
+isconf exec rm /var/isfs
+isconf ci
+
+
+Upgrade from later versions:
+============================
+
+newversion=isconf-4.2.6.N
+cd /tmp
+isconf -m "upgrade to $newversion" lock
+isconf snap $newversion.tar.gz
+isconf exec tar -xzvf $newversion.tar.gz
+cd $newversion
 isconf exec make install
 isconf exec cp etc/rc.isconf /etc/init.d/isconf
 (...and make /etc/rc* symlinks, again using isconf exec)
 isconf exec chmod 755 /usr/bin/isconf
 isconf reboot
 isconf ci
+
+
 

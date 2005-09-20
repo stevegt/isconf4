@@ -57,7 +57,7 @@ def systemTest():
     return result
 
 def startd(volroot):
-    os.environ['ISFS_VOLROOT'] = volroot
+    os.environ['IS_VOLROOT'] = volroot
     if os.path.exists(volroot):
         shutil.rmtree(volroot)
     shutil.copytree(volsrc,volroot)

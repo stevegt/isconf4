@@ -9,7 +9,7 @@ PYTHONPATH=$base/lib/python
 # set up network addresses to talk to in addition to UDP broadcast
 if hostname | egrep '^test' > /dev/null
 then
-    ISFS_NETS=$base/t/nets
+    IS_NETS=$base/t/nets
 fi
 
 # try to use old python for compatibility testing
@@ -25,7 +25,7 @@ then
     coverage="$base/t/coverage.py -x"
 fi
 
-export PYTHONPATH ISFS_NETS
+export PYTHONPATH IS_NETS
 
 $python $coverage $base/bin/isconf -c $base/t/simple.conf "$@"
 

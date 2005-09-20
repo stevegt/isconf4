@@ -195,7 +195,7 @@ class Ops:
         self.args = args
         self.data = data
         self.outpin = outpin
-        self.histfile = "%s/history" % os.environ['VARISCONF']
+        self.histfile = "%s/conf/history" % os.environ['IS_HOME']
 
         self.volname = branch()
         self.logname = self.opt['logname']
@@ -250,10 +250,16 @@ class Ops:
         info("%s migrated to %s" % (os.environ['HOSTNAME'], newbranch))
         
     def lock(self):
-        if not self.opt['message']:
+        message = ''
+        if self.opt['message']:
+            message = self.opt['message']
+        if self.args:
+            message = "%s %s" % (message,' '.join(self.args))
+        message = message.strip()
+        if not len(message):
             error(iserrno.NEEDMSG,'did not lock %s' % self.volname)
             return
-        yield kernel.wait(self.volume.lock(self.opt['message']))
+        yield kernel.wait(self.volume.lock(message))
 
     def migrate(self):
         yield None
@@ -316,8 +322,8 @@ class Ops:
 
             
 def branch(val=None):
-    varisconf = os.environ['VARISCONF']
-    fname = "%s/branch" % varisconf
+    ishome = os.environ['IS_HOME']
+    fname = "%s/conf/branch" % ishome
     if not os.path.exists(fname):
         val = 'generic'
     if val is not None:

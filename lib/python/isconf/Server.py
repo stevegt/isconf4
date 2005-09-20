@@ -23,16 +23,17 @@ from isconf.Kernel import kernel, Bus
 class Server:
 
     def __init__(self):
-        self.varisconf = os.environ['VARISCONF']
-        self.port = int(os.environ['ISFS_PORT'])
-        self.httpport = int(os.environ['ISFS_HTTP_PORT'])
-        self.ctlpath = "%s/.ctl" % self.varisconf
-        self.pidpath = "%s/.pid" % self.varisconf
+        self.ishome = os.environ['IS_HOME']
+        self.port = int(os.environ['IS_PORT'])
+        self.httpport = int(os.environ['IS_HTTP_PORT'])
+        self.confdir = "%s/conf" % self.ishome
+        self.ctlpath = "%s/conf/.ctl" % self.ishome
+        self.pidpath = "%s/conf/.pid" % self.ishome
 
     def start(self):
         """be a server forever"""
-        if not os.path.isdir(self.varisconf):
-            os.makedirs(self.varisconf,0700)
+        if not os.path.isdir(self.confdir):
+            os.makedirs(self.confdir,0700)
         open(self.pidpath,'w').write("%d\n" % os.getpid())
         # XXX bug #20: not enough entropy
         # self.gpgsetup()
@@ -95,17 +96,19 @@ class Server:
         # tcp = Socket.TCPServerFactory(port=self.port)
         # kernel.spawn(tcp.run(out=tcpsocks))
 
-        cachedir = os.environ['ISFS_CACHE']
-
-        cache = Cache.Cache(
-                udpport=self.port,httpport=self.httpport,dir=cachedir)
+        cache = Cache.Cache(udpport=self.port,httpport=self.httpport)
         # XXX attach to CLIServerFactory
         kernel.spawn(cache.run())
 
         cli = ISconf.CLIServerFactory(socks=unixsocks)
         kernel.spawn(cli.run())
 
-        kernel.spawn(ISFS.httpServer(port=self.httpport,dir=cachedir))
+        # XXX Cache and CLIServerFactory need dirs passed to them as
+        # well, rather than them digging it out of env and redundantly
+        # defining paths
+        # XXX should probably do all directory creation here as well
+        cachedir = os.path.join(self.ishome,"fs/cache")
+        kernel.spawn(Cache.httpServer(port=self.httpport,dir=cachedir))
 
         # kernel.spawn(UXmgr(frsock=clin,tosock=clout))
         # kernel.spawn(ISconf(cmd=clin,res=clout,fsreq=tofs,fsres=frfs))
@@ -125,7 +128,7 @@ class Server:
             # XXX check all buffers for unbounded growth
 
     def gpgsetup(self):
-        gnupghome = "%s/.gnupg" % self.varisconf
+        gnupghome = "%s/.gnupg" % self.ishome
         gpg = GPG(gnupghome=gnupghome)
         if not gpg.list_keys(secret=True):
             host = os.environ['HOSTNAME']

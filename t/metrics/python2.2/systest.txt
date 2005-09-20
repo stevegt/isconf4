@@ -50,7 +50,7 @@ test1> /tmp/isconftest/t/isconf ci
 test2> /tmp/isconftest/t/isconf up
 test2> cat /tmp/labtest/1
 test2> cat /tmp/labtest/2.out
-test2> grep message: /tmp/var/isfs/cache/example.com/volume/generic/journal | grep test | wc -l
+test2> grep message: /tmp/var/is/fs/cache/example.com/volume/generic/journal | grep test | wc -l
 test2> /tmp/isconftest/t/isconf stop
 test2> rm -rf /tmp/var
 test2> rm -rf /tmp/labtest

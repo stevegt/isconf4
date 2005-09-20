@@ -132,10 +132,10 @@ class Host:
         log("#", cmd)
         os.system(cmd)
         time.sleep(.1)
-    def sess(self,args,rc=0,blind=False,timeout=-1,sleep=0):
+    def sess(self,args,rc=0,blind=False,timeout=-1):
         log("%s>" % self._hostname, args)
         tag = str(random.random())
-        self.s.sendline("%s; sleep %d; echo errno=$?,%s" % (args,sleep,tag))
+        self.s.sendline("%s; echo errno=$?,%s" % (args,tag))
         time.sleep(.1)
         self.s.expect("(.*)errno=(\d+),%s\r\n" % tag,timeout=timeout)
         m = self.s.match
@@ -157,9 +157,9 @@ class Host:
         res = self.getres(popen,stdout,stderr,quiet=blind)
         if not blind: t.rc(res,rc)
         return res
-    def isconf(self,args="",rc=0,blind=False,timeout=-1,sleep=0):
+    def isconf(self,args="",rc=0,blind=False,timeout=-1):
         args = "%s/t/isconf %s" % (self._dir,args)
-        self.sess(args,rc=rc,blind=blind,timeout=timeout,sleep=sleep)
+        self.sess(args,rc=rc,blind=blind,timeout=timeout)
     def restart(self):
         if os.fork():
             time.sleep(7)
@@ -256,7 +256,7 @@ def main():
     host = sys.argv[2:6]
     tdir = "/tmp/labtest"
     vdir = "/tmp/var"
-    journal = "%s/isfs/cache/example.com/volume/generic/journal" % vdir
+    journal = "%s/is/fs/cache/example.com/volume/generic/journal" % vdir
     a = Host(host[0],dir)
     b = Host(host[1],dir)
     c = Host(host[2],dir)
@@ -278,6 +278,7 @@ def main():
     for h in (a,b,c,d):
         h.sess("isconf stop",blind=True)
         h.isconf("stop",blind=True)
+        h.sess("killall isconf",blind=True)
         h.sess("rm -rf /tmp/var")
         h.sess("rm -rf " + tdir)
 

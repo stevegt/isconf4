@@ -28,6 +28,9 @@ from isconf.Kernel import kernel
 
 (START,IHAVE,SENDME) = range(3)
 
+# XXX the following were migrated from 4.1.7 for now -- really need to
+# be FBP components, at least in terms of logging
+
 class Cache:
     """a combined cache manager and UDP mesh -- XXX needs to be split
 
@@ -36,18 +39,17 @@ class Cache:
     ...     time.sleep(999)
     ...     sys.exit(0)
     >>> os.environ["HOSTNAME"] = "testhost"
-    >>> os.environ["ISFS_PRIVATE"] = "/tmp/var/isfs/private"
-    >>> cache = Cache(54321,54322,"/tmp/var")
+    >>> os.environ["IS_HOME"] = "/tmp/var/is"
+    >>> cache = Cache(54321,54322)
     >>> assert cache
     >>> os.kill(pid,9)
 
     """
 
-    def __init__(self,udpport,httpport,dir,timeout=2):
+    def __init__(self,udpport,httpport,timeout=2):
         self.req = {}
         self.udpport = udpport
         self.httpport = httpport
-        self.dir = dir
         self.timeout = timeout
         self.lastSend = 0
         self.sock = None
@@ -63,20 +65,21 @@ class Cache:
         class Path: pass
         self.p = Path()
 
-        # XXX either pass this in or stop passing in 'dir'
-        self.p.private = os.environ['ISFS_PRIVATE']
-
-        for d in (self.dir,self.p.private):
-            if not os.path.isdir(d):
-                os.makedirs(d,0700)
-
+        home = os.environ['IS_HOME']
+        # XXX redundant with definitions in ISFS.py -- use a common lib?
+        self.p.cache = os.path.join(home,"fs/cache")
+        self.p.private = os.path.join(home,"fs/private")
         self.p.announce   = "%s/.announce"       % (self.p.private)
         self.p.pull    = "%s/.pull"        % (self.p.private)
+
+        for d in (self.p.cache,self.p.private):
+            if not os.path.isdir(d):
+                os.makedirs(d,0700)
 
     def readnets(self):
         # read network list
         nets = {'udp': [], 'tcp': []}
-        netsfn = os.environ.get('ISFS_NETS',None)
+        netsfn = os.environ.get('IS_NETS',None)
         debug("netsfn", netsfn)
         if netsfn and os.path.exists(netsfn):
             netsfd = open(netsfn,'r')
@@ -88,7 +91,7 @@ class Cache:
 
     def ihaveTx(self,path):
         path = path.lstrip('/')
-        fullpath = os.path.join(self.dir,path)
+        fullpath = os.path.join(self.p.cache,path)
         mtime = 0
         if not os.path.exists(fullpath):
             warn("file gone: %s" % fullpath)
@@ -115,11 +118,11 @@ class Cache:
         path = path.lstrip('/')
         # simple check to ignore foreign domains 
         # XXX probably want to make this a list of domains
-        domain  = os.environ['ISFS_DOMAIN']
+        domain  = os.environ['IS_DOMAIN']
         if not path.startswith(domain + '/'):
             debug("foreign domain, ignoring: %s" % path)
             return
-        fullpath = os.path.join(self.dir,path)
+        fullpath = os.path.join(self.p.cache,path)
         mymtime = 0
         debug("checking",url)
         if os.path.exists(fullpath):
@@ -160,7 +163,7 @@ class Cache:
             # create requests
             for path in files:
                 path = path.lstrip('/')
-                fullpath = os.path.join(self.dir,path)
+                fullpath = os.path.join(self.p.cache,path)
                 mtime = 0
                 if os.path.exists(fullpath):
                     mtime = os.path.getmtime(fullpath)
@@ -222,7 +225,7 @@ class Cache:
         self.fetched[path] = time.time()
         info("fetching", url)
         path = path.lstrip('/')
-        fullpath = os.path.join(self.dir,path)
+        fullpath = os.path.join(self.p.cache,path)
         (dir,file) = os.path.split(fullpath)
         # XXX security checks on pathname
         mtime = 0
@@ -264,7 +267,7 @@ class Cache:
 
         kernel.spawn(self.puller())
 
-        dir = self.dir
+        dir = self.p.cache
         udpport = self.udpport
 
         debug("UDP server serving %s on port %d" % (dir,udpport))
@@ -333,4 +336,49 @@ class Cache:
                 warn("%s from %s: %s" % (e,addr,str(msg)))
                 continue
 
+
+def httpServer(port,dir):
+    from BaseHTTPServer import HTTPServer
+    from isconf.HTTPServer import SimpleHTTPRequestHandler
+    from SocketServer import ForkingMixIn
+    
+    def logger(*args): 
+        msg = str(args)
+        open("/tmp/isconf.http.log",'a').write(msg+"\n")
+    SimpleHTTPRequestHandler.log_message = logger
+    
+    if not os.path.isdir(dir):
+        os.makedirs(dir,0700)
+    os.chdir(dir)
+
+    class ForkingServer(ForkingMixIn,HTTPServer): pass
+
+    serveraddr = ('',port)
+    svr = ForkingServer(serveraddr,SimpleHTTPRequestHandler)
+    svr.socket.setblocking(0)
+    debug("HTTP server serving %s on port %d" % (dir,port))
+    while True:
+        yield None
+        try:
+            request, client_address = svr.get_request()
+        except socket.error:
+            yield kernel.sigsleep, .1
+            # includes EAGAIN
+            continue
+        except Exception, e:
+            debug("get_request exception:", str(e))
+            yield kernel.sigsleep, 1
+            continue
+        # XXX filter request -- e.g. do we need directory listings?
+        # XXX HMAC in path info
+        try:
+            # process_request does the fork...  For now we're going to
+            # say that it's okay that the Kernel and other tasks fork
+            # with it; since process_request does not yield, nothing
+            # else will run in the child before it exits.
+            os.chdir(dir)
+            svr.process_request(request, client_address)
+        except:
+            svr.handle_error(request, client_address)
+            svr.close_request(request)
 

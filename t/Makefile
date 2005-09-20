@@ -2,7 +2,6 @@ lib=../lib/python
 files=$(shell find $(lib) -type f -name "*.py" | grep -v GPG.py | sort)
 pythons=$(shell ./pythondetect)
 export PYTHONPATH=$(lib)
-# export ISFS_HOME=/tmp/var/isfs
 python=python2.2
 mdir=metrics/$(python)
 tdir=/tmp/isconftest
@@ -10,7 +9,7 @@ tdir=/tmp/isconftest
 labhosts=n4h1 n4h2 n4h3 n4h4
 COVERAGE=
 
-all: unittest report
+all: unittest 
 	
 unittest: $(pythons)
 
@@ -77,6 +76,6 @@ mtatest:
 	sleep 5
 	# GNUPGHOME=/tmp/`ls -rt /tmp | tail -1`/foo/.gnupg; cd mta; make
 	# export GNUPGHOME=`ls -rtd /tmp/[0-9]*/A/.gnupg | tail -1`; \
-	export GNUPGHOME=/tmp/isconf-test/A/var/isconf/.gnupg; $(MAKE) -C mta all
+	export GNUPGHOME=/tmp/isconf-test/A/var/is/.gnupg; $(MAKE) -C mta all
 
 FORCE:

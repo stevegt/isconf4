@@ -93,7 +93,7 @@ class Test:
             (sys.argv[0], flags, rootdir, port)
         )
         time.sleep(5)
-        pid = int(open("%s/%s/var/isconf/.pid" % (self.tmp,servername),'r').readline())
+        pid = int(open("%s/%s/var/is/conf/.pid" % (self.tmp,servername),'r').readline())
         self.specs[servername]['pid'] = pid
 
     def selftest(self,**kwargs):

@@ -290,9 +290,11 @@ class Volume:
         class Path: pass
         self.p = Path()
         self.p.history = histfile
-        self.p.cache = os.environ['ISFS_CACHE']
-        self.p.private = os.environ['ISFS_PRIVATE']
-        domain  = os.environ['ISFS_DOMAIN']
+        self.p.home = os.environ['IS_HOME']
+        self.p.fshome = os.path.join(self.p.home,"fs")
+        self.p.cache = os.path.join(self.p.fshome,"cache")
+        self.p.private = os.path.join(self.p.fshome,"private")
+        domain  = os.environ['IS_DOMAIN']
         domvol    = "%s/volume/%s" % (domain,volname)
         cachevol     = "%s/%s" % (self.p.cache,domvol)
         privatevol   = "%s/%s" % (self.p.private,domvol)
@@ -332,8 +334,8 @@ class Volume:
         self.volroot = "/"
         # XXX temporary solution to allow for testing, really need to
         # read from self.p.volroot instead
-        if os.environ.has_key('ISFS_VOLROOT'):
-            self.volroot = os.environ['ISFS_VOLROOT']
+        if os.environ.has_key('IS_VOLROOT'):
+            self.volroot = os.environ['IS_VOLROOT']
 
         self.journal = Journal(self.p.journal)
         self.history = History(self.p.history)
@@ -698,7 +700,7 @@ class Volume:
         if not reboot_ok:
             error("reboot needed: rerun update with -r flag")
             return
-        cmd = os.environ.get('ISCONF_REBOOT_CMD','shutdown -r now')
+        cmd = os.environ.get('IS_REBOOT_CMD','shutdown -r now')
         info("running `%s`" % cmd)
         self.history.add(msg)
         yield kernel.sigsleep, 2
@@ -714,53 +716,4 @@ class Volume:
             return wipdata
         return []
 
-
-# XXX the following were migrated directly from 4.1.7 for now --
-# really need to be FBP components, at least in terms of logging
-# XXX move to Cache
-
-def httpServer(port,dir):
-    from BaseHTTPServer import HTTPServer
-    from isconf.HTTPServer import SimpleHTTPRequestHandler
-    from SocketServer import ForkingMixIn
-    
-    def logger(*args): 
-        msg = str(args)
-        open("/tmp/isconf.http.log",'a').write(msg+"\n")
-    SimpleHTTPRequestHandler.log_message = logger
-    
-    if not os.path.isdir(dir):
-        os.makedirs(dir,0700)
-    os.chdir(dir)
-
-    class ForkingServer(ForkingMixIn,HTTPServer): pass
-
-    serveraddr = ('',port)
-    svr = ForkingServer(serveraddr,SimpleHTTPRequestHandler)
-    svr.socket.setblocking(0)
-    debug("HTTP server serving %s on port %d" % (dir,port))
-    while True:
-        yield None
-        try:
-            request, client_address = svr.get_request()
-        except socket.error:
-            yield kernel.sigsleep, .1
-            # includes EAGAIN
-            continue
-        except Exception, e:
-            debug("get_request exception:", str(e))
-            yield kernel.sigsleep, 1
-            continue
-        # XXX filter request -- e.g. do we need directory listings?
-        # XXX HMAC in path info
-        try:
-            # process_request does the fork...  For now we're going to
-            # say that it's okay that the Kernel and other tasks fork
-            # with it; since process_request does not yield, nothing
-            # else will run in the child before it exits.
-            os.chdir(dir)
-            svr.process_request(request, client_address)
-        except:
-            svr.handle_error(request, client_address)
-            svr.close_request(request)
 

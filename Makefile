@@ -1,4 +1,4 @@
-PREFIX=/var/isconf
+# PREFIX=/var/is/conf
 # tmpdir=/tmp/isconf-make.tmp
 version=`cat version`
 revision=`cat revision`
@@ -9,6 +9,14 @@ all:
 
 install:
 	python ./setup.py install
+	chmod 755 /usr/bin/isconf
+
+# XXX should be called by a script which does the snap and untar 
+XXXupgrade: 
+	isconf make install
+	isconf exec chmod 755 /usr/bin/isconf
+	isconf reboot
+	isconf ci
 
 start:
 	/etc/init.d/isconf stop

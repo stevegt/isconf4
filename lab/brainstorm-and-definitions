@@ -210,7 +210,7 @@ XXX TODO
   How does a host join an exchange?
 
   Can individual files have their own attributes, to allow that time
-  axis thing to make them externs?  Or do we have a /var/isconf/extern
+  axis thing to make them externs?  Or do we have a /var/is/conf/extern
   file which just lists the files which are timeless?  Does the extern
   file evolve, or is it an extern?
 

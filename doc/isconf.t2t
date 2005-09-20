@@ -80,7 +80,7 @@ subcommands (as opposed to e.g. CVS).
 
 : **-c** //context//  
     XXX arbitrary string e.g. 'boot' or 'any'
-    isconfd checks /var/isconf/context and pauses journal replay if
+    isconfd checks /var/is/conf/context and pauses journal replay if
     the strings don't match
 
 : **-h** //hostname_or_ip//
