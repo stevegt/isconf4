@@ -20,7 +20,6 @@ Upgrade from <= 4.2.6pre.133:
 
 domain=foo.com
 newversion=isconf-4.2.6.N
-cd /tmp
 isconf -m "upgrade to $newversion" lock
 # migrate to new config pathname
 isconf exec mkdir /etc/is
@@ -30,10 +29,16 @@ isconf exec mkdir /var/is
 cd /var/is
 isconf exec sh -c "mv /var/isconf conf && ln -s conf /var/isconf"
 isconf exec sh -c "mv /var/isfs fs && ln -s fs /var/isfs"
+# fix domain dirname
+cd /var/is/fs/cache/
+isconf exec sh -c "mv localdomain $domain && ln -s $domain localdomain"
+cd /var/is/fs/private/
+isconf exec sh -c "mv localdomain $domain && ln -s $domain localdomain"
 # create domain config
 echo $domain > /var/is/conf/domain
 isconf snap /var/is/conf/domain
 # install
+cd /tmp
 isconf snap $newversion.tar.gz
 isconf exec tar -xzvf $newversion.tar.gz
 cd $newversion
@@ -45,6 +50,8 @@ isconf reboot
 isconf exec rm /etc/is.conf
 isconf exec rm /var/isconf
 isconf exec rm /var/isfs
+isconf exec rm /var/is/fs/cache/localdomain
+isconf exec rm /var/is/fs/private/localdomain
 isconf ci
 
 

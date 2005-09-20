@@ -67,7 +67,7 @@ class Main:
         domfn = os.path.join(os.environ['IS_HOME'],"conf/domain")
         if os.path.exists(domfn):
             os.environ['IS_DOMAIN'] = open(domfn,'r').read().strip()
-        elif not os.environ['IS_DOMAIN']:
+        elif not os.environ.has_key('IS_DOMAIN'):
             error("%s is missing -- see install instructions" % domfn)
         
         debug(os.popen("env").read())
