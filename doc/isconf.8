@@ -1,0 +1,686 @@
+.TH "isconf(8)" 1 "09/24/2005" "ISconf 4.2.6pre.142"
+
+.SH NAME
+.P
+isconf \- infrastructure build and configuration manager
+
+.SH SYNOPSIS
+.P
+\fBisconf\fR [\fB\-Dhrq\fR] [\fB\-c\fR \fIconfig\fR] [\fB\-m\fR \fImessage\fR] \fIverb\fR [\fIverb_args\fR] ...
+
+.SH QUICK START
+.P
+To install the latest version of package 'foo' on ten thousand hosts,
+including any hosts that are currently down or not yet built, you can
+log into the first host and say this:
+
+.nf
+      cd /tmp
+      wget http://example.com/foo-1.2.tar.gz  
+      isconf snap foo-1.2.tar.gz  
+      isconf exec tar -xzvf foo-1.2.tar.gz 
+      isconf exec make -C foo-1.2 install
+      isconf exec rm -rf foo-1.2.tar.gz foo-1.2
+      isconf ci
+.fi
+
+
+.P
+\&...then, on the other 9,999 hosts, run this during boot or from cron:
+
+.nf
+      isconf up
+.fi
+
+
+.SH BACKGROUND
+.P
+One hundred years ago, automobiles were built by hand.  Each vehicle
+was unique, composed of parts which were often crafted on the spot.
+Repairs were expensive and frequent, owners needed to be mechanics,
+fleetwide engineering changes were non\-existent.
+
+.P
+Then came mass production.  Today, a single automotive assembly line
+produces vehicles of varying colors and options, all built from the
+same basic design and tooling.  Replacement parts are interchangeable;
+technicians bolt engineering changes onto existing vehicles with a
+reasonable expectation that the parts will fit.  Economies of scale
+have led to highly optimized designs, performance, and usability.
+Drivers turn the key and go.
+
+.P
+Most IT departments are nowhere near that sort of capability; they
+still install and maintain operating systems and applications by hand.
+Each machine is unique, reliability is elusive, users become
+technicians, fixes often require re\-engineering, most outages are
+caused by other fixes, and infrastructure\-wide changes are fraught
+with peril if they are possible at all.  Even basic security patches
+are, as a rule, applied sporadically.
+
+.P
+ISconf provides some of the standardized tooling needed for
+deterministic, reproducible management of UNIX machines \-\- the kind of
+reproducibility you can count on for consistency, disaster recovery,
+reliability, security, and auditability.  ISconf manages hosts over
+their entire lifecycle following initial install, allowing you to
+continue to test and deploy both major and minor changes well after
+the target hosts have been placed into production service.  With this
+tool you can safely replace kernels and bootloaders, install new
+patches, packages, and tarballs, run arbitrary commands, and even
+re\-install the entire operating system under program control, and do
+it all in a way that can be consistently reproduced on other current
+or future machines.
+
+.P
+Over the last decade, users of earlier versions of ISconf have found
+that this consistency gives systems administrators enough breathing
+room to "get ahead of the ticket curve", reclaim more of their nights
+and weekends, and to, finally, begin to do more engineering and less
+firefighting.
+
+.SH DESCRIPTION
+.P
+See the GLOSSARY below for terms and concepts.
+
+.P
+ISconf can be thought of as a cross between \fBsudo\fR(8) and a
+distributed version control tool like Git or Bitkeeper.  Changes you
+make via ISconf are journaled and added to a distributed repository,
+queuing them for execution on other target machines.  Those other
+target machines do not need to be running, or even be built, at the
+time you check in changes.  As you turn on, build, reboot, and/or run
+\&'isconf up' on other machines, ISconf consults the journal and
+executes the same changes, in the same order, on each machine.
+
+.P
+The ISconf architecture is completely peer\-to\-peer; there are no
+central servers or other single points of failure, and it is designed
+for use in partially\-partitioned networks such as DMZ environments.
+The command\-line client talks to a daemon which runs on each
+machine.  The daemon, usually started at boot, handles distributed
+file storage, locking, and network communications.
+
+.P
+ISconf is not intended for use in environments where you want to make
+manual, ad\-hoc, or other out\-of\-band changes to machines.  If you
+don't have the will to rebuild all of your machines from scratch so
+you know what's on their disks, don't care about disaster recovery,
+don't need to keep any of your machines in lock\-step with each other,
+don't need to test O/S changes before deploying them to production,
+aren't as interested in O/S patch management, or still want to log in
+as root on target machines and make arbitrary untracked changes, then
+you don't want this package.  (You might, however, want
+\fBcfengine\fR(8) \-\- see the bottom of this man page.)
+
+.SH PREREQUISITES
+.P
+To do deterministic and repeatable host management, there are some
+things you need to do in addition to just installing and using ISconf.
+Above all, you need to maintain a reasonable level of control over the
+root\-owned bits which you place on your disks, both during initial
+install as well as throughout their lifetime. 
+
+.P
+Automated systems administration is all about making self\-modifying
+code behave consistently.  If you don't start from a known state and
+keep it that way, then you can make no assertions about how your
+machines will behave in comparison with each other \-\- a change which
+works on one host may not work on others.  Once you've destroyed this
+consistency, you can no longer count on QA, disaster recovery, load
+balancers, distributed applications, HA clusters, new deployments, or
+even single machine rebuilds to work correctly.
+
+.RS
+.IP 1. 3
+If two or more hosts are supposed to act the same, then you need to
+install them from the same disk image.  This applies to rebuilds of a
+single host as well as multiple installs of identical hosts.  See
+\fBbase image\fR in the glossary.
+
+.IP 2. 3
+Your host install tool needs to be able to capture an image of an
+existing machine, save it on an install server, then dump that image
+onto subsequent machines verbatim, altering only those things which
+are supposed to be unique, such as IP address and hostname.  Among
+Linux installers, for example, systemimager meets this requirement;
+kickstart does not.  Under Solaris, you'll need to use Flash Archives,
+not Jumpstart.  See \fBcheckpoint image\fR in the glossary.
+
+.IP 3. 3
+After initial install, you need to manage hosts exclusively with
+ISconf \-\- no manual or other out\-of\-band changes.  There is one
+exception to this rule:  You might want to use another tool to manage
+environmentally\-influenced configuration files.  You'll want to manage
+the binaries of that tool using ISconf, and take care to ensure that
+the external tool manages only those files which it must.  See
+\fBenvironmental configuration files\fR in the glossary for more
+discussion.
+.RE
+
+.SH FLAGS
+.P
+Flags appear only after the isconf command name, not after
+subcommands (as opposed to e.g. CVS).
+
+.TP
+\fB\-c\fR \fIconfig\fR  
+Top\-level configuration file.  Defaults to /etc/is/main.cf.  See
+CONFIGURATION for details.
+
+.TP
+\fB\-D\fR
+Show debug info on stderr.
+
+.TP
+\fB\-m\fR
+Message \-\- human\-readable comment describing the change.  Required
+only when locking.  This flag is deprecated and is likely to be
+removed; see the 'lock' verb below for how to provide the message 
+in a forward\-compatible way.
+
+.TP
+\fB\-r\fR
+Allow reboot if needed.  Used only with the 'up' verb below.  Also
+see the 'reboot' verb.
+Ordinarily you would execute 'isconf \-r up' from an rc script,
+which is a relatively safe time to allow reboots.  
+
+This flag has no effect unless there is a 'reboot' operation
+pending in the journal.  If there is a 'reboot' pending, then this
+flag allows the reboot to take place.   You only want to provide
+this flag at times when it's safe to reboot the local machine.
+
+Without this flag, if 'isconf up' encounters a 'reboot' operation
+during journal replay, the replay stops, an error message is
+issued, and subsequent changes are not applied.  You'll need to
+run 'isconf \-r up' to continue past this point \-\- we cannot assume
+that the later changes will work without the reboot.
+
+.TP
+\fB\-q\fR
+Quiet \-\- don't show verbose output.
+
+.SH SUBCOMMANDS
+.P
+Subcommands are often called 'verbs' in ISconf documentation and
+usage.  They can be grouped into the following categories:
+
+.SS Locking
+.P
+    lock, unlock
+
+.SS Changing disk state
+.P
+    snap, exec, reboot, ci, up
+
+.SS Branch management
+.P
+    fork, migrate
+
+.SS Daemon management
+.P
+    start, stop, restart
+
+.P
+The following is a detailed description of all subcommands, in
+alphabetical order.  In these descriptions, the \fBorigin\fR host is the
+host where a user executes \fBlock\fR, \fBsnap\fR, \fBexec\fR, \fBreboot\fR,
+or \fBci\fR, and the \fBtarget\fR host is where a user executes 
+\fBup(date)\fR.
+
+.TP
+\fBci\fR
+Check in local changes, such as \fBsnap\fR or \fBexec\fR, and release
+branch lock.
+
+Run on origin.
+
+.TP
+\fBexec\fR \fIcommand args ...\fR
+Execute an arbitrary command.  Causes the command to be executed
+immediately on the local machine, and queued for
+execution on target machines after \fBci\fR.
+
+Example:
+
+.nf
+      isconf lock "permanently shut down apache"
+      isconf exec /etc/rc2.d/S85apache stop
+      isconf exec rm /etc/rc2.d/S85apache 
+      isconf ci
+.fi
+
+
+If you want to embed shell redirects or pipes in the \fBexec\fR
+arguments, then you'll need to wrap the arguments in a shell
+invocation.  For example, this *won't* do what you want \-\- it will
+only change /etc/motd on the origin machine:
+
+.nf
+      isconf exec echo web server down > /etc/motd
+.fi
+
+
+Here's what you really want instead:
+
+.nf
+      isconf exec sh -c "echo web server down > /etc/motd"
+.fi
+
+
+.TP
+\fBfork\fR \fInewbranch\fR
+Create a new branch from the current branch, and migrate the local
+host onto the new branch.  The
+original branch is the "parent" branch, and the new branch is the
+"child" branch.  
+
+If host A executes a \fBfork\fR, then it is the only host moved to
+the
+branch; hosts B and C do not change.  If you want B or C to move
+to the new branch as well, see \fBmigrate\fR.
+
+Low\-level implementation:  Since a journal describes the details
+of a branch, then a fork essentially just copies the entire
+journal contents from the parent branch into a new journal named
+after the child branch, then runs the \fBmigrate\fR code path.
+
+.TP
+\fBlock\fR \fImessage\fR ...
+Lock the branch.  Required before \fBsnap\fR, \fBexec\fR, \fBreboot\fR,
+or \fBci\fR, and recommended before \fBfork\fR and \fBmigrate\fR.  The
+\fImessage\fR will be recorded in the journal for each subsequent
+transaction until the next \fBci\fR.
+
+.TP
+\fBmigrate\fR \fIbranchname\fR 
+Migrates the local host onto a new branch.  In human language
+this means the host is going to change roles.  
+
+Switching a host to a new branch is only possible if the new
+branch is a child of the host's old branch, and if there have been
+no transactions executed on the host since the new branch was
+forked off \-\- in other words, the new branch's journal content
+needs to be a contiguous superset of the old branch's journal
+content.  If these conditions aren't met, \fBmigrate\fR will
+exit with a non\-zero return code.
+
+.TP
+\fBreboot\fR 
+Reboots the machine.  Before reboot, adds a journal entry which
+will cause all target machines on this branch to reboot at the same
+point in their build.   For example, this is what you might do to
+install and boot a new kernel:
+
+.nf
+      isconf lock "upgrade to 2.6.20"
+      isconf snap kernel-2.6.20-1.i686.rpm
+      isconf exec rpm -ivh kernel-2.6.20-1.i686.rpm
+      isconf reboot
+      isconf ci
+  
+      # on other machines
+      isconf -r up
+.fi
+
+
+Apply thought when using this verb; 'isconf up' (without the \-r)
+won't finish if there is a 'reboot' pending as the next action in
+the journal.  You need 'isconf \-r up' \-\- and you don't want to put
+that in crontab, unless you really don't mind your
+machines rebooting at that time.  See the \fB\-r\fR flag for details.
+
+Never say 'isconf exec reboot' \-\- that will only reboot the local
+machine, and will never create any sort of journal entry; the
+reboot kills isconf itself before the journal entry can be made.
+Always say 'isconf reboot' instead.
+
+By default, ISconf runs 'shutdown \-r now' to cause the reboot.  If
+you want or need to use a different command, see the IS_REBOOT_CMD
+environment variable below.
+
+.TP
+\fBrestart\fR
+Restart the daemon.  Equivalent to a \fBstop\fR followed by a
+\fBstart\fR.
+
+.TP
+\fBsnap\fR \fIfilename\fR
+
+Snapshot a file for install on target machines.  Preserves the current 
+contents, permissions, and mode bits of the file.
+After \fBci\fR, any target host on the same branch can
+run 'isconf up', which will cause ISconf to install the file on 
+the target host.
+
+.TP
+\fBstart\fR
+.TP
+\fBstop\fR
+Start or stop the daemon.
+
+.TP
+\fBunlock\fR 
+Break the lock on the local branch.  
+Use with great care.  
+This reverses the effect of a 
+\fBlock\fR, invalidates the work stored in \fBjournal.wip\fR on
+the locking machine, and will likely require the person who set
+the lock to discard their work and/or rebuild the machine where
+the lock was made.  
+
+Generally speaking, it's better to pick up the telephone and call
+the person who set the lock, asking them politely to finish
+whatever they were doing and check it in, rather than use this
+subcommand.
+
+.TP
+\fBup\fR 
+Update.  Causes the isconf daemon to attempt execution of any new 
+transactions in the
+journal.  Errors and messages are copied to stderr and stdout of
+\fBisconf\fR as well as to syslog.  Exits with a non\-zero return
+code in case of error.
+
+If used with \fB\-r\fR, and if a pending \fBreboot\fR entry is 
+encountered in the journal, then the host will reboot.
+
+.SH ENVIRONMENT
+.P
+ISconf behavior is controlled predominantly by environment
+variables.  These can be set and exported before starting or
+restarting the isconf daemon, or can be set in configuration
+files, usually \fBmain.cf\fR.  Any
+variables set in the environment will be overridden by those set
+in the configuration file.
+
+.TP
+\fBIS_DOMAIN\fR 
+ISconf domain name \-\- more or less equivalent to an AFS cell name
+or a Kerberos realm name; all of the machines sharing this name
+will share in the distributed cache that makes up the ISconf
+repository.  Normally you'd want all of the machines in a given
+legal entity \-\- the same corporation, for instance, to use the
+same domain name.   This is an arbitrary string, but by convention it
+is usually based on the DNS domain name.
+
+Rather than set this in an environment variable, you're better off
+populating the \fB/var/is/conf/domain\fR file, below.
+
+.TP
+\fBIS_HOME\fR 
+The base directory which ISconf uses for data storage.  Defaults
+to \fB/var/is\fR.
+
+.TP
+\fBIS_HTTP_PORT\fR 
+The port number which each ISconf HTTP server listens on.  Used only for
+file fetches between machines, and is likely to be deprecated in a
+near\-future release.  Defaults to port 65028.
+
+.TP
+\fBIS_NETS\fR 
+The name of a file which contains a list of broadcast and/or host
+addresses which ISconf should advertize file updates to.  See
+\fBnets\fR file below.  Likely to change in a future release.
+
+.TP
+\fBIS_PORT\fR 
+The port number which ISconf daemons use to communicate between each
+other.  Right now this is UDP only, but TCP will be added in
+4.2.7, and UDP is likely to be deprecated.  Defaults to port 65027.
+
+.TP
+\fBIS_REBOOT_CMD\fR 
+The command which ISconf uses to reboot the machine in response to
+an 'isconf reboot' request.  Defaults to "shutdown \-r now".
+
+.SH FILES
+.TP
+\fB/etc/is/main.cf\fR
+Top\-level configuration file for ISconf.  
+
+XXX show format \-\- for now just see t/simple.conf.
+
+.TP
+\fB/var/is\fR
+See \fBIS_HOME\fR above.
+
+.TP
+\fB/var/is/conf/domain\fR
+Single\-line file, newline optional, containing only the string
+which is to be used for the ISconf domain name.  See \fBIS_DOMAIN\fR
+above. 
+
+.TP
+\fBnets\fR
+Network broadcast list \-\- see \fBIS_NETS\fR above.
+
+.SH GLOSSARY
+.TP
+\fBbase image\fR
+
+An image which was created directly from vendor CD or another
+external source, and which contains an empty journal.  Normally as
+simple as possible, with only a management tool (such as ISconf)
+and its prerequisites added.  
+
+You will usually create only one base image per platform \-\- see
+\fBone\-base\fR.
+
+Base images are named using an arbitrary ASCII string.
+Recommended practice is to use platform name followed by a dash
+and the domain name of your organization, as in
+\fIlinux_debian_i686\-t7a.org\fR
+or \fIsolaris_5.8_sparc\-arc.nasa.gov\fR.
+Because you will usually only create one base image for each
+platform, a version number isn't needed.
+
+If you for some reason do find yourself creating a second base
+image for the same platform, then first examine what you're doing
+and re\-read the one\-base definition.  If you still want to do
+this, then recommended practice is to add another dash and then
+then version number, as in \fIaix_4.X_rs6000\-langley.af.mil\-2\fR.  
+
+.TP
+\fBcategories of data\fR
+There appear to be three categories of data on the disk of a
+typical UNIX machine:
+
+.RS
+.IP 1. 3
+root\-owned binaries and non\-environmental configuration data
+.IP 2. 3
+\fBenvironmental configuration files\fR (see glossary entry)
+.IP 3. 3
+user or business data
+
+.RE
+.TP
+\fBcheckpoint image\fR
+
+An offline copy of the disk image of a given branch at a given
+revision, used for speedier installs.  A checkpoint image is made
+by installing a host from an ancestor checkpoint or base image,
+allowing its branch's journal entries to execute, then capturing
+the resulting disk content.
+
+.TP
+\fBenvironmental configuration files\fR
+
+Configuration files whose content is predominantly influenced by
+external business, political, procedural, or economic factors.
+Examples include files containing registered IP addresses, license
+keys, user names, and other information which is not quite
+"business data" but acts a lot like it.  See also **categories of
+data**.
+
+These files need to be handled with special care and thought,
+because they generally can't be managed the same way you would
+manage a binary executable or a non\-environmental configuration
+file.  There is still a lot of art in handling these files,
+because this is where the digital behavior of Von Neumann machines
+conflicts with the analog world of human organizations; there are
+no absolute rules which work in all cases.
+
+You may need external tools to manage some of these files, running
+on top of ISconf and hooked into e.g. your corporate LDAP or HR
+database \-\- see PREREQUISITES.  For instance, /etc/passwd and
+/etc/resolv.conf are both heavily influenced by external forces,
+and are both good candidates for external management, while
+/etc/services and /etc/inittab are much more influenced by local
+applications, and in most cases should be managed with a simple
+\fBisconf snap\fR.
+
+.TP
+\fBone\-base\fR 
+
+One\-base is an axiom of ISconf (and probably deterministic host
+management in general) \-\- it says that a host of any branch can be
+created by installing the base image for that platform and then
+replaying that branch's journal.  This means you may only need one
+base image for any given platform \-\- starting from there you can
+use journal replay to morph the image into any other image which
+is described by a branch's journal.
+
+"One base to start them all, one base to gild them, one base to
+boot them all and in the darkness build them."
+
+Sorry.
+
+.TP
+\fBbranch\fR 
+
+Host model or type.  Similar usage as in software version control.
+A different branch is normally used for each set of hosts that
+need their own disk image and that do wildly different or
+conflicting things.  For example, a DNS server and a database
+server would tend to be on different branches.
+
+A branch is described by the sequence of transactions in a
+journal.  A new branch is created by forking an existing branch.
+
+Branches are named with an arbitrary string of letters and numbers. 
+
+See also \fBclass\fR.
+
+.TP
+\fBjournal\fR
+
+The transaction log of all changes made to a branch, starting from
+the base image.  Used for replay on other hosts of the same
+branch.  
+
+.TP
+\fBclass\fR
+This is an anti\-definition: the word "class" should not be used to
+describe anything related to deterministic host management.  It
+brings with it misconceptions, such as "hosts can be subclassed",
+"changes in the parent class can be automatically and safely
+propagated to subclasses", and so on; most of these misconceptions
+imply that \fIediting history\fR is a safe thing to do.
+
+.TP
+\fBediting history\fR
+
+"Editing history" is what happens when you build a machine based
+on a set of instructions, then alter the instructions that you
+used to build the machine.  Once you've done this, there is no
+mathematically provable way to ensure that your new
+instructions will still build the same machine, short of building
+the new machine and then comparing the entire disk content to the
+old one.  
+
+Editing history can create major outages when:
+
+.RS
+.IP \(bu 3
+you're trying to deploy changes which worked in QA (using the
+old instructions) to production (using the new instructions)
+.IP \(bu 3
+you're trying to execute a disaster recovery, or even a single
+host rebuild, and you no longer have the old disk content available
+.IP \(bu 3
+you're trying to add a new server to an existing farm and don't
+have time to resort to backups or run rsync across both disks
+
+In ISconf, editing history would mean editing the journal file
+itself \-\- while there's nothing (currently) which would stop you
+from doing that, and while the resulting file would be dutifully
+distributed and applied to the target machines, it's highly
+discouraged and may be a lot more difficult to do in the future,
+as we add things like digital signatures and checksums to the mix.
+
+.RE
+.TP
+\fBinstall image\fR
+The bits placed on disk during installation; this will be either
+the base image or a checkpoint image taken from a child branch.
+
+.SH INTERNALS
+.P
+The basic algorithm that ISconf uses is roughly:
+
+.RS
+.IP \(bu 3
+Journal the changes that are going to be made.
+.IP \(bu 3
+Preserve all entries in the journal over the lifetime of the
+infrastructure.
+.IP \(bu 3
+Only append entries to the journal \-\- never delete, never
+alter or re\-order.
+.IP \(bu 3
+Apply changes to one or more test machines by reading the
+journal.
+.IP \(bu 3
+Maintain a history of changes that have been applied to each
+host.  The master copy of this history should reside on the
+local disk of that host, and must be destroyed if the disk 
+becomes corrupt or the host is rebuilt.
+.IP \(bu 3
+Later, apply the same changes in the same order on other
+machines, by reading the same journal, using the same code path,
+consulting their local histories to see what is yet to be done.
+.IP \(bu 3
+(This bullet point to be implemented as soon as possible after version
+4.2.6.139.) Keep track of those files which a human explicitly
+says do not need to be versioned, and in those cases (only),
+refer only to the last journal entry for those files.  An
+example is resolv.conf; in this case, you only want the most
+recent version to be applied, in order to ensure the host will
+function at all.  (But consider new configuration files, edited, 
+and deleted; these three operations actually need distinct
+handling.)
+.RE
+
+.SH RESTRICTIONS
+.SH BUGS
+.P
+See http://trac.t7a.org/isconf/report/3
+
+.SH SEE ALSO
+.TS
+center, tab(^); ll.
+ Background on where all this came from^http://www.infrastructures.org
+ ISconf main site^http://www.isconf.org
+ ISconf development site^http://trac.t7a.org/isconf
+ cfengine(8)^http://www.cfengine.org
+ python(1)^http://www.python.org
+.TE
+
+
+.P
+Most ISconf developers and users can be found on the infrastructures
+mailing list at
+http://mailman.terraluna.org/mailman/listinfo/infrastructures
+
+.SH AUTHOR
+.P
+Steve Traugott \-\- http://www.stevegt.com
+
+
+.\" man code generated by txt2tags 2.0 (http://txt2tags.sf.net)
+.\" cmdline: txt2tags isconf.t2t
+
