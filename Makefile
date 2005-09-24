@@ -44,6 +44,7 @@ sdist: doc
 
 ship: sdist
 	scp $(tarball) root@trac.t7a.org:/var/trac/isconf/pub
+	scp doc/isconf.html root@trac.t7a.org:/var/trac/isconf/pub/doc
 
 test:
 	cd t && time make
