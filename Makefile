@@ -4,6 +4,7 @@ version=`cat version`
 revision=`cat revision`
 tarname=isconf-$(version).$(revision)
 tarball=/tmp/$(tarname).tar.gz
+pubdoc=/var/trac/isconf/pub/doc/$(version).$(revision)
 
 all:
 
@@ -44,13 +45,16 @@ sdist: doc
 
 ship: sdist
 	scp $(tarball) root@trac.t7a.org:/var/trac/isconf/pub
-	scp doc/isconf.html root@trac.t7a.org:/var/trac/isconf/pub/doc
+	ssh root@trac.t7a.org mkdir -p $(pubdoc)
+	rsync -avz doc/ root@trac.t7a.org:$(pubdoc)
+	# XXX 'latest' is wrong if we're working on a patch branch
+	ssh root@trac.t7a.org rsync -avz $(pubdoc)/ /var/trac/isconf/pub/doc/latest/
 
 test:
 	cd t && time make
 
 doc: FORCE
-	cd doc && make
+	cd doc && make 
 
 %:
 	cd t && $(MAKE) $*

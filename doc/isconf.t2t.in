@@ -1,5 +1,5 @@
 isconf(8)
-ISconf 4.2.6
+ISconf __VERSION__
 %%date(%m/%d/%Y)
 
 %!target: man
