@@ -74,7 +74,7 @@ class Main:
 
     def main(self):
         synopsis = """
-        isconf [-Dhrv] [-c config ] [-m message] {verb} [verb args ...]
+        isconf [-Dhrq] [-c config ] [-m message] {verb} [verb args ...]
         
         """
         opt = {

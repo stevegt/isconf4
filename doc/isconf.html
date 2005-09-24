@@ -1,68 +1,89 @@
-isconf(8)
-ISconf 4.2.6
-%%date(%m/%d/%Y)
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+<META NAME="generator" CONTENT="http://txt2tags.sf.net">
+<TITLE>isconf(8)</TITLE>
+</HEAD><BODY BGCOLOR="white" TEXT="black">
+<P ALIGN="center"><CENTER><H1>isconf(8)</H1>
+<FONT SIZE="4">
+<I>ISconf 4.2.6</I><BR>
+09/24/2005
+</FONT></CENTER>
 
-%!target: man
-%%!options(man): -o isconf.8
+<P></P>
+<HR NOSHADE SIZE=1>
+<P></P>
+  <UL>
+  <LI><A HREF="#toc1">NAME</A>
+  <LI><A HREF="#toc2">SYNOPSIS</A>
+  <LI><A HREF="#toc3">QUICK START</A>
+  <LI><A HREF="#toc4">BACKGROUND</A>
+  <LI><A HREF="#toc5">DESCRIPTION</A>
+  <LI><A HREF="#toc6">PREREQUISITES</A>
+  <LI><A HREF="#toc7">FLAGS</A>
+  <LI><A HREF="#toc8">SUBCOMMANDS</A>
+    <UL>
+    <LI><A HREF="#toc9">Locking</A>
+    <LI><A HREF="#toc10">Changing disk state</A>
+    <LI><A HREF="#toc11">Branch management</A>
+    <LI><A HREF="#toc12">Daemon management</A>
+    </UL>
+  <LI><A HREF="#toc13">ENVIRONMENT</A>
+  <LI><A HREF="#toc14">FILES</A>
+  <LI><A HREF="#toc15">GLOSSARY</A>
+  <LI><A HREF="#toc16">INTERNALS</A>
+  <LI><A HREF="#toc17">RESTRICTIONS</A>
+  <LI><A HREF="#toc18">BUGS</A>
+  <LI><A HREF="#toc19">SEE ALSO</A>
+  <LI><A HREF="#toc20">AUTHOR</A>
+  </UL>
 
-%% %!preproc(html): <<    '""<a name=""'
-%% %!preproc(html): >>    '"">""'
-
-%% named anchors:  <<foo>>
-%!postproc(html): &lt;&lt;    '<a name='
-%!postproc(html): &gt;&gt;    '>'
-%!postproc(man): <<.*>> ''
-%!postproc(man): \s*\(#\S+\) ''
-
-%% links to named anchors:  <# text ## foo #>
-%!preproc(html): <#\s*      '<a href='
-%!preproc(html): \s*##\s*   '>'
-%!preproc(html): \s*#>\s*   '</a>'
-%!preproc(man): <#\s*       '//'
-%!preproc(man): \s*##\s*\S+\s*    ''
-%!preproc(man): \s*#>\s*    '//'
-
-
-
-
-= NAME =
-
+<P></P>
+<HR NOSHADE SIZE=1>
+<P></P>
+<A NAME="toc1"></A>
+<H1>NAME</H1>
+<P>
 isconf - infrastructure build and configuration manager
-
-= SYNOPSIS =
-
-**isconf** [**-Dhrq**] ``[``**-c** //config//] ``[``**-m** //message//] //verb// [//verb_args//] ...
-
-= QUICK START =
-
+</P>
+<A NAME="toc2"></A>
+<H1>SYNOPSIS</H1>
+<P>
+<B>isconf</B> [<B>-Dhrq</B>] <CODE>[</CODE><B>-c</B> <I>config</I>] <CODE>[</CODE><B>-m</B> <I>message</I>] <I>verb</I> [<I>verb_args</I>] ...
+</P>
+<A NAME="toc3"></A>
+<H1>QUICK START</H1>
+<P>
 To install the latest version of package 'foo' on ten thousand hosts,
 including any hosts that are currently down or not yet built, you can
 log into the first host and say this:
-
-```
-    cd /tmp
-    wget http://example.com/foo-1.2.tar.gz  
-    isconf snap foo-1.2.tar.gz  
-    isconf exec tar -xzvf foo-1.2.tar.gz 
-    isconf exec make -C foo-1.2 install
-    isconf exec rm -rf foo-1.2.tar.gz foo-1.2
-    isconf ci
-```
-
+</P>
+<PRE>
+      cd /tmp
+      wget http://example.com/foo-1.2.tar.gz  
+      isconf snap foo-1.2.tar.gz  
+      isconf exec tar -xzvf foo-1.2.tar.gz 
+      isconf exec make -C foo-1.2 install
+      isconf exec rm -rf foo-1.2.tar.gz foo-1.2
+      isconf ci
+</PRE>
+<P></P>
+<P>
 ...then, on the other 9,999 hosts, run this during boot or from cron:
-
-```
-    isconf up
-```
-
-
-= BACKGROUND =
-
+</P>
+<PRE>
+      isconf up
+</PRE>
+<P></P>
+<A NAME="toc4"></A>
+<H1>BACKGROUND</H1>
+<P>
 One hundred years ago, automobiles were built by hand.  Each vehicle
 was unique, composed of parts which were often crafted on the spot.
 Repairs were expensive and frequent, owners needed to be mechanics,
 fleetwide engineering changes were non-existent.
-
+</P>
+<P>
 Then came mass production.  Today, a single automotive assembly line
 produces vehicles of varying colors and options, all built from the
 same basic design and tooling.  Replacement parts are interchangeable;
@@ -70,7 +91,8 @@ technicians bolt engineering changes onto existing vehicles with a
 reasonable expectation that the parts will fit.  Economies of scale
 have led to highly optimized designs, performance, and usability.
 Drivers turn the key and go.
-
+</P>
+<P>
 Most IT departments are nowhere near that sort of capability; they
 still install and maintain operating systems and applications by hand.
 Each machine is unique, reliability is elusive, users become
@@ -78,7 +100,8 @@ technicians, fixes often require re-engineering, most outages are
 caused by other fixes, and infrastructure-wide changes are fraught
 with peril if they are possible at all.  Even basic security patches
 are, as a rule, applied sporadically.
-
+</P>
+<P>
 ISconf provides some of the standardized tooling needed for
 deterministic, reproducible management of UNIX machines -- the kind of
 reproducibility you can count on for consistency, disaster recovery,
@@ -91,19 +114,21 @@ patches, packages, and tarballs, run arbitrary commands, and even
 re-install the entire operating system under program control, and do
 it all in a way that can be consistently reproduced on other current
 or future machines.
-
+</P>
+<P>
 Over the last decade, users of earlier versions of ISconf have found
 that this consistency gives systems administrators enough breathing
 room to "get ahead of the ticket curve", reclaim more of their nights
 and weekends, and to, finally, begin to do more engineering and less
 firefighting.
-
-
-= DESCRIPTION =
-
+</P>
+<A NAME="toc5"></A>
+<H1>DESCRIPTION</H1>
+<P>
 See the GLOSSARY below for terms and concepts.
-
-ISconf can be thought of as a cross between **sudo**(8) and a
+</P>
+<P>
+ISconf can be thought of as a cross between <B>sudo</B>(8) and a
 distributed version control tool like Git or Bitkeeper.  Changes you
 make via ISconf are journaled and added to a distributed repository,
 queuing them for execution on other target machines.  Those other
@@ -111,14 +136,16 @@ target machines do not need to be running, or even be built, at the
 time you check in changes.  As you turn on, build, reboot, and/or run
 'isconf up' on other machines, ISconf consults the journal and
 executes the same changes, in the same order, on each machine.
-
+</P>
+<P>
 The ISconf architecture is completely peer-to-peer; there are no
 central servers or other single points of failure, and it is designed
 for use in partially-partitioned networks such as DMZ environments.
 The command-line client talks to a daemon which runs on each
 machine.  The daemon, usually started at boot, handles distributed
 file storage, locking, and network communications.
-
+</P>
+<P>
 ISconf is not intended for use in environments where you want to make
 manual, ad-hoc, or other out-of-band changes to machines.  If you
 don't have the will to rebuild all of your machines from scratch so
@@ -128,17 +155,18 @@ don't need to test O/S changes before deploying them to production,
 aren't as interested in O/S patch management, or still want to log in
 as root on target machines and make arbitrary untracked changes, then
 you don't want this package.  (You might, however, want
-**cfengine**(8) -- see the bottom of this man page.)
-
-
-= PREREQUISITES =
-
+<B>cfengine</B>(8) -- see the bottom of this man page.)
+</P>
+<A NAME="toc6"></A>
+<H1>PREREQUISITES</H1>
+<P>
 To do deterministic and repeatable host management, there are some
 things you need to do in addition to just installing and using ISconf.
 Above all, you need to maintain a reasonable level of control over the
 root-owned bits which you place on your disks, both during initial
 install as well as throughout their lifetime. 
-
+</P>
+<P>
 Automated systems administration is all about making self-modifying
 code behave consistently.  If you don't start from a known state and
 keep it that way, then you can make no assertions about how your
@@ -147,253 +175,264 @@ works on one host may not work on others.  Once you've destroyed this
 consistency, you can no longer count on QA, disaster recovery, load
 balancers, distributed applications, HA clusters, new deployments, or
 even single machine rebuilds to work correctly.
-
-+ If two or more hosts are supposed to act the same, then you need to
+</P>
+<OL>
+<LI>If two or more hosts are supposed to act the same, then you need to
 install them from the same disk image.  This applies to rebuilds of a
 single host as well as multiple installs of identical hosts.  See
-**base image** in the glossary.
-
-+ Your host install tool needs to be able to capture an image of an
+<B>base image</B> in the glossary.
+<P></P>
+<LI>Your host install tool needs to be able to capture an image of an
 existing machine, save it on an install server, then dump that image
 onto subsequent machines verbatim, altering only those things which
 are supposed to be unique, such as IP address and hostname.  Among
 Linux installers, for example, systemimager meets this requirement;
 kickstart does not.  Under Solaris, you'll need to use Flash Archives,
-not Jumpstart.  See **checkpoint image** in the glossary.
-
-+ After initial install, you need to manage hosts exclusively with
+not Jumpstart.  See <B>checkpoint image</B> in the glossary.
+<P></P>
+<LI>After initial install, you need to manage hosts exclusively with
 ISconf -- no manual or other out-of-band changes.  There is one
 exception to this rule:  You might want to use another tool to manage
 environmentally-influenced configuration files.  You'll want to manage
 the binaries of that tool using ISconf, and take care to ensure that
 the external tool manages only those files which it must.  See
-**environmental configuration files** in the glossary for more
+<B>environmental configuration files</B> in the glossary for more
 discussion.
+</OL>
 
-
-= FLAGS =
-
+<A NAME="toc7"></A>
+<H1>FLAGS</H1>
+<P>
 Flags appear only after the isconf command name, not after
 subcommands (as opposed to e.g. CVS).
-
-: **-c** //config//  
+</P>
+<DL>
+<DT><B>-c</B> <I>config</I>  </DT><DD>
     Top-level configuration file.  Defaults to /etc/is/main.cf.  See
     CONFIGURATION for details.
-
-: **-D**
+<P></P>
+<DT><B>-D</B></DT><DD>
     Show debug info on stderr.
-    
-: **-m**
+<P></P>
+<DT><B>-m</B></DT><DD>
     Message -- human-readable comment describing the change.  Required
     only when locking.  This flag is deprecated and is likely to be
     removed; see the 'lock' verb below for how to provide the message 
     in a forward-compatible way.
-
-: **-r**
+<P></P>
+<DT><B>-r</B></DT><DD>
     Allow reboot if needed.  Used only with the 'up' verb below.  Also
     see the 'reboot' verb.
     Ordinarily you would execute 'isconf -r up' from an rc script,
     which is a relatively safe time to allow reboots.  
-    
+<P></P>
     This flag has no effect unless there is a 'reboot' operation
     pending in the journal.  If there is a 'reboot' pending, then this
     flag allows the reboot to take place.   You only want to provide
     this flag at times when it's safe to reboot the local machine.
-    
+<P></P>
     Without this flag, if 'isconf up' encounters a 'reboot' operation
     during journal replay, the replay stops, an error message is
     issued, and subsequent changes are not applied.  You'll need to
     run 'isconf -r up' to continue past this point -- we cannot assume
     that the later changes will work without the reboot.
-    
-: **-q**
+<P></P>
+<DT><B>-q</B></DT><DD>
     Quiet -- don't show verbose output.
+</DL>
 
-
-= SUBCOMMANDS =
-
+<A NAME="toc8"></A>
+<H1>SUBCOMMANDS</H1>
+<P>
 Subcommands are often called 'verbs' in ISconf documentation and
 usage.  They can be grouped into the following categories:
-
-
-== Locking ==
-
+</P>
+<A NAME="toc9"></A>
+<H2>Locking</H2>
+<P>
     lock, unlock
-
-== Changing disk state ==
-
+</P>
+<A NAME="toc10"></A>
+<H2>Changing disk state</H2>
+<P>
     snap, exec, reboot, ci, up
-    
-== Branch management ==
-
+</P>
+<A NAME="toc11"></A>
+<H2>Branch management</H2>
+<P>
     fork, migrate
-
-== Daemon management ==
-
+</P>
+<A NAME="toc12"></A>
+<H2>Daemon management</H2>
+<P>
     start, stop, restart
-
+</P>
+<P>
 The following is a detailed description of all subcommands, in
-alphabetical order.  In these descriptions, the **origin** host is the
-host where a user executes **lock**, **snap**, **exec**, **reboot**,
-or **ci**, and the **target** host is where a user executes 
-**up(date)**.
-
-: **ci**
-    Check in local changes, such as **snap** or **exec**, and release
+alphabetical order.  In these descriptions, the <B>origin</B> host is the
+host where a user executes <B>lock</B>, <B>snap</B>, <B>exec</B>, <B>reboot</B>,
+or <B>ci</B>, and the <B>target</B> host is where a user executes 
+<B>up(date)</B>.
+</P>
+<DL>
+<DT><B>ci</B></DT><DD>
+    Check in local changes, such as <B>snap</B> or <B>exec</B>, and release
     branch lock.
-    
+<P></P>
     Run on origin.
-
-: **exec** //command args ...//
+<P></P>
+<DT><B>exec</B> <I>command args ...</I></DT><DD>
     Execute an arbitrary command.  Causes the command to be executed
     immediately on the local machine, and queued for
-    execution on target machines after **ci**.
-    
+    execution on target machines after <B>ci</B>.
+<P></P>
     Example:
-    
-```
-    isconf lock "permanently shut down apache"
-    isconf exec /etc/rc2.d/S85apache stop
-    isconf exec rm /etc/rc2.d/S85apache 
-    isconf ci
-```
-
-    If you want to embed shell redirects or pipes in the **exec**
+<P></P>
+<PRE>
+      isconf lock "permanently shut down apache"
+      isconf exec /etc/rc2.d/S85apache stop
+      isconf exec rm /etc/rc2.d/S85apache 
+      isconf ci
+</PRE>
+<P></P>
+    If you want to embed shell redirects or pipes in the <B>exec</B>
     arguments, then you'll need to wrap the arguments in a shell
     invocation.  For example, this *won't* do what you want -- it will
     only change /etc/motd on the origin machine:
-
-``` 
-    isconf exec echo web server down > /etc/motd
-```
-
+<P></P>
+<PRE>
+      isconf exec echo web server down &gt; /etc/motd
+</PRE>
+<P></P>
     Here's what you really want instead:
+<P></P>
+<PRE>
+      isconf exec sh -c "echo web server down &gt; /etc/motd"
+</PRE>
+</DL>
 
-``` 
-    isconf exec sh -c "echo web server down > /etc/motd"
-```
-
-
-: **fork** //newbranch//
+<DL>
+<DT><B>fork</B> <I>newbranch</I></DT><DD>
     Create a new branch from the current branch, and migrate the local
     host onto the new branch.  The
     original branch is the "parent" branch, and the new branch is the
     "child" branch.  
-
-    If host A executes a **fork**, then it is the only host moved to
+<P></P>
+    If host A executes a <B>fork</B>, then it is the only host moved to
     the
     branch; hosts B and C do not change.  If you want B or C to move
-    to the new branch as well, see **migrate**.
-    
+    to the new branch as well, see <B>migrate</B>.
+<P></P>
     Low-level implementation:  Since a journal describes the details
     of a branch, then a fork essentially just copies the entire
     journal contents from the parent branch into a new journal named
-    after the child branch, then runs the **migrate** code path.
-
-: **lock** //message// ...
-    Lock the branch.  Required before **snap**, **exec**, **reboot**,
-    or **ci**, and recommended before **fork** and **migrate**.  The
-    //message// will be recorded in the journal for each subsequent
-    transaction until the next **ci**.
-
-: **migrate** //branchname// 
+    after the child branch, then runs the <B>migrate</B> code path.
+<P></P>
+<DT><B>lock</B> <I>message</I> ...</DT><DD>
+    Lock the branch.  Required before <B>snap</B>, <B>exec</B>, <B>reboot</B>,
+    or <B>ci</B>, and recommended before <B>fork</B> and <B>migrate</B>.  The
+    <I>message</I> will be recorded in the journal for each subsequent
+    transaction until the next <B>ci</B>.
+<P></P>
+<DT><B>migrate</B> <I>branchname</I> </DT><DD>
     Migrates the local host onto a new branch.  In human language
     this means the host is going to change roles.  
-
+<P></P>
     Switching a host to a new branch is only possible if the new
     branch is a child of the host's old branch, and if there have been
     no transactions executed on the host since the new branch was
     forked off -- in other words, the new branch's journal content
     needs to be a contiguous superset of the old branch's journal
-    content.  If these conditions aren't met, **migrate** will
+    content.  If these conditions aren't met, <B>migrate</B> will
     exit with a non-zero return code.
-    
-: **reboot** 
+<P></P>
+<DT><B>reboot</B> </DT><DD>
     Reboots the machine.  Before reboot, adds a journal entry which
     will cause all target machines on this branch to reboot at the same
     point in their build.   For example, this is what you might do to
     install and boot a new kernel:
-
-```
-    isconf lock "upgrade to 2.6.20"
-    isconf snap kernel-2.6.20-1.i686.rpm
-    isconf exec rpm -ivh kernel-2.6.20-1.i686.rpm
-    isconf reboot
-    isconf ci
-
-    # on other machines
-    isconf -r up
-```
-
+<P></P>
+<PRE>
+      isconf lock "upgrade to 2.6.20"
+      isconf snap kernel-2.6.20-1.i686.rpm
+      isconf exec rpm -ivh kernel-2.6.20-1.i686.rpm
+      isconf reboot
+      isconf ci
+  
+      # on other machines
+      isconf -r up
+</PRE>
+<P></P>
     Apply thought when using this verb; 'isconf up' (without the -r)
     won't finish if there is a 'reboot' pending as the next action in
     the journal.  You need 'isconf -r up' -- and you don't want to put
     that in crontab, unless you really don't mind your
-    machines rebooting at that time.  See the **-r** flag for details.
-
+    machines rebooting at that time.  See the <B>-r</B> flag for details.
+<P></P>
     Never say 'isconf exec reboot' -- that will only reboot the local
     machine, and will never create any sort of journal entry; the
     reboot kills isconf itself before the journal entry can be made.
     Always say 'isconf reboot' instead.
-
+<P></P>
     By default, ISconf runs 'shutdown -r now' to cause the reboot.  If
     you want or need to use a different command, see the IS_REBOOT_CMD
     environment variable below.
-
-: **restart**
-    Restart the daemon.  Equivalent to a **stop** followed by a
-    **start**.
-
-: **snap** //filename//
-
+<P></P>
+<DT><B>restart</B></DT><DD>
+    Restart the daemon.  Equivalent to a <B>stop</B> followed by a
+    <B>start</B>.
+<P></P>
+<DT><B>snap</B> <I>filename</I></DT><DD>
+<P></P>
     Snapshot a file for install on target machines.  Preserves the current 
     contents, permissions, and mode bits of the file.
-    After **ci**, any target host on the same branch can
+    After <B>ci</B>, any target host on the same branch can
     run 'isconf up', which will cause ISconf to install the file on 
     the target host.
+</DL>
 
-
-: **start**
-: **stop**
+<DL>
+<DT><B>start</B></DT><DD>
+<DT><B>stop</B></DT><DD>
     Start or stop the daemon.
-
-: **unlock** 
+<P></P>
+<DT><B>unlock</B> </DT><DD>
     Break the lock on the local branch.  
     Use with great care.  
     This reverses the effect of a 
-    **lock**, invalidates the work stored in **journal.wip** on
+    <B>lock</B>, invalidates the work stored in <B>journal.wip</B> on
     the locking machine, and will likely require the person who set
     the lock to discard their work and/or rebuild the machine where
     the lock was made.  
-    
+<P></P>
     Generally speaking, it's better to pick up the telephone and call
     the person who set the lock, asking them politely to finish
     whatever they were doing and check it in, rather than use this
     subcommand.
-
-: **up** 
+<P></P>
+<DT><B>up</B> </DT><DD>
     Update.  Causes the isconf daemon to attempt execution of any new 
     transactions in the
     journal.  Errors and messages are copied to stderr and stdout of
-    **isconf** as well as to syslog.  Exits with a non-zero return
+    <B>isconf</B> as well as to syslog.  Exits with a non-zero return
     code in case of error.
-
-    If used with **-r**, and if a pending **reboot** entry is 
+<P></P>
+    If used with <B>-r</B>, and if a pending <B>reboot</B> entry is 
     encountered in the journal, then the host will reboot.
+</DL>
 
-
-
-
-= ENVIRONMENT =
-
+<A NAME="toc13"></A>
+<H1>ENVIRONMENT</H1>
+<P>
 ISconf behavior is controlled predominantly by environment
 variables.  These can be set and exported before starting or
 restarting the isconf daemon, or can be set in configuration
-files, usually **main.cf**.  Any
+files, usually <B>main.cf</B>.  Any
 variables set in the environment will be overridden by those set
 in the configuration file.
-
-: **IS_DOMAIN** 
+</P>
+<DL>
+<DT><B>IS_DOMAIN</B> </DT><DD>
     ISconf domain name -- more or less equivalent to an AFS cell name
     or a Kerberos realm name; all of the machines sharing this name
     will share in the distributed cache that makes up the ISconf
@@ -401,104 +440,108 @@ in the configuration file.
     legal entity -- the same corporation, for instance, to use the
     same domain name.   This is an arbitrary string, but by convention it
     is usually based on the DNS domain name.
-
+<P></P>
     Rather than set this in an environment variable, you're better off
-    populating the **/var/is/conf/domain** file, below.
-
-: **IS_HOME** 
+    populating the <B>/var/is/conf/domain</B> file, below.
+<P></P>
+<DT><B>IS_HOME</B> </DT><DD>
     The base directory which ISconf uses for data storage.  Defaults
-    to **/var/is**.
-
-: **IS_HTTP_PORT** 
+    to <B>/var/is</B>.
+<P></P>
+<DT><B>IS_HTTP_PORT</B> </DT><DD>
     The port number which each ISconf HTTP server listens on.  Used only for
     file fetches between machines, and is likely to be deprecated in a
     near-future release.  Defaults to port 65028.
-
-: **IS_NETS** 
+<P></P>
+<DT><B>IS_NETS</B> </DT><DD>
     The name of a file which contains a list of broadcast and/or host
     addresses which ISconf should advertize file updates to.  See
-    **nets** file below.  Likely to change in a future release.
-    
-: **IS_PORT** 
+    <B>nets</B> file below.  Likely to change in a future release.
+<P></P>
+<DT><B>IS_PORT</B> </DT><DD>
     The port number which ISconf daemons use to communicate between each
     other.  Right now this is UDP only, but TCP will be added in
     4.2.7, and UDP is likely to be deprecated.  Defaults to port 65027.
-
-: **IS_REBOOT_CMD** 
+<P></P>
+<DT><B>IS_REBOOT_CMD</B> </DT><DD>
     The command which ISconf uses to reboot the machine in response to
     an 'isconf reboot' request.  Defaults to "shutdown -r now".
+</DL>
 
-
-= FILES =
-
-: **/etc/is/main.cf**
+<A NAME="toc14"></A>
+<H1>FILES</H1>
+<DL>
+<DT><B>/etc/is/main.cf</B></DT><DD>
     Top-level configuration file for ISconf.  
-    
+<P></P>
     XXX show format -- for now just see t/simple.conf.
-
-: **/var/is**
-    See **IS_HOME** above.
-
-: **/var/is/conf/domain**
+<P></P>
+<DT><B>/var/is</B></DT><DD>
+    See <B>IS_HOME</B> above.
+<P></P>
+<DT><B>/var/is/conf/domain</B></DT><DD>
     Single-line file, newline optional, containing only the string
-    which is to be used for the ISconf domain name.  See **IS_DOMAIN**
+    which is to be used for the ISconf domain name.  See <B>IS_DOMAIN</B>
     above. 
+<P></P>
+<DT><B>nets</B></DT><DD>
+    Network broadcast list -- see <B>IS_NETS</B> above.
+</DL>
 
-: **nets**
-    Network broadcast list -- see **IS_NETS** above.
-
-
-= GLOSSARY =
-
-: **base image**
-
+<A NAME="toc15"></A>
+<H1>GLOSSARY</H1>
+<DL>
+<DT><B>base image</B></DT><DD>
+<P></P>
     An image which was created directly from vendor CD or another
     external source, and which contains an empty journal.  Normally as
     simple as possible, with only a management tool (such as ISconf)
     and its prerequisites added.  
-    
+<P></P>
     You will usually create only one base image per platform -- see
-    **one-base**.
-    
+    <B>one-base</B>.
+<P></P>
     Base images are named using an arbitrary ASCII string.
     Recommended practice is to use platform name followed by a dash
     and the domain name of your organization, as in
-    //linux_debian_i686-t7a.org//
-    or //solaris_5.8_sparc-arc.nasa.gov//.
+    <I>linux_debian_i686-t7a.org</I>
+    or <I>solaris_5.8_sparc-arc.nasa.gov</I>.
     Because you will usually only create one base image for each
     platform, a version number isn't needed.
-    
+<P></P>
     If you for some reason do find yourself creating a second base
     image for the same platform, then first examine what you're doing
     and re-read the one-base definition.  If you still want to do
     this, then recommended practice is to add another dash and then
-    then version number, as in //aix_4.X_rs6000-langley.af.mil-2//.  
-
-: **categories of data**
+    then version number, as in <I>aix_4.X_rs6000-langley.af.mil-2</I>.  
+<P></P>
+<DT><B>categories of data</B></DT><DD>
     There appear to be three categories of data on the disk of a
     typical UNIX machine:
-
-    + root-owned binaries and non-environmental configuration data
-    + **environmental configuration files** (see glossary entry)
-    + user or business data
-
-: **checkpoint image**
-
+<P></P>
+    <OL>
+    <LI>root-owned binaries and non-environmental configuration data
+    <LI><B>environmental configuration files</B> (see glossary entry)
+    <LI>user or business data
+    <P></P>
+    </OL>
+<DT><B>checkpoint image</B></DT><DD>
+<P></P>
     An offline copy of the disk image of a given branch at a given
     revision, used for speedier installs.  A checkpoint image is made
     by installing a host from an ancestor checkpoint or base image,
     allowing its branch's journal entries to execute, then capturing
     the resulting disk content.
-
-: **environmental configuration files**
-
+<P></P>
+<DT><B>environmental configuration files</B></DT><DD>
+<P></P>
     Configuration files whose content is predominantly influenced by
     external business, political, procedural, or economic factors.
     Examples include files containing registered IP addresses, license
     keys, user names, and other information which is not quite
     "business data" but acts a lot like it.  See also **categories of
     data**.
-
+<P></P>
     These files need to be handled with special care and thought,
     because they generally can't be managed the same way you would
     manage a binary executable or a non-environmental configuration
@@ -506,7 +549,7 @@ in the configuration file.
     because this is where the digital behavior of Von Neumann machines
     conflicts with the analog world of human organizations; there are
     no absolute rules which work in all cases.
-
+<P></P>
     You may need external tools to manage some of these files, running
     on top of ISconf and hooked into e.g. your corporate LDAP or HR
     database -- see PREREQUISITES.  For instance, /etc/passwd and
@@ -514,10 +557,10 @@ in the configuration file.
     and are both good candidates for external management, while
     /etc/services and /etc/inittab are much more influenced by local
     applications, and in most cases should be managed with a simple
-    **isconf snap**.
-
-: **one-base** 
-
+    <B>isconf snap</B>.
+<P></P>
+<DT><B>one-base</B> </DT><DD>
+<P></P>
     One-base is an axiom of ISconf (and probably deterministic host
     management in general) -- it says that a host of any branch can be
     created by installing the base image for that platform and then
@@ -525,43 +568,43 @@ in the configuration file.
     base image for any given platform -- starting from there you can
     use journal replay to morph the image into any other image which
     is described by a branch's journal.
-
+<P></P>
         "One base to start them all, one base to gild them, one base to
         boot them all and in the darkness build them."
-
+<P></P>
     Sorry.
-
-: **branch** <<branch>>
-
+<P></P>
+<DT><B>branch</B> <a name=branch></DT><DD>
+<P></P>
     Host model or type.  Similar usage as in software version control.
     A different branch is normally used for each set of hosts that
     need their own disk image and that do wildly different or
     conflicting things.  For example, a DNS server and a database
     server would tend to be on different branches.
-
+<P></P>
     A branch is described by the sequence of transactions in a
     journal.  A new branch is created by forking an existing branch.
-    
+<P></P>
     Branches are named with an arbitrary string of letters and numbers. 
-
-    See also **class**.
-
-: **journal**
-
+<P></P>
+    See also <B>class</B>.
+<P></P>
+<DT><B>journal</B></DT><DD>
+<P></P>
     The transaction log of all changes made to a branch, starting from
     the base image.  Used for replay on other hosts of the same
     branch.  
-
-: **class**
+<P></P>
+<DT><B>class</B></DT><DD>
     This is an anti-definition: the word "class" should not be used to
     describe anything related to deterministic host management.  It
     brings with it misconceptions, such as "hosts can be subclassed",
     "changes in the parent class can be automatically and safely
     propagated to subclasses", and so on; most of these misconceptions
-    imply that //editing history// is a safe thing to do.
-
-: **editing history**
-
+    imply that <I>editing history</I> is a safe thing to do.
+<P></P>
+<DT><B>editing history</B></DT><DD>
+<P></P>
     "Editing history" is what happens when you build a machine based
     on a set of instructions, then alter the instructions that you
     used to build the machine.  Once you've done this, there is no
@@ -569,47 +612,51 @@ in the configuration file.
     instructions will still build the same machine, short of building
     the new machine and then comparing the entire disk content to the
     old one.  
-
+<P></P>
     Editing history can create major outages when:
-    
-    - you're trying to deploy changes which worked in QA (using the
+<P></P>
+    <UL>
+    <LI>you're trying to deploy changes which worked in QA (using the
       old instructions) to production (using the new instructions)
-    - you're trying to execute a disaster recovery, or even a single
+    <LI>you're trying to execute a disaster recovery, or even a single
       host rebuild, and you no longer have the old disk content available
-    - you're trying to add a new server to an existing farm and don't
+    <LI>you're trying to add a new server to an existing farm and don't
       have time to resort to backups or run rsync across both disks
-
+    <P></P>
     In ISconf, editing history would mean editing the journal file
     itself -- while there's nothing (currently) which would stop you
     from doing that, and while the resulting file would be dutifully
     distributed and applied to the target machines, it's highly
     discouraged and may be a lot more difficult to do in the future,
     as we add things like digital signatures and checksums to the mix.
-
-: **install image**
+    <P></P>
+    </UL>
+<DT><B>install image</B></DT><DD>
     The bits placed on disk during installation; this will be either
     the base image or a checkpoint image taken from a child branch.
+</DL>
 
-
-= INTERNALS =
-
+<A NAME="toc16"></A>
+<H1>INTERNALS</H1>
+<P>
 The basic algorithm that ISconf uses is roughly:
-
-    - Journal the changes that are going to be made.
-    - Preserve all entries in the journal over the lifetime of the
+</P>
+    <UL>
+    <LI>Journal the changes that are going to be made.
+    <LI>Preserve all entries in the journal over the lifetime of the
       infrastructure.
-    - Only append entries to the journal -- never delete, never
+    <LI>Only append entries to the journal -- never delete, never
       alter or re-order.
-    - Apply changes to one or more test machines by reading the
+    <LI>Apply changes to one or more test machines by reading the
       journal.
-    - Maintain a history of changes that have been applied to each
+    <LI>Maintain a history of changes that have been applied to each
       host.  The master copy of this history should reside on the
       local disk of that host, and must be destroyed if the disk 
       becomes corrupt or the host is rebuilt.
-    - Later, apply the same changes in the same order on other
+    <LI>Later, apply the same changes in the same order on other
       machines, by reading the same journal, using the same code path,
       consulting their local histories to see what is yet to be done.
-    - (This bullet point to be implemented as soon as possible after version
+    <LI>(This bullet point to be implemented as soon as possible after version
       4.2.6.139.) Keep track of those files which a human explicitly
       says do not need to be versioned, and in those cases (only),
       refer only to the last journal entry for those files.  An
@@ -618,29 +665,52 @@ The basic algorithm that ISconf uses is roughly:
       function at all.  (But consider new configuration files, edited, 
       and deleted; these three operations actually need distinct
       handling.)
+    </UL>
 
+<A NAME="toc17"></A>
+<H1>RESTRICTIONS</H1>
+<A NAME="toc18"></A>
+<H1>BUGS</H1>
+<P>
+See <A HREF="http://trac.t7a.org/isconf/report/3">http://trac.t7a.org/isconf/report/3</A>
+</P>
+<A NAME="toc19"></A>
+<H1>SEE ALSO</H1>
+<TABLE ALIGN="center" CELLPADDING="4">
+<TR>
+<TD>Background on where all this came from</TD>
+<TD><A HREF="http://www.infrastructures.org">http://www.infrastructures.org</A></TD>
+</TR>
+<TR>
+<TD>ISconf main site</TD>
+<TD><A HREF="http://www.isconf.org">http://www.isconf.org</A></TD>
+</TR>
+<TR>
+<TD>ISconf development site</TD>
+<TD><A HREF="http://trac.t7a.org/isconf">http://trac.t7a.org/isconf</A></TD>
+</TR>
+<TR>
+<TD>cfengine(8)</TD>
+<TD><A HREF="http://www.cfengine.org">http://www.cfengine.org</A></TD>
+</TR>
+<TR>
+<TD>python(1)</TD>
+<TD><A HREF="http://www.python.org">http://www.python.org</A></TD>
+</TR>
+</TABLE>
 
-= RESTRICTIONS =
-
-
-= BUGS =
-
-See http://trac.t7a.org/isconf/report/3
-
-= SEE ALSO =
-
- | Background on where all this came from | http://www.infrastructures.org
- | ISconf main site | http://www.isconf.org
- | ISconf development site | http://trac.t7a.org/isconf
- | cfengine(8) | http://www.cfengine.org
- | python(1) | http://www.python.org
-
+<P></P>
+<P>
 Most ISconf developers and users can be found on the infrastructures
 mailing list at
-http://mailman.terraluna.org/mailman/listinfo/infrastructures
+<A HREF="http://mailman.terraluna.org/mailman/listinfo/infrastructures">http://mailman.terraluna.org/mailman/listinfo/infrastructures</A>
+</P>
+<A NAME="toc20"></A>
+<H1>AUTHOR</H1>
+<P>
+Steve Traugott -- <A HREF="http://www.stevegt.com">http://www.stevegt.com</A>
+</P>
 
-
-= AUTHOR =
-
-Steve Traugott -- http://www.stevegt.com
-
+<!-- html code generated by txt2tags 2.0 (http://txt2tags.sf.net) -->
+<!-- cmdline: txt2tags -o isconf.html -\-toc -t html isconf.t2t -->
+</BODY></HTML>

@@ -37,7 +37,7 @@ XXXtar:
 	tar -C $(tmpdir) --exclude=*.pyc --exclude=*.swp --exclude=*.swo --exclude=.coverage -czvf $(tarball) $(tarname)
 	rm -rf $(tmpdir)
 
-sdist:
+sdist: doc
 	./update-revision
 	python setup.py sdist
 	mv dist/$(tarname).tar.gz $(tarball)
@@ -48,5 +48,10 @@ ship: sdist
 test:
 	cd t && time make
 
+doc: FORCE
+	cd doc && make
+
 %:
 	cd t && $(MAKE) $*
+
+FORCE:
