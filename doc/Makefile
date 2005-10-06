@@ -6,7 +6,7 @@ isconf.t2t: isconf.t2t.in ../revision
 	perl -pne "s/__VERSION__/$(VERSION)/" $? > $@
 
 isconf.8: isconf.t2t
-	txt2tags isconf.t2t 
+	txt2tags -o $@ isconf.t2t 
 	mv isconf.man isconf.8
 
 isconf.html: isconf.t2t
