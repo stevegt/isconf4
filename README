@@ -1,4 +1,10 @@
 
+Requires python 2.2 or later -- 2.2 support will soon be deprecated in
+favor of 2.3 or later.
+
+See the man page for more details of, for instance, the contents of
+/var/is/conf/domain.
+
 
 Install:
 ========
@@ -9,12 +15,28 @@ cd isconf-4.2.6
 make install
 cp etc/rc.isconf /etc/init.d/isconf
 (make symlink(s) from /etc/rc*)
-(create /etc/is/conf)
+(create /etc/is/main.cf)
 chmod 755 /usr/bin/isconf
 mkdir -p /var/is/conf
-echo foo.com > /var/is/conf/domain
+echo yourdomain.com > /var/is/conf/domain
 isconf start
 isconf up
+
+Upgrade from versions more recent than 4.2.6pre.133:
+====================================================
+
+newversion=isconf-4.2.6.N
+cd /tmp
+isconf -m "upgrade to $newversion" lock
+isconf snap $newversion.tar.gz
+isconf exec tar -xzvf $newversion.tar.gz
+cd $newversion
+isconf exec make install
+isconf exec cp etc/rc.isconf /etc/init.d/isconf
+(...and make /etc/rc* symlinks, again using isconf exec)
+isconf exec chmod 755 /usr/bin/isconf
+isconf reboot
+isconf ci
 
 
 Upgrade from <= 4.2.6pre.133:
@@ -59,22 +81,4 @@ isconf ci
 isconf lock clean up after upgrade to $newversion
 isconf exec rm /var/is/fs/cache/localdomain  
 isconf ci
-
-Upgrade from later versions:
-============================
-
-newversion=isconf-4.2.6.N
-cd /tmp
-isconf -m "upgrade to $newversion" lock
-isconf snap $newversion.tar.gz
-isconf exec tar -xzvf $newversion.tar.gz
-cd $newversion
-isconf exec make install
-isconf exec cp etc/rc.isconf /etc/init.d/isconf
-(...and make /etc/rc* symlinks, again using isconf exec)
-isconf exec chmod 755 /usr/bin/isconf
-isconf reboot
-isconf ci
-
-
 
