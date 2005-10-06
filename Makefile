@@ -54,6 +54,7 @@ test:
 	cd t && time make
 
 doc: FORCE
+	./update-revision
 	cd doc && make 
 
 %:
