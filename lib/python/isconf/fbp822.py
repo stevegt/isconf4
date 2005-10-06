@@ -297,7 +297,7 @@ class Message(email.Message.Message):
 
     def __init__(self):
         email.Message.Message.__init__(self)
-        date = email.Utils.formatdate()
+        date = time.ctime()
         self.set_unixfrom('From fbp822 %s' % (date))
         self.head = Head(self)
 
@@ -351,8 +351,8 @@ class Message(email.Message.Message):
 
     def hmacset(self,key):
         digest = self.hmac_calculated(key)
-        date = email.Utils.formatdate()
-        self.set_unixfrom('From fbp822 (HMAC=%s) %s' % (digest,date))
+        date = time.ctime()
+        self.set_unixfrom('From fbp822 %s HMAC=%s' % (digest,date))
         return digest
 
     def as_string(self, unixfrom=0):
