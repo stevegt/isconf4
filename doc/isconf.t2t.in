@@ -30,9 +30,11 @@ ISconf __VERSION__
 
 isconf - infrastructure build and configuration manager
 
+
 = SYNOPSIS =
 
 **isconf** [**-Dhrq**] ``[``**-c** //config//] ``[``**-m** //message//] //verb// [//verb_args//] ...
+
 
 = QUICK START =
 
@@ -88,6 +90,7 @@ aren't as interested in O/S patch management, or still want to log in
 as root on target machines and make arbitrary untracked changes, then
 you don't want this package.  (You might, however, want
 **cfengine**(8) -- see the bottom of this man page.)
+
 
 = BACKGROUND =
 
@@ -445,6 +448,7 @@ in the configuration file.
 : **nets**
     Network broadcast list -- see **IS_NETS** above.
 
+
 = CONFIGURATION =
 
 ISconf uses environment variables for its configuration, and these
@@ -745,6 +749,7 @@ Here's an example /etc/is/main.cf:
     the base image.  Used for replay on other hosts of the same
     branch.  
 
+
 = INTERNALS =
 
 The basic algorithm that ISconf uses is roughly:
@@ -821,6 +826,7 @@ Known flaws in this release include:
 - Logging is rudimentary right now; everything gets dumped into
   various files in /tmp.  This all needs to be migrated to syslog
   and/or files in var log.
+
 
 = SEE ALSO =
 
