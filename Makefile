@@ -39,7 +39,6 @@ XXXtar:
 	rm -rf $(tmpdir)
 
 sdist: doc
-	./update-revision
 	python setup.py sdist
 	mv dist/$(tarname).tar.gz $(tarball)
 
