@@ -783,13 +783,16 @@ This version of ISconf was assembled with the features most requested
 by early adopters, and does not pretend to be secure or scalable.  It
 is intended for use in small deployments, trusted internal networks,
 and evaluation.  If you do install this version in a production
-environment, you should plan to upgrade to a more recent version ASAP.
+environment, you should plan to upgrade as newer versions become
+available.
+
+Having said that, we do use this version of ISconf ourselves.
 
 Because we'll need to change wire protocols to add in the security
-bits, the next upgrade is likely to be a tricky procedure; you will
-likely need to keep an "old" machine around for a while as a cache
-server until you're sure you've upgraded all of your existing machines
-and updated your checkpoint images.  Keep your rollouts small for now.
+bits, the next upgrade is likely to be a tricky procedure; you may
+need to keep an old machine around for a while as a cache server
+until you're sure you've upgraded all of your existing machines and
+updated your checkpoint images.  Keep your rollouts small for now.
 
 Known flaws in this release include:
 
@@ -815,6 +818,9 @@ Known flaws in this release include:
   can then be backed up for safe-keeping as well.
 - We don't pretend to handle a certain subset of configuration files
   right now -- see the **environmental data** glossary entry.
+- Logging is rudimentary right now; everything gets dumped into
+  various files in /tmp.  This all needs to be migrated to syslog
+  and/or files in var log.
 
 = SEE ALSO =
 

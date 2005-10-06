@@ -281,6 +281,8 @@ def main():
         h.sess("killall isconf",blind=True)
         h.sess("rm -rf /tmp/var")
         h.sess("rm -rf " + tdir)
+        h.sess("mkdir -p %s/is/conf" % vdir)
+        h.sess("echo example.com > %s/is/conf/domain" % vdir)
 
     # ordinary start 
     for h in (a,b,c,d):
@@ -327,6 +329,12 @@ def main():
     out = b.sess("grep message: %s | grep test | wc -l" % journal)
     t.test(int(str(out)),4)
 
+    # ensure update has happened before granting lock
+    c.isconf("lock update check",rc=1)
+    c.isconf("up",timeout=TIMEOUT*2)
+    c.isconf("lock update check again")
+    c.isconf("unlock")
+
     # bug #49 -- new machines (not from same image) need to work
     # during evaluation
     b.isconf("stop")
@@ -347,7 +355,7 @@ def main():
     t.test(out,"test multiple")
     
     # fork 
-    c.isconf("up",timeout=TIMEOUT*2)
+    c.isconf("up")
     c.isconf("fork branch2")
     c.isconf("up")
     c.isconf("-m 'test fork' lock")

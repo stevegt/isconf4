@@ -537,6 +537,10 @@ class Volume:
         yield kernel.wait(self.pull())
         if self.locked() and not self.cklock():
             return 
+        pending = self.pending()
+        if len(pending):
+            error("local node is out of date -- try 'isconf up' first")
+            return
         open(self.p.lock,'w').write(message)
         self.announce(self.p.lock)
         info("%s locked" % self.volname)

@@ -11,6 +11,8 @@ cp etc/rc.isconf /etc/init.d/isconf
 (make symlink(s) from /etc/rc*)
 (create /etc/is/conf)
 chmod 755 /usr/bin/isconf
+mkdir -p /var/is/conf
+echo foo.com > /var/is/conf/domain
 isconf start
 isconf up
 
