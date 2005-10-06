@@ -10,6 +10,7 @@ import inspect
 import re
 import sha
 import sys
+import time
 import types
 
 class fbp822:
@@ -352,7 +353,7 @@ class Message(email.Message.Message):
     def hmacset(self,key):
         digest = self.hmac_calculated(key)
         date = time.ctime()
-        self.set_unixfrom('From fbp822 %s HMAC=%s' % (digest,date))
+        self.set_unixfrom('From fbp822 %s HMAC=%s' % (date,digest))
         return digest
 
     def as_string(self, unixfrom=0):
