@@ -16,6 +16,7 @@ make install
 cp etc/rc.isconf /etc/init.d/isconf
 (make symlink(s) from /etc/rc*)
 (create /etc/is/main.cf)
+(cp doc/isconf.8 to MANPATH)
 chmod 755 /usr/bin/isconf
 mkdir -p /var/is/conf
 echo yourdomain.com > /var/is/conf/domain
@@ -35,6 +36,7 @@ isconf exec make install
 isconf exec cp etc/rc.isconf /etc/init.d/isconf  # unless you use your own
 (...and make /etc/rc* symlinks, again using isconf exec)
 isconf exec chmod 755 /usr/bin/isconf
+(...cp doc/isconf.8 to MANPATH, again using isconf exec)
 isconf reboot
 isconf ci
 
