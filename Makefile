@@ -10,7 +10,9 @@ all:
 
 install:
 	python ./setup.py install
-	chmod 755 /usr/bin/isconf
+	# chmod might be needed with some versions of distutils
+	# chmod 755 /usr/bin/isconf   
+
 
 # XXX should be called by a script which does the snap and untar 
 XXXupgrade: 
