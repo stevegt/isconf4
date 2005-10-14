@@ -1,4 +1,4 @@
-.TH "isconf(8)" 1 "10/05/2005" "ISconf 4.2.6.164"
+.TH "isconf(8)" 1 "10/05/2005" "ISconf 4.2.6.166"
 
 .SH NAME
 .P
@@ -451,10 +451,11 @@ above.
 
 .TP
 \fBnets\fR
-Network broadcast list \-\- see \fBIS_NETS\fR above.
+Network broadcast list \-\- see \fBIS_NETS\fR above.  See t/nets for
+an example.  Likely to change.
 
-= CONFIGURATION =
-
+.SH CONFIGURATION
+.P
 ISconf uses environment variables for its configuration, and these
 variables are in turn passed on to any executables ISconf calls \-\- see
 ENVIRONMENT.   These environment variables can be set in
@@ -462,10 +463,14 @@ ENVIRONMENT.   These environment variables can be set in
 but whitespace is whitespace \-\- tabs aren't required.  Each stanza
 looks like this:
 
-target: optional includes
-var1 = value
-var2 = value
+.nf
+      target: optional includes
+          var1 = value
+          var2 = value
+.fi
 
+
+.P
 The 'target' string above is matched against the hostname; case is
 significant.  If it contains dots, it's matched against the FQDN.  If
 it starts with a caret (^) it is a regex matched against the FQDN.
@@ -475,72 +480,77 @@ earlier includes, or earlier in the same stanza are overridden by
 identically\-named variables which appear later in matched stanzas.
 Comments are any text following a hash (#) on any line.
 
+.P
 You can see the resulting environment by using the \fB\-D\fR flag.
 
+.P
 Here's an example /etc/is/main.cf:
 
-DEFAULT:
-NTPSERVERS = ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov
-IS_NETS=/etc/is/nets
+.nf
+      DEFAULT:
+          NTPSERVERS = ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov
+          IS_NETS=/etc/is/nets
+  
+      NET1:
+          GATEWAY = 10.10.1.1
+  
+      NET2:
+          GATEWAY = 10.10.2.1
+  
+      # The host 'scotty' will end up with these environment variables
+      # set during the ISconf run:
+      #
+      # NTPSERVERS="ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov"
+      # GATEWAY=10.10.1.1
+      # building=23
+      # floor=2
+      # IS_NETS=/etc/is/nets.scotty
+      #
+      scotty: NET1
+          building = this value is ignored
+          building = 23
+          floor = 2
+          IS_NETS=/etc/is/nets.scotty
+  
+      # kirk will get:
+      #
+      # NTPSERVERS="ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov"
+      # IS_NETS=/etc/is/nets
+      # GATEWAY = 10.10.2.1
+      # building=52
+      # floor=12
+      # 
+      kirk: NET2
+          building = 52
+          floor = 12
+  
+      LOST:
+          building = unknown
+          floor = unknown
+  
+      # any other host in example.com:
+      #
+      # NTPSERVERS="ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov"
+      # IS_NETS=/etc/is/nets
+      # building=unknown
+      # floor=unknown
+      # GATEWAY=10.2.3.1
+      # 
+      ^.*\e.example\e.com: LOST
+          GATEWAY = 10.2.3.1
+  
+      # any other host not in example.com:
+      #
+      # NTPSERVERS="ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov"
+      # IS_NETS=/etc/is/nets
+      # building=unknown
+      # floor=unknown
+      # GATEWAY=10.0.0.1
+      # 
+      ^.*: LOST
+          GATEWAY = 10.0.0.1
+.fi
 
-NET1:
-GATEWAY = 10.10.1.1
-
-NET2:
-GATEWAY = 10.10.2.1
-
-# The host 'scotty' will end up with these environment variables
-# set during the ISconf run:
-#
-# NTPSERVERS="ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov"
-# GATEWAY=10.10.1.1
-# building=23
-# floor=2
-# IS_NETS=/etc/is/nets.scotty
-#
-scotty: NET1
-building = this value is ignored
-building = 23
-floor = 2
-IS_NETS=/etc/is/nets.scotty
-
-# kirk will get:
-#
-# NTPSERVERS="ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov"
-# IS_NETS=/etc/is/nets
-# GATEWAY = 10.10.2.1
-# building=52
-# floor=12
-# 
-kirk: NET2
-building = 52
-floor = 12
-
-LOST:
-building = unknown
-floor = unknown
-
-# any other host in example.com:
-#
-# NTPSERVERS="ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov"
-# IS_NETS=/etc/is/nets
-# building=unknown
-# floor=unknown
-# GATEWAY=10.2.3.1
-# 
-^.*\e.example\e.com: LOST
-GATEWAY = 10.2.3.1
-
-# any other host not in example.com:
-#
-# NTPSERVERS="ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov"
-# IS_NETS=/etc/is/nets
-# building=unknown
-# floor=unknown
-# GATEWAY=10.0.0.1
-# 
-^.*: LOST
-GATEWAY = 10.0.0.1
 
 .SH GLOSSARY
 .TP
@@ -776,8 +786,8 @@ The transaction log of all changes made to a branch, starting from
 the base image.  Used for replay on other hosts of the same
 branch.  
 
-= INTERNALS =
-
+.SH INTERNALS
+.P
 The basic algorithm that ISconf uses is roughly:
 
 .RS
@@ -871,11 +881,9 @@ right now \-\- see the \fBenvironmental data\fR glossary entry.
 Logging is rudimentary right now; everything gets dumped into
 various files in /tmp.  This all needs to be migrated to syslog
 and/or files in var log.
-
-= SEE ALSO =
-
 .RE
 
+.SH SEE ALSO
 .TS
 center, tab(^); ll.
  Background on where all this came from^http://www.infrastructures.org

@@ -32,7 +32,7 @@ isconf snap $newversion.tar.gz
 isconf exec tar -xzvf $newversion.tar.gz
 cd $newversion
 isconf exec make install
-isconf exec cp etc/rc.isconf /etc/init.d/isconf
+isconf exec cp etc/rc.isconf /etc/init.d/isconf  # unless you use your own
 (...and make /etc/rc* symlinks, again using isconf exec)
 isconf exec chmod 755 /usr/bin/isconf
 isconf reboot

@@ -446,7 +446,8 @@ in the configuration file.
     above. 
 
 : **nets**
-    Network broadcast list -- see **IS_NETS** above.
+    Network broadcast list -- see **IS_NETS** above.  See t/nets for
+    an example.  Likely to change.
 
 
 = CONFIGURATION =
@@ -458,9 +459,11 @@ ENVIRONMENT.   These environment variables can be set in
 but whitespace is whitespace -- tabs aren't required.  Each stanza
 looks like this:
 
+```
     target: optional includes
         var1 = value
         var2 = value
+```
 
 The 'target' string above is matched against the hostname; case is
 significant.  If it contains dots, it's matched against the FQDN.  If
@@ -475,6 +478,7 @@ You can see the resulting environment by using the **-D** flag.
 
 Here's an example /etc/is/main.cf:
 
+```
     DEFAULT:
         NTPSERVERS = ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov
         IS_NETS=/etc/is/nets
@@ -537,6 +541,7 @@ Here's an example /etc/is/main.cf:
     # 
     ^.*: LOST
         GATEWAY = 10.0.0.1
+```
 
 
 = GLOSSARY =

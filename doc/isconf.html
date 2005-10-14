@@ -6,7 +6,7 @@
 </HEAD><BODY BGCOLOR="white" TEXT="black">
 <P ALIGN="center"><CENTER><H1>isconf(8)</H1>
 <FONT SIZE="4">
-<I>ISconf 4.2.6.164</I><BR>
+<I>ISconf 4.2.6.166</I><BR>
 10/05/2005
 </FONT></CENTER>
 
@@ -29,9 +29,12 @@
     </UL>
   <LI><A HREF="#toc12">ENVIRONMENT</A>
   <LI><A HREF="#toc13">FILES</A>
-  <LI><A HREF="#toc14">GLOSSARY</A>
-  <LI><A HREF="#toc15">BUGS/RESTRICTIONS</A>
-  <LI><A HREF="#toc16">AUTHOR</A>
+  <LI><A HREF="#toc14">CONFIGURATION</A>
+  <LI><A HREF="#toc15">GLOSSARY</A>
+  <LI><A HREF="#toc16">INTERNALS</A>
+  <LI><A HREF="#toc17">BUGS/RESTRICTIONS</A>
+  <LI><A HREF="#toc18">SEE ALSO</A>
+  <LI><A HREF="#toc19">AUTHOR</A>
   </UL>
 
 <P></P>
@@ -476,21 +479,27 @@ in the configuration file.
     above. 
 <P></P>
 <DT><B>nets</B></DT><DD>
-    Network broadcast list -- see <B>IS_NETS</B> above.
-<P></P>
-= CONFIGURATION =
-<P></P>
+    Network broadcast list -- see <B>IS_NETS</B> above.  See t/nets for
+    an example.  Likely to change.
+</DL>
+
+<A NAME="toc14"></A>
+<H1>CONFIGURATION</H1>
+<P>
 ISconf uses environment variables for its configuration, and these
 variables are in turn passed on to any executables ISconf calls -- see
 ENVIRONMENT.   These environment variables can be set in
 /etc/is/main.cf.  The format of this file is similar to a makefile,
 but whitespace is whitespace -- tabs aren't required.  Each stanza
 looks like this:
+</P>
+<PRE>
+      target: optional includes
+          var1 = value
+          var2 = value
+</PRE>
 <P></P>
-    target: optional includes
-        var1 = value
-        var2 = value
-<P></P>
+<P>
 The 'target' string above is matched against the hostname; case is
 significant.  If it contains dots, it's matched against the FQDN.  If
 it starts with a caret (^) it is a regex matched against the FQDN.
@@ -499,76 +508,79 @@ target named 'DEFAULT' is always matched.  Variables set in DEFAULT,
 earlier includes, or earlier in the same stanza are overridden by
 identically-named variables which appear later in matched stanzas.
 Comments are any text following a hash (#) on any line.
-<P></P>
+</P>
+<P>
 You can see the resulting environment by using the <B>-D</B> flag.
-<P></P>
+</P>
+<P>
 Here's an example /etc/is/main.cf:
+</P>
+<PRE>
+      DEFAULT:
+          NTPSERVERS = ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov
+          IS_NETS=/etc/is/nets
+  
+      NET1:
+          GATEWAY = 10.10.1.1
+  
+      NET2:
+          GATEWAY = 10.10.2.1
+  
+      # The host 'scotty' will end up with these environment variables
+      # set during the ISconf run:
+      #
+      # NTPSERVERS="ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov"
+      # GATEWAY=10.10.1.1
+      # building=23
+      # floor=2
+      # IS_NETS=/etc/is/nets.scotty
+      #
+      scotty: NET1
+          building = this value is ignored
+          building = 23
+          floor = 2
+          IS_NETS=/etc/is/nets.scotty
+  
+      # kirk will get:
+      #
+      # NTPSERVERS="ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov"
+      # IS_NETS=/etc/is/nets
+      # GATEWAY = 10.10.2.1
+      # building=52
+      # floor=12
+      # 
+      kirk: NET2
+          building = 52
+          floor = 12
+  
+      LOST:
+          building = unknown
+          floor = unknown
+  
+      # any other host in example.com:
+      #
+      # NTPSERVERS="ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov"
+      # IS_NETS=/etc/is/nets
+      # building=unknown
+      # floor=unknown
+      # GATEWAY=10.2.3.1
+      # 
+      ^.*\.example\.com: LOST
+          GATEWAY = 10.2.3.1
+  
+      # any other host not in example.com:
+      #
+      # NTPSERVERS="ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov"
+      # IS_NETS=/etc/is/nets
+      # building=unknown
+      # floor=unknown
+      # GATEWAY=10.0.0.1
+      # 
+      ^.*: LOST
+          GATEWAY = 10.0.0.1
+</PRE>
 <P></P>
-    DEFAULT:
-        NTPSERVERS = ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov
-        IS_NETS=/etc/is/nets
-<P></P>
-    NET1:
-        GATEWAY = 10.10.1.1
-<P></P>
-    NET2:
-        GATEWAY = 10.10.2.1
-<P></P>
-    # The host 'scotty' will end up with these environment variables
-    # set during the ISconf run:
-    #
-    # NTPSERVERS="ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov"
-    # GATEWAY=10.10.1.1
-    # building=23
-    # floor=2
-    # IS_NETS=/etc/is/nets.scotty
-    #
-    scotty: NET1
-        building = this value is ignored
-        building = 23
-        floor = 2
-        IS_NETS=/etc/is/nets.scotty
-<P></P>
-    # kirk will get:
-    #
-    # NTPSERVERS="ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov"
-    # IS_NETS=/etc/is/nets
-    # GATEWAY = 10.10.2.1
-    # building=52
-    # floor=12
-    # 
-    kirk: NET2
-        building = 52
-        floor = 12
-<P></P>
-    LOST:
-        building = unknown
-        floor = unknown
-<P></P>
-    # any other host in example.com:
-    #
-    # NTPSERVERS="ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov"
-    # IS_NETS=/etc/is/nets
-    # building=unknown
-    # floor=unknown
-    # GATEWAY=10.2.3.1
-    # 
-    ^.*\.example\.com: LOST
-        GATEWAY = 10.2.3.1
-<P></P>
-    # any other host not in example.com:
-    #
-    # NTPSERVERS="ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov"
-    # IS_NETS=/etc/is/nets
-    # building=unknown
-    # floor=unknown
-    # GATEWAY=10.0.0.1
-    # 
-    ^.*: LOST
-        GATEWAY = 10.0.0.1
-</DL>
-
-<A NAME="toc14"></A>
+<A NAME="toc15"></A>
 <H1>GLOSSARY</H1>
 <DL>
 <DT><B>base image</B></DT><DD>
@@ -784,11 +796,13 @@ Here's an example /etc/is/main.cf:
     The transaction log of all changes made to a branch, starting from
     the base image.  Used for replay on other hosts of the same
     branch.  
-<P></P>
-= INTERNALS =
-<P></P>
+</DL>
+
+<A NAME="toc16"></A>
+<H1>INTERNALS</H1>
+<P>
 The basic algorithm that ISconf uses is roughly:
-<P></P>
+</P>
     <UL>
     <LI>Journal the changes that are going to be made.
     <LI>Preserve all entries in the journal over the lifetime of the
@@ -814,9 +828,8 @@ The basic algorithm that ISconf uses is roughly:
       and deleted configuration files; these three operations actually 
       could make use of distinct handling.)
     </UL>
-</DL>
 
-<A NAME="toc15"></A>
+<A NAME="toc17"></A>
 <H1>BUGS/RESTRICTIONS</H1>
 <P>
 See <A HREF="http://trac.t7a.org/isconf/report">http://trac.t7a.org/isconf/report</A> for bugs, and see notes for a
@@ -869,11 +882,10 @@ Known flaws in this release include:
 <LI>Logging is rudimentary right now; everything gets dumped into
   various files in /tmp.  This all needs to be migrated to syslog
   and/or files in var log.
-<P></P>
-= SEE ALSO =
-<P></P>
 </UL>
 
+<A NAME="toc18"></A>
+<H1>SEE ALSO</H1>
 <TABLE ALIGN="center" CELLPADDING="4">
 <TR>
 <TD>Background on where all this came from</TD>
@@ -903,7 +915,7 @@ Most ISconf developers and users can be found on the infrastructures
 mailing list at
 <A HREF="http://mailman.terraluna.org/mailman/listinfo/infrastructures">http://mailman.terraluna.org/mailman/listinfo/infrastructures</A>
 </P>
-<A NAME="toc16"></A>
+<A NAME="toc19"></A>
 <H1>AUTHOR</H1>
 <P>
 Steve Traugott -- <A HREF="http://www.stevegt.com">http://www.stevegt.com</A>

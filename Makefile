@@ -39,6 +39,7 @@ XXXtar:
 	rm -rf $(tmpdir)
 
 sdist: uprev doc
+	rm -f MANIFEST
 	python setup.py sdist
 	mv dist/$(tarname).tar.gz $(tarball)
 
