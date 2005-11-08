@@ -36,6 +36,7 @@ class Main:
             'start',
             'stop',
             'restart',
+            'version',
     )
 
     def config(self,fname):
