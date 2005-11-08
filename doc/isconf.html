@@ -236,6 +236,9 @@ subcommands (as opposed to e.g. CVS).
 <P></P>
 <DT><B>-q</B></DT><DD>
     Quiet -- don't show verbose output.
+<P></P>
+<DT><B>-V</B></DT><DD>
+    Version -- show ISconf version.
 </DL>
 
 <A NAME="toc8"></A>
@@ -449,6 +452,11 @@ in the configuration file.
     The name of a file which contains a list of broadcast and/or host
     addresses which ISconf should advertize file updates to.  See
     <B>nets</B> file below.  Likely to change in a future release.
+<P></P>
+<DT><B>IS_NOBROADCAST</B> </DT><DD>
+    Boolean.  If set, do not send UDP broadcast packets; only send
+    UDP point-to-point packets to the addresses listed in **nets*
+    file.  Likely to change in a future release.
 <P></P>
 <DT><B>IS_PORT</B> </DT><DD>
     The port number which ISconf daemons use to communicate between each

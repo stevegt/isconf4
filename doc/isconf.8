@@ -199,6 +199,10 @@ that the later changes will work without the reboot.
 \fB\-q\fR
 Quiet \-\- don't show verbose output.
 
+.TP
+\fB\-V\fR
+Version \-\- show ISconf version.
+
 .SH SUBCOMMANDS
 .P
 Subcommands are often called 'verbs' in ISconf documentation and
@@ -418,6 +422,12 @@ near\-future release.  Defaults to port 65028.
 The name of a file which contains a list of broadcast and/or host
 addresses which ISconf should advertize file updates to.  See
 \fBnets\fR file below.  Likely to change in a future release.
+
+.TP
+\fBIS_NOBROADCAST\fR 
+Boolean.  If set, do not send UDP broadcast packets; only send
+UDP point\-to\-point packets to the addresses listed in **nets*
+file.  Likely to change in a future release.
 
 .TP
 \fBIS_PORT\fR 
