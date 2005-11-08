@@ -211,6 +211,9 @@ subcommands (as opposed to e.g. CVS).
 : **-q**
     Quiet -- don't show verbose output.
 
+: **-V**
+    Version -- show ISconf version.
+
 
 = SUBCOMMANDS =
 
@@ -417,6 +420,11 @@ in the configuration file.
     The name of a file which contains a list of broadcast and/or host
     addresses which ISconf should advertize file updates to.  See
     **nets** file below.  Likely to change in a future release.
+    
+: **IS_NOBROADCAST** 
+    Boolean.  If set, do not send UDP broadcast packets; only send
+    UDP point-to-point packets to the addresses listed in **nets*
+    file.  Likely to change in a future release.
     
 : **IS_PORT** 
     The port number which ISconf daemons use to communicate between each
