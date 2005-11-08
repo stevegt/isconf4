@@ -11,7 +11,7 @@ then
     changeset=$(( $changeset + 1 ))
     echo $changeset > revision
     release=$(cat version).$(cat revision)
-    echo "def release: return $release" > lib/python/isconf/version.py
+    echo "def release(): return $release" > lib/python/isconf/version.py
     svn ci -m "release $release"
     changeset=$(svn up | tr -d '.' | awk '{print $3}')
     if [ $changeset -ne $(cat revision) ]
