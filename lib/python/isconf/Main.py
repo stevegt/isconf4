@@ -75,8 +75,7 @@ class Main:
     def main(self):
         synopsis = """
         isconf [-DhrqV] [-c config ] [-m message] {verb} [verb args ...]
-        
-        """
+        \n"""
         opt = {
             'c': ('config', '/etc/is/main.cf', "top-level configuration file" ),
             'D': ('debug',   False, "show debugging output"),
