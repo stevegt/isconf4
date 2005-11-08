@@ -379,7 +379,7 @@ def client(transport,argv,kwopt):
     debug("cmd sent")
 
     # we should get a heartbeat message from server every few seconds  
-    transport.timeout = 20 
+    transport.timeout = 60  # XXX make this smaller, fix test case, test
 
     # sockfile = transport.sock.makefile('r')
     # stream = fbp.fromFile(sockfile,intask=False)
