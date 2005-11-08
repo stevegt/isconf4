@@ -1,7 +1,6 @@
 
 from __future__ import generators
 from cStringIO import StringIO
-from email.Generator import Generator
 import email.Message
 import email.Parser
 import email.Utils
@@ -364,9 +363,10 @@ class Message(email.Message.Message):
         Overridden from email.Message in order to turn off
         mangle_from_.
         """
+        from email.Generator import Generator
         fp = StringIO()
         g = Generator(fp,mangle_from_=False)
-        g(self, unixfrom=unixfrom)
+        g.flatten(self, unixfrom=unixfrom)
         return fp.getvalue()
 
 class Head:
