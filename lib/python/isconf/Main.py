@@ -36,7 +36,6 @@ class Main:
             'start',
             'stop',
             'restart',
-            'version',
     )
 
     def config(self,fname):
@@ -93,6 +92,10 @@ class Main:
         (kwopt,args,usage) = getkwopt(sys.argv[1:],opt)
         self.helptxt = synopsis + usage + ps
         if kwopt['help']: self.usage()
+        if kwopt['version']:
+            from isconf.version import release
+            print release()
+            sys.exit(0)
         if not args: 
             self.usage("missing verb")
         self.kwopt = copy.deepcopy(kwopt)
