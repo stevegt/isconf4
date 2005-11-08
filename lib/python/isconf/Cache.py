@@ -104,7 +104,10 @@ class Cache:
 
     def bcast(self,msg):
         # XXX only udp supported so far
-        for addr in ['<broadcast>'] + self.nets['udp']:
+        addrs = self.nets['udp']
+        if not os.environ.get('IS_NOBROADCAST',None):
+            addrs.append('<broadcast>')
+        for addr in addrs:
             self.sock.sendto(msg,0,(addr,self.udpport))
 
     def ihaveRx(self,msg,ip):
@@ -285,6 +288,7 @@ class Cache:
             yield None
             try:
                 data,addr = sock.recvfrom(8192)
+                # XXX check against addrs
                 debug("from %s: %s" % (addr,data))
                 factory = fbp822()
                 msg = factory.parse(data)

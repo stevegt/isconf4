@@ -1,6 +1,6 @@
 #!/bin/sh
 
-for v in 2.2 2.3 2.4 2.5
+for v in 2.3 2.4 2.5
 do
     if python$v -V 2> /dev/null
     then

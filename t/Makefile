@@ -2,7 +2,7 @@ lib=../lib/python
 files=$(shell find $(lib) -type f -name "*.py" | grep -v GPG.py | sort)
 pythons=$(shell ./pythondetect)
 export PYTHONPATH=$(lib)
-python=python2.2
+python=python2.3
 mdir=metrics/$(python)
 tdir=/tmp/isconftest
 # labhosts=test1 test2 test3 test4
@@ -18,7 +18,7 @@ XXXsystest: python2.2 labtest
 	python2.2 ./coverage.py -r $(files) 2>&1 | tee metrics/systest/coverage.txt
 	python2.2 ./coverage.py -rm $(files) 2>&1 | tee metrics/systest/missing.txt
 
-python2.2 python2.3 python2.4 python2.5: 
+python2.3 python2.4 python2.5: 
 	$(MAKE) run python=$@
 
 run:
@@ -42,7 +42,7 @@ umlsync:
 	cd .. && rsync -PHaSvuz --exclude=*.pyc . root@isconf13:/tmp/isconftest
 
 umltest: umlsync
-	time python2.2 runlabtest.py /tmp/isconftest \
+	time python2.3 runlabtest.py /tmp/isconftest \
 		isconf10 isconf11 isconf12 isconf13
 
 labsync:
@@ -53,13 +53,13 @@ $(labhosts):
 	cd .. && rsync -PHaSvuz --delete --exclude=*.pyc . root@$@:$(tdir)
 
 coverage: COVERAGE=1
-coverage: python2.2 labtest
+coverage: python2.3 labtest
 	./fetch-coverage $(labhosts)
-	python2.2 ./coverage.py -r $(files) 2>&1 | tee metrics/systest/coverage.txt
-	python2.2 ./coverage.py -rm $(files) 2>&1 | tee metrics/systest/missing.txt
+	python2.3 ./coverage.py -r $(files) 2>&1 | tee metrics/systest/coverage.txt
+	python2.3 ./coverage.py -rm $(files) 2>&1 | tee metrics/systest/missing.txt
 
 labtest: labsync
-	COVERAGE=$(COVERAGE) time python2.2 runlabtest.py /tmp/isconftest \
+	COVERAGE=$(COVERAGE) time python2.3 runlabtest.py /tmp/isconftest \
 		$(labhosts) 
 	mv runlabtest.log metrics/systest/systest.txt 
 
@@ -67,7 +67,7 @@ tarsync:
 	t/tarsync $(tarname) test1 test2 test3
 
 tartest: tarsync
-	time python2.2 t/runlabtest.py /tmp/$(tarname) \
+	time python2.3 t/runlabtest.py /tmp/$(tarname) \
 		test1 test2 test3
 
 mtatest:

@@ -58,13 +58,14 @@ class Cmd:
     def __init__(self,cmd,host):
         self.cmd = cmd
         self.host = host
-    def __call__(self,args=''):
-        return self.host.sess("%s %s" % (self.cmd,args))
+    def __call__(self,args='',rc=0):
+        return self.host.sess("%s %s" % (self.cmd,args),rc=rc)
 
 class Host:
     """
 
-    >>> a = Host("localhost")
+    >>> a = Host("localhost",'/tmp')
+    localhost> cd /tmp
     >>> a.ssh("echo hi").rc
     # ssh root@localhost echo hi
     hi
@@ -90,7 +91,7 @@ class Host:
     localhost> cat /tmp/1
     'hi there\\n'
     >>> a.put('foo &!%#()',"/tmp/1")
-    # scp /tmp/tmpVUdXmM root@localhost:/tmp/1
+    # scp /tmp/tmpuhTmWc root@localhost:/tmp/1
     >>> a("/tmp/1")
     localhost> cat /tmp/1
     'foo &!%#()'
@@ -98,6 +99,9 @@ class Host:
     localhost> /bin/false
     FAIL '1' == '0'
     1
+    >>> a.cat("/tmp/doesnotexistlaksjfd",rc=1)
+    localhost> cat /tmp/doesnotexistlaksjfd
+    <runlabtest.Result instance at 0x40233c4c>
 
     """
 
@@ -334,6 +338,39 @@ def main():
     c.isconf("up",timeout=TIMEOUT*2)
     c.isconf("lock update check again")
     c.isconf("unlock")
+
+    # (usually) insert new tests here
+
+    # bug #60 -- IS_NOBROADCAST
+    a.sess("export IS_NOBROADCAST=1")
+    b.sess("export IS_NOBROADCAST=1")
+    a.sess("export IS_NETS=%s/t/nets.limbo" % dir)
+    b.sess("export IS_NETS=%s/t/nets.limbo" % dir)
+    for h in (a,b):
+        h.isconf("restart")
+    # a and b can't talk to anyone
+    a.isconf("lock test IS_NOBROADCAST a")
+    b.isconf("lock test IS_NOBROADCAST b")
+    b.isconf("unlock")
+    a.put("IS_NOBROADCAST test","%s/nobroadcast" % tdir)
+    a.isconf("snap %s/nobroadcast" % tdir)
+    a.isconf("ci")
+    b.isconf("up")
+    b.cat("%s/nobroadcast" % tdir,rc=1)
+    # let a and b talk to all
+    a.sess("export IS_NETS=%s/t/nets" % dir)
+    b.sess("export IS_NETS=%s/t/nets" % dir)
+    for h in (a,b):
+        h.isconf("restart")
+    b.isconf("lock test IS_NOBROADCAST b",rc=1)
+    b.isconf("up")
+    out = b.cat("%s/nobroadcast" % tdir)
+    t.test(out,"IS_NOBROADCAST test")
+    # IS_NOBROADCAST on a and b doesn't keep them from hearing
+    # broadcast packets from c or d
+    c.isconf("up")
+    out = c.cat("%s/nobroadcast" % tdir)
+    t.test(out,"IS_NOBROADCAST test")
 
     # bug #49 -- new machines (not from same image) need to work
     # during evaluation

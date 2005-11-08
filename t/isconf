@@ -13,11 +13,13 @@ then
 fi
 
 # try to use old python for compatibility testing
-python=python2.2
-if ! which python2.2 > /dev/null
-then
-    python=python
-fi
+# python=python2.2
+# if ! which python2.2 > /dev/null
+# then
+#     python=python
+# fi
+
+[ -z "$python" ] && python=python
 
 coverage=''
 if test -n "$COVERAGE"
