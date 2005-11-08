@@ -74,7 +74,7 @@ class Main:
 
     def main(self):
         synopsis = """
-        isconf [-Dhrq] [-c config ] [-m message] {verb} [verb args ...]
+        isconf [-DhrqV] [-c config ] [-m message] {verb} [verb args ...]
         
         """
         opt = {
@@ -84,6 +84,7 @@ class Main:
             'm': ('message', None,  "changelog and branch lock message" ),
             'r': ('reboot_ok',False,"reboot during update if needed" ),
             'q': ('quiet',   False, "don't show verbose output"),
+            'V': ('version', False, "show version"),
         }
         ps = "\nVerb is one of: %s\n" % ', '.join(self.verbs)
         # ps += "\nVerb and verb args can be interleaved with other flags."
@@ -99,6 +100,10 @@ class Main:
         verb = args.pop(0)
         if not verb in self.verbs:
             self.usage("unknown verb")
+        if verb == 'version':
+            from isconf.version import release
+            print release()
+            sys.exit(0)
         if verb in ('start','stop','restart'):
         # if verb in ('start','restart'):
             func = getattr(self,verb)
