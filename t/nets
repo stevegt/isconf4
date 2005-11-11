@@ -1,4 +1,12 @@
-udp 10.27.3.33
-udp 10.27.3.34
-udp 10.27.3.35
-udp 10.27.3.36
+# proto ip[/mask] 
+#
+
+# talk to these individual hosts 
+udp 10.1.2.2 
+udp 10.1.2.3 
+
+# broadcast to these nets
+udp 10.1.4.0/24 
+udp 10.1.5.0/24 
+
+

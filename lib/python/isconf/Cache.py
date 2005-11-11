@@ -285,6 +285,7 @@ class Cache:
             yield None
             try:
                 data,addr = sock.recvfrom(8192)
+                # XXX check against addrs
                 debug("from %s: %s" % (addr,data))
                 factory = fbp822()
                 msg = factory.parse(data)
