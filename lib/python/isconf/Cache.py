@@ -288,6 +288,7 @@ class Cache:
                 debug("from %s: %s" % (addr,data))
                 factory = fbp822()
                 msg = factory.parse(data)
+                # XXX HMAC
                 type = msg.type().strip()
                 debug("gottype '%s'" % type)
                 if msg.head.tuid == self.tuid:
@@ -381,4 +382,34 @@ def httpServer(port,dir):
         except:
             svr.handle_error(request, client_address)
             svr.close_request(request)
+
+class Keys:
+
+    def __init__(self):
+        self.path = os.environ.get('IS_KEYS',None)
+
+    def ls(self):
+        keys = []
+        if self.path and os.path.exists(self.path):
+            keys = map(strip,open(self.path,'r').readlines())
+        return keys
+
+
+
+
+    def readnets(self):
+        # read network list
+        nets = {'udp': [], 'tcp': []}
+        netsfn = os.environ.get('IS_NETS',None)
+        debug("netsfn", netsfn)
+        if netsfn and os.path.exists(netsfn):
+            netsfd = open(netsfn,'r')
+            for line in netsfd:
+                (scheme,addr) = line.strip().split()
+                nets[scheme].append(addr)
+        debug("nets", str(nets))
+        return nets
+
+
+
 
