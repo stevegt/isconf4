@@ -97,9 +97,9 @@ class Cache:
             warn("file gone: %s" % fullpath)
             return
         mtime = os.path.getmtime(fullpath)
-        # XXX HMAC
         reply = FBP.msg('ihave',tuid=self.tuid,
                 file=path,mtime=mtime,port=self.httpport,scheme='http')
+        hmac.msgset(reply)
         self.bcast(str(reply))
 
     def bcast(self,msg):
@@ -112,12 +112,14 @@ class Cache:
 
     def ihaveRx(self,msg,ip):
         yield None
+        if not hmac.msgck(msg):
+            debug("HMAC failed, dropping: %s" % msg)
+            return
         scheme = msg['scheme']
         port = msg['port']
         path = msg['file']
         mtime = msg.head.mtime
         url = "%s://%s:%s/%s" % (scheme,ip,port,path)
-        # XXX HMAC
         path = path.lstrip('/')
         # simple check to ignore foreign domains 
         # XXX probably want to make this a list of domains
@@ -171,7 +173,7 @@ class Cache:
                 if os.path.exists(fullpath):
                     mtime = os.path.getmtime(fullpath)
                 req = FBP.msg('whohas',file=path,newer=mtime,tuid=self.tuid)
-                # XXX HMAC
+                hmac.msgset(req)
                 self.req.setdefault(path,{})
                 self.req[path]['msg'] = req
                 self.req[path]['expires'] = time.time() + timeout
@@ -288,10 +290,13 @@ class Cache:
             yield None
             try:
                 data,addr = sock.recvfrom(8192)
-                # XXX check against addrs
+                # XXX check against addrs or nets
                 debug("from %s: %s" % (addr,data))
                 factory = fbp822()
                 msg = factory.parse(data)
+                if not hmac.msgck(msg):
+                    debug("HMAC failed, dropping: %s" % msg)
+                    return
                 type = msg.type().strip()
                 debug("gottype '%s'" % type)
                 if msg.head.tuid == self.tuid:
@@ -304,7 +309,6 @@ class Cache:
                     fullpath = os.path.normpath(fullpath)
                     newer = int(msg.get('newer',None))
                     # security checks
-                    # XXX HMAC
                     bad=0
                     if fullpath != os.path.normpath(fullpath): 
                         bad += 1
@@ -374,7 +378,7 @@ def httpServer(port,dir):
             yield kernel.sigsleep, 1
             continue
         # XXX filter request -- e.g. do we need directory listings?
-        # XXX HMAC in path info
+        # XXX HMAC in path info, or in X-header?
         try:
             # process_request does the fork...  For now we're going to
             # say that it's okay that the Kernel and other tasks fork
@@ -385,4 +389,103 @@ def httpServer(port,dir):
         except:
             svr.handle_error(request, client_address)
             svr.close_request(request)
+
+class HMAC:
+    '''HMAC key management
+
+    >>> hmac = HMAC()
+    >>> keyfile = "/tmp/hmac_keys-test-case-data"
+    >>> factory = fbp822()
+    >>> msg = factory.mkmsg('red apple')
+    >>> os.environ['IS_HMAC_KEYS'] = ""
+    >>> msg.hmacset('foo')
+    '8ca8301bb1a077358ce8c3e9a601d83a2643f33d'
+    >>> hmac.msgck(msg)
+    True
+    >>> os.environ['IS_HMAC_KEYS'] = keyfile
+    >>> open(keyfile,'w').write("\\n\\n")
+    >>> hmac.reload()
+    []
+    >>> msg.hmacset('foo')
+    '8ca8301bb1a077358ce8c3e9a601d83a2643f33d'
+    >>> hmac.msgck(msg)
+    True
+    >>> open(keyfile,'w').write("someauthenticationkey\\nanotherkey\\n")
+    >>> hmac.expires = 0
+    >>> hmac.msgset(msg)
+    '0abf42fd374fc75cdc4bd0284f4c9ec48f9e0569'
+    >>> hmac.msgck(msg)
+    True
+    >>> msg.hmacset('foo')
+    '8ca8301bb1a077358ce8c3e9a601d83a2643f33d'
+    >>> hmac.msgck(msg)
+    False
+    >>> msg.hmacset('anotherkey')
+    '51116aaa8bc9de5078850b9347aa95ada066b259'
+    >>> hmac.msgck(msg)
+    True
+    >>> msg.hmacset('someauthenticationkey')
+    '0abf42fd374fc75cdc4bd0284f4c9ec48f9e0569'
+    >>> hmac.msgck(msg)
+    True
+    >>> open(keyfile,'a').write("+ANY+\\n")
+    >>> hmac.expires = 0
+    >>> hmac.msgset(msg)
+    '0abf42fd374fc75cdc4bd0284f4c9ec48f9e0569'
+    >>> hmac.msgck(msg)
+    True
+    >>> msg.hmacset('foo')
+    '8ca8301bb1a077358ce8c3e9a601d83a2643f33d'
+    >>> hmac.msgck(msg)
+    True
+
+    '''
+    
+    def __init__(self):
+        self.expires = 0
+        self.reset()
+
+    def reset(self):
+        self._keys = []
+        self.any = False
+
+    def reload(self):
+        path = os.environ.get('IS_HMAC_KEYS',None)
+        if time.time() > self.expires \
+                and path and os.path.exists(path):
+            self.reset()
+            self.expires = time.time() + 60
+            for line in open(path,'r').readlines():
+                line = line.strip()
+                if line.startswith('#'):
+                    continue
+                if not len(line):
+                    continue
+                if line == '+ANY+':
+                    self.any = True
+                    continue
+                self._keys.append(line)
+        return self._keys
+
+    def msgck(self,msg):
+        keys = self.reload()
+        if not len(keys):
+            return True
+        if self.any:
+            return True
+        for key in keys:
+            if msg.hmacok(key):
+                return True
+        return False
+
+    def msgset(self,msg):
+        keys = self.reload()
+        if not len(keys):
+            return
+        key = keys[0]
+        return msg.hmacset(key)
+
+hmac = HMAC()
+
+
 

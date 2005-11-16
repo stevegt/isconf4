@@ -411,6 +411,10 @@ in the configuration file.
     The base directory which ISconf uses for data storage.  Defaults
     to **/var/is**.
 
+: **IS_HMAC_KEYS** 
+    The name of a file which contains a list of HMAC keys.
+    See the **hmac_keys** file below.
+
 : **IS_HTTP_PORT** 
     The port number which each ISconf HTTP server listens on.  Used only for
     file fetches between machines, and is likely to be deprecated in a
@@ -452,6 +456,66 @@ in the configuration file.
     Single-line file, newline optional, containing only the string
     which is to be used for the ISconf domain name.  See **IS_DOMAIN**
     above. 
+
+: **hmac_keys**
+
+    HMAC key list, one key per line.  See **IS_HMAC_KEYS**.  If this
+    file exists and contains properly-formatted keys, then RFC 2104 HMAC
+    authentication is enabled; wire messages which are not properly
+    authenticated will be ignored.  
+    
+    The first key in the list is used for generating authentication
+    codes on all outgoing messages, and is the first key tried when
+    authenticating inbound messages.  If the first key fails to
+    authenticate an inbound message, and if more than one key is
+    listed in the file, then the second and subsequent keys are tried,
+    in order.  This mechanism enables you to update the primary key 
+    while preserving backward compatibility with older keys, allowing
+    for a transition period.
+    
+    Be careful when deploying this file for the first time on hosts
+    which are already running ISconf; those ISconf daemons which get
+    it first will refuse to listen to any which don't yet have the
+    file; this will prevent further deployment if you're using ISconf
+    to deploy the file.  To prevent this from happening, you can
+    include the special key **+ANY+** at the end of the file.  If
+    encountered in the file, this special key disables HMAC
+    authentication of received messages, but does not prevent
+    generation of authentication codes on transmitted messages.  What
+    you want to do is deploy the file with one or more real keys
+    listed in it, followed by the **+ANY+** key.  The file might look
+    like this when first deployed:
+    
+```
+    someauthenticationkey
+    +ANY+
+
+```
+
+    As you deploy the above file, hosts will begin sending
+    authenticated messages to each other using the
+    **someauthenticationkey** key, but will ignore the authentication
+    codes they receive.  Once you are sure that all of your hosts have
+    that copy of the file, then deploy the file again, this time with
+    the **+ANY+** key removed.  This will cause hosts to begin
+    checking received authentication codes against
+    **someauthenticationkey**, while discarding any messages not
+    properly authenticated.
+
+    For best security, each key should be about 20 bytes long; see RFC
+    2104.  Keys can can include any ASCII character except space,
+    newline, or the pound (hash) (#) sign.  Lines beginning with pound
+    signs are comments.  Blank lines are ignored.  If no keys are
+    found in the file, then the entire file is ignored, and HMAC
+    authentication is disabled.
+
+    ISconf checks for new versions of this file every 60 seconds --
+    there is no need to restart the ISconf daemon.
+
+    The hash function used internally is SHA-1, with Python's
+    **hmac** module doing the real work.
+
+    You should ensure that this file is only readable by root.
 
 : **nets**
     Network broadcast list -- see **IS_NETS** above.  See t/nets for

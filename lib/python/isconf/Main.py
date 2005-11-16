@@ -70,6 +70,7 @@ class Main:
         elif not os.environ.has_key('IS_DOMAIN'):
             error("%s is missing -- see install instructions" % domfn)
         
+
         debug(os.popen("env").read())
 
     def main(self):
