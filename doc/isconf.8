@@ -1,4 +1,4 @@
-.TH "isconf(8)" 1 "11/16/2005" "ISconf 4.2.7.190"
+.TH "isconf(8)" 1 "11/17/2005" "ISconf 4.2.7.195"
 
 .SH NAME
 .P
@@ -479,7 +479,26 @@ authenticate an inbound message, and if more than one key is
 listed in the file, then the second and subsequent keys are tried,
 in order.  This mechanism enables you to update the primary key 
 while preserving backward compatibility with older keys, allowing
-for a transition period.
+for a transition period.  
+
+When updating keys, it's a good idea to follow something like this
+procedure:
+
+.RS
+.IP 1. 3
+Add the new key as a secondary key to the hmac_keys file, and
+deploy that to all machines.
+
+.IP 2. 3
+Once you're sure \fBall\fR of your machines (and install images)
+have the new key, then move the new key up to the primary position
+in the file, leaving any old key(s) in the file as secondaries,
+then deploy that.
+
+.IP 3. 3
+Once you're sure \fBall\fR of your machines (and install images)
+are using the new primary key, then (and only then) should you
+think about retiring any old key(s).
 
 Be careful when deploying this file for the first time on hosts
 which are already running ISconf; those ISconf daemons which get
@@ -518,14 +537,19 @@ signs are comments.  Blank lines are ignored.  If no keys are
 found in the file, then the entire file is ignored, and HMAC
 authentication is disabled.
 
-ISconf checks for new versions of this file every 60 seconds \-\-
-there is no need to restart the ISconf daemon.
+ISconf checks for new versions of this file every 10 seconds when
+it is processing inbound packets \-\- there is no need to restart
+the ISconf daemon.
 
 The hash function used internally is SHA\-1, with Python's
 \fBhmac\fR module doing the real work.
 
 You should ensure that this file is only readable by root.
 
+This entire mechanism is likely to change and/or be replaced by
+PGP key signatures in a future release.
+
+.RE
 .TP
 \fBnets\fR
 Network broadcast list \-\- see \fBIS_NETS\fR above.  See t/nets for

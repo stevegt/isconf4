@@ -1,6 +1,6 @@
 9 items passed all tests:
    7 tests in isconf.Cache.Cache
-  28 tests in isconf.Cache.HMAC
+  34 tests in isconf.Cache.Hmac
   12 tests in isconf.ISFS.Journal.copy
   27 tests in isconf.ISFS.Journal.migrate
   21 tests in isconf.Kernel.Bus
@@ -8,5 +8,5 @@
   22 tests in isconf.Kernel.Kernel.spawn
   19 tests in isconf.fbp822.fbp822
   18 tests in isconf.fbp822.fbp822.parse
-163 tests in 224 items.
-163 passed and 0 failed.
+169 tests in 226 items.
+169 passed and 0 failed.

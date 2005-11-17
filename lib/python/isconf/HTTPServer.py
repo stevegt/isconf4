@@ -15,10 +15,13 @@ import posixpath
 import BaseHTTPServer
 import urllib
 import cgi
+import re
 import shutil
 import mimetypes
 from StringIO import StringIO
 import SimpleHTTPServer 
+
+from isconf.Cache import HMAC
 
 
 class SimpleHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
@@ -49,6 +52,16 @@ class SimpleHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         """
         path = self.translate_path(self.path)
+        # get args
+        m = re.match('(.*)\?(.*)',path)
+        args = {}
+        if m:
+            path = m.group(1)
+            arglist = re.findall('(.*?)=([^=&]*)&*',m.group(2))
+            for (var,val) in arglist:
+                args[var]=val
+        # get HMAC challenge
+        challenge = args.get('challenge',None)
         f = None
         if os.path.isdir(path):
             for index in "index.html", "index.htm":
@@ -73,6 +86,9 @@ class SimpleHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-type", ctype)
         self.send_header("Last-Modified", lastmod)
+        if challenge:
+            hmacResponse = HMAC.response(challenge)
+            self.send_header("X-HMAC", hmacResponse)
         self.end_headers()
         return f
 

@@ -5,6 +5,7 @@ import email.Message
 import email.Parser
 import email.Utils
 import errno
+import hmac
 import inspect
 import md5
 import os
@@ -99,7 +100,7 @@ class Cache:
         mtime = os.path.getmtime(fullpath)
         reply = FBP.msg('ihave',tuid=self.tuid,
                 file=path,mtime=mtime,port=self.httpport,scheme='http')
-        hmac.msgset(reply)
+        HMAC.msgset(reply)
         self.bcast(str(reply))
 
     def bcast(self,msg):
@@ -112,14 +113,12 @@ class Cache:
 
     def ihaveRx(self,msg,ip):
         yield None
-        if not hmac.msgck(msg):
-            debug("HMAC failed, dropping: %s" % msg)
-            return
         scheme = msg['scheme']
         port = msg['port']
         path = msg['file']
         mtime = msg.head.mtime
-        url = "%s://%s:%s/%s" % (scheme,ip,port,path)
+        challenge = str(random.random())
+        url = "%s://%s:%s/%s?challenge=%s" % (scheme,ip,port,path,challenge)
         path = path.lstrip('/')
         # simple check to ignore foreign domains 
         # XXX probably want to make this a list of domains
@@ -136,7 +135,7 @@ class Cache:
             debug("remote is newer:",url)
             if self.req.has_key(path):
                 self.req[path]['state'] = SENDME
-            yield kernel.wait(self.wget(path,url))
+            yield kernel.wait(self.wget(path,url,challenge))
             self.ihaveTx(path)
         elif mtime < mymtime:
             debug("remote is older:",url)
@@ -173,7 +172,7 @@ class Cache:
                 if os.path.exists(fullpath):
                     mtime = os.path.getmtime(fullpath)
                 req = FBP.msg('whohas',file=path,newer=mtime,tuid=self.tuid)
-                hmac.msgset(req)
+                HMAC.msgset(req)
                 self.req.setdefault(path,{})
                 self.req[path]['msg'] = req
                 self.req[path]['expires'] = time.time() + timeout
@@ -219,7 +218,7 @@ class Cache:
         for path in files:
             self.ihaveTx(path)
 
-    def wget(self,path,url):
+    def wget(self,path,url,challenge):
         yield None
         # XXX kludge to keep from beating up HTTP servers
         if self.fetched.get(url,0) > time.time() - 5:
@@ -240,6 +239,10 @@ class Cache:
             os.makedirs(dir,0700)
         u = urllib2.urlopen(url)
         uinfo = u.info()
+        response = uinfo.get('x-hmac')
+        if not HMAC.ck(challenge,response):
+            debug("HMAC failed, abort fetching: %s" % url)
+            return
         (mod,size) = (uinfo.get('last-modified'), uinfo.get('content-size'))
         mod_secs = email.Utils.mktime_tz(email.Utils.parsedate_tz(mod))
         if mod_secs <= mtime:
@@ -294,13 +297,12 @@ class Cache:
                 debug("from %s: %s" % (addr,data))
                 factory = fbp822()
                 msg = factory.parse(data)
-                if not hmac.msgck(msg):
-                    debug("HMAC failed, dropping: %s" % msg)
-                    return
                 type = msg.type().strip()
-                debug("gottype '%s'" % type)
                 if msg.head.tuid == self.tuid:
                     # debug("one of ours -- ignore",str(msg))
+                    continue
+                if not HMAC.msgck(msg):
+                    debug("HMAC failed, dropping: %s" % msg)
                     continue
                 if type == 'whohas':
                     path = msg['file']
@@ -390,59 +392,71 @@ def httpServer(port,dir):
             svr.handle_error(request, client_address)
             svr.close_request(request)
 
-class HMAC:
+class Hmac:
     '''HMAC key management
 
-    >>> hmac = HMAC()
+    >>> HMAC = Hmac(ckfreq=1)
     >>> keyfile = "/tmp/hmac_keys-test-case-data"
     >>> factory = fbp822()
     >>> msg = factory.mkmsg('red apple')
     >>> os.environ['IS_HMAC_KEYS'] = ""
     >>> msg.hmacset('foo')
     '8ca8301bb1a077358ce8c3e9a601d83a2643f33d'
-    >>> hmac.msgck(msg)
+    >>> HMAC.msgck(msg)
     True
     >>> os.environ['IS_HMAC_KEYS'] = keyfile
     >>> open(keyfile,'w').write("\\n\\n")
-    >>> hmac.reload()
-    []
+    >>> time.sleep(2)
     >>> msg.hmacset('foo')
     '8ca8301bb1a077358ce8c3e9a601d83a2643f33d'
-    >>> hmac.msgck(msg)
+    >>> HMAC.msgck(msg)
     True
     >>> open(keyfile,'w').write("someauthenticationkey\\nanotherkey\\n")
-    >>> hmac.expires = 0
-    >>> hmac.msgset(msg)
+    >>> time.sleep(2)
+    >>> HMAC.msgset(msg)
     '0abf42fd374fc75cdc4bd0284f4c9ec48f9e0569'
-    >>> hmac.msgck(msg)
+    >>> HMAC.msgck(msg)
     True
     >>> msg.hmacset('foo')
     '8ca8301bb1a077358ce8c3e9a601d83a2643f33d'
-    >>> hmac.msgck(msg)
+    >>> HMAC.msgck(msg)
     False
     >>> msg.hmacset('anotherkey')
     '51116aaa8bc9de5078850b9347aa95ada066b259'
-    >>> hmac.msgck(msg)
+    >>> HMAC.msgck(msg)
     True
     >>> msg.hmacset('someauthenticationkey')
     '0abf42fd374fc75cdc4bd0284f4c9ec48f9e0569'
-    >>> hmac.msgck(msg)
+    >>> HMAC.msgck(msg)
     True
+    >>> res = HMAC.response('foo')
+    >>> res
+    '525a59615b881ab282ca60b2ab31e82aec7e31db'
+    >>> HMAC.ck('foo',res)
+    True
+    >>> HMAC.ck('foo','afds')
+    False
+    >>> HMAC.ck('bar',res)
+    False
     >>> open(keyfile,'a').write("+ANY+\\n")
-    >>> hmac.expires = 0
-    >>> hmac.msgset(msg)
+    >>> time.sleep(2)
+    >>> HMAC.msgset(msg)
     '0abf42fd374fc75cdc4bd0284f4c9ec48f9e0569'
-    >>> hmac.msgck(msg)
+    >>> HMAC.msgck(msg)
     True
     >>> msg.hmacset('foo')
     '8ca8301bb1a077358ce8c3e9a601d83a2643f33d'
-    >>> hmac.msgck(msg)
+    >>> HMAC.msgck(msg)
+    True
+    >>> HMAC.ck('foo','afds')
     True
 
     '''
     
-    def __init__(self):
+    def __init__(self,ckfreq=10):
         self.expires = 0
+        self.mtime = 0
+        self.ckfreq = ckfreq
         self.reset()
 
     def reset(self):
@@ -451,10 +465,15 @@ class HMAC:
 
     def reload(self):
         path = os.environ.get('IS_HMAC_KEYS',None)
+        if not path:
+            return []
         if time.time() > self.expires \
-                and path and os.path.exists(path):
+                and os.path.exists(path) \
+                and self.mtime < os.path.getmtime(path):
+            self.expires = time.time() + self.ckfreq
+            debug("reloading",path)
+            self.mtime = os.path.getmtime(path)
             self.reset()
-            self.expires = time.time() + 60
             for line in open(path,'r').readlines():
                 line = line.strip()
                 if line.startswith('#'):
@@ -465,6 +484,7 @@ class HMAC:
                     self.any = True
                     continue
                 self._keys.append(line)
+        debug('XXX keys',self._keys)
         return self._keys
 
     def msgck(self,msg):
@@ -485,7 +505,36 @@ class HMAC:
         key = keys[0]
         return msg.hmacset(key)
 
-hmac = HMAC()
+    def ck(self,challenge,response):
+        debug('ck(): challenge',challenge)
+        debug('ck(): response',response)
+        keys = self.reload()
+        if not len(keys):
+            return True
+        if self.any:
+            return True
+        for key in keys:
+            h = hmac.new(key,msg=challenge,digestmod=sha)
+            digest = h.hexdigest()
+            if digest == response:
+                debug('ck: response ok')
+                debug('XXX ck(): key',key)
+                return True
+        debug('ck: bad response')
+        return False
+
+    def response(self,challenge):
+        keys = self.reload()
+        if not len(keys):
+            return
+        key = keys[0]
+        h = hmac.new(key,msg=challenge,digestmod=sha)
+        response = h.hexdigest()
+        debug('response(): challenge',challenge)
+        debug('response(): response',response)
+        return response
+
+HMAC = Hmac()
 
 
 

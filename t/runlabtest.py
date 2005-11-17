@@ -255,6 +255,13 @@ def readblind(child):
             break
     return out
 
+def setup(h,tdir,vdir):
+    h.sess("rm -rf /tmp/var")
+    h.sess("rm -rf " + tdir)
+    h.sess("mkdir -p %s/is/conf" % vdir)
+    h.sess("echo example.com > %s/is/conf/domain" % vdir)
+    h.sess("echo asamplekey > %s/is/hmac_keys" % vdir)
+
 def main():
     dir = sys.argv[1]
     host = sys.argv[2:6]
@@ -283,10 +290,7 @@ def main():
         h.sess("isconf stop",blind=True)
         h.isconf("stop",blind=True)
         h.sess("killall isconf",blind=True)
-        h.sess("rm -rf /tmp/var")
-        h.sess("rm -rf " + tdir)
-        h.sess("mkdir -p %s/is/conf" % vdir)
-        h.sess("echo example.com > %s/is/conf/domain" % vdir)
+        setup(h,tdir,vdir)
 
     # ordinary start 
     for h in (a,b,c,d):
@@ -341,6 +345,33 @@ def main():
 
     # (usually) insert new tests here
 
+    # bug #40: HMAC
+    # isolate a by giving it a new key
+    a.sess("echo newkey > %s/is/hmac_keys" % vdir)
+    time.sleep(11)
+    a.isconf("lock test HMAC a")
+    b.isconf("lock test HMAC b")
+    a.isconf("unlock")
+    b.isconf("unlock")
+    # give a the old key as a secondary
+    a.sess("echo asamplekey >> %s/is/hmac_keys" % vdir)
+    # give b the new key as a secondary
+    b.sess("echo newkey >> %s/is/hmac_keys" % vdir)
+    time.sleep(11)
+    # a and b should now be able to see each other
+    a.isconf("lock test HMAC a")
+    b.isconf("lock test HMAC b", rc=220)
+    a.isconf("unlock")
+    b.isconf("lock test HMAC b")
+    a.isconf("lock test HMAC a", rc=220)
+    # clean up
+    b.isconf("unlock")
+    # give the other hosts the new key 
+    c.sess("echo newkey >> %s/is/hmac_keys" % vdir)
+    d.sess("echo newkey >> %s/is/hmac_keys" % vdir)
+    time.sleep(11)
+
+
     # bug #60 -- IS_NOBROADCAST
     a.sess("export IS_NOBROADCAST=1")
     b.sess("export IS_NOBROADCAST=1")
@@ -362,6 +393,7 @@ def main():
     b.sess("export IS_NETS=%s/t/nets" % dir)
     for h in (a,b):
         h.isconf("restart")
+    # XXX why isn't this rc=220?
     b.isconf("lock test IS_NOBROADCAST b",rc=1)
     b.isconf("up")
     out = b.cat("%s/nobroadcast" % tdir)
@@ -375,10 +407,10 @@ def main():
     # bug #49 -- new machines (not from same image) need to work
     # during evaluation
     b.isconf("stop")
-    b.sess("rm -rf /tmp/var")
-    b.sess("rm -rf " + tdir)
+    setup(b,tdir,vdir)
+    b.sess("echo newkey >> %s/is/hmac_keys" % vdir)
     b.isconf("start")
-    time.sleep(7)
+    time.sleep(11)
     b.isconf("up",timeout=TIMEOUT*3)
     out = b.cat("%s/2.out" % tdir)
     t.test(out,"hey there world!\n")
@@ -414,6 +446,7 @@ def main():
     # restart
     a.restart()
     b.restart()
+    time.sleep(3) # XXX do we really need this?
     a.isconf("up")
     b.isconf("up")
 

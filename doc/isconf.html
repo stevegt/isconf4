@@ -6,8 +6,8 @@
 </HEAD><BODY BGCOLOR="white" TEXT="black">
 <P ALIGN="center"><CENTER><H1>isconf(8)</H1>
 <FONT SIZE="4">
-<I>ISconf 4.2.7.190</I><BR>
-11/16/2005
+<I>ISconf 4.2.7.195</I><BR>
+11/17/2005
 </FONT></CENTER>
 
 <P></P>
@@ -504,8 +504,24 @@ in the configuration file.
     listed in the file, then the second and subsequent keys are tried,
     in order.  This mechanism enables you to update the primary key 
     while preserving backward compatibility with older keys, allowing
-    for a transition period.
+    for a transition period.  
 <P></P>
+    When updating keys, it's a good idea to follow something like this
+    procedure:
+<P></P>
+    <OL>
+    <LI>Add the new key as a secondary key to the hmac_keys file, and
+    deploy that to all machines.
+    <P></P>
+    <LI>Once you're sure <B>all</B> of your machines (and install images)
+    have the new key, then move the new key up to the primary position
+    in the file, leaving any old key(s) in the file as secondaries,
+    then deploy that.
+    <P></P>
+    <LI>Once you're sure <B>all</B> of your machines (and install images)
+    are using the new primary key, then (and only then) should you
+    think about retiring any old key(s).
+    <P></P>
     Be careful when deploying this file for the first time on hosts
     which are already running ISconf; those ISconf daemons which get
     it first will refuse to listen to any which don't yet have the
@@ -518,13 +534,13 @@ in the configuration file.
     you want to do is deploy the file with one or more real keys
     listed in it, followed by the <B>+ANY+</B> key.  The file might look
     like this when first deployed:
-<P></P>
+    <P></P>
 <PRE>
       someauthenticationkey
       +ANY+
   
 </PRE>
-<P></P>
+    <P></P>
     As you deploy the above file, hosts will begin sending
     authenticated messages to each other using the
     <B>someauthenticationkey</B> key, but will ignore the authentication
@@ -534,22 +550,27 @@ in the configuration file.
     checking received authentication codes against
     <B>someauthenticationkey</B>, while discarding any messages not
     properly authenticated.
-<P></P>
+    <P></P>
     For best security, each key should be about 20 bytes long; see RFC
     2104.  Keys can can include any ASCII character except space,
     newline, or the pound (hash) (#) sign.  Lines beginning with pound
     signs are comments.  Blank lines are ignored.  If no keys are
     found in the file, then the entire file is ignored, and HMAC
     authentication is disabled.
-<P></P>
-    ISconf checks for new versions of this file every 60 seconds --
-    there is no need to restart the ISconf daemon.
-<P></P>
+    <P></P>
+    ISconf checks for new versions of this file every 10 seconds when
+    it is processing inbound packets -- there is no need to restart
+    the ISconf daemon.
+    <P></P>
     The hash function used internally is SHA-1, with Python's
     <B>hmac</B> module doing the real work.
-<P></P>
+    <P></P>
     You should ensure that this file is only readable by root.
-<P></P>
+    <P></P>
+    This entire mechanism is likely to change and/or be replaced by
+    PGP key signatures in a future release.
+    <P></P>
+    </OL>
 <DT><B>nets</B></DT><DD>
     Network broadcast list -- see <B>IS_NETS</B> above.  See t/nets for
     an example.  Likely to change.

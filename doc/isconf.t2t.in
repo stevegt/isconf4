@@ -471,8 +471,23 @@ in the configuration file.
     listed in the file, then the second and subsequent keys are tried,
     in order.  This mechanism enables you to update the primary key 
     while preserving backward compatibility with older keys, allowing
-    for a transition period.
+    for a transition period.  
+        
+    When updating keys, it's a good idea to follow something like this
+    procedure:
+
+    + Add the new key as a secondary key to the hmac_keys file, and
+    deploy that to all machines.
+
+    + Once you're sure **all** of your machines (and install images)
+    have the new key, then move the new key up to the primary position
+    in the file, leaving any old key(s) in the file as secondaries,
+    then deploy that.
     
+    + Once you're sure **all** of your machines (and install images)
+    are using the new primary key, then (and only then) should you
+    think about retiring any old key(s).
+
     Be careful when deploying this file for the first time on hosts
     which are already running ISconf; those ISconf daemons which get
     it first will refuse to listen to any which don't yet have the
@@ -509,13 +524,17 @@ in the configuration file.
     found in the file, then the entire file is ignored, and HMAC
     authentication is disabled.
 
-    ISconf checks for new versions of this file every 60 seconds --
-    there is no need to restart the ISconf daemon.
+    ISconf checks for new versions of this file every 10 seconds when
+    it is processing inbound packets -- there is no need to restart
+    the ISconf daemon.
 
     The hash function used internally is SHA-1, with Python's
     **hmac** module doing the real work.
 
     You should ensure that this file is only readable by root.
+
+    This entire mechanism is likely to change and/or be replaced by
+    PGP key signatures in a future release.
 
 : **nets**
     Network broadcast list -- see **IS_NETS** above.  See t/nets for
