@@ -473,22 +473,17 @@ in the configuration file.
     while preserving backward compatibility with older keys, allowing
     for a transition period.  
         
-    When updating keys, it's a good idea to follow something like this
-    procedure:
+    When updating keys, it's a good idea to first add the new key as a
+    secondary key to the hmac_keys file, and deploy that to all
+    machines.  Once you're sure that **all** of your machines (and
+    install images) have the new key, then move the new key up to the
+    primary position in the file, leaving any old key(s) in the file
+    as secondaries, then deploy that.  Finally, once you're again sure
+    that **all** of your machines (and install images) are using the
+    new primary key, then (and only then) should you think about
+    retiring any old key(s).
 
-    + Add the new key as a secondary key to the hmac_keys file, and
-    deploy that to all machines.
-
-    + Once you're sure **all** of your machines (and install images)
-    have the new key, then move the new key up to the primary position
-    in the file, leaving any old key(s) in the file as secondaries,
-    then deploy that.
-    
-    + Once you're sure **all** of your machines (and install images)
-    are using the new primary key, then (and only then) should you
-    think about retiring any old key(s).
-
-    Be careful when deploying this file for the first time on hosts
+    Take care when deploying this file for the first time on hosts
     which are already running ISconf; those ISconf daemons which get
     it first will refuse to listen to any which don't yet have the
     file; this will prevent further deployment if you're using ISconf
@@ -701,6 +696,13 @@ Here's an example /etc/is/main.cf:
     the new machine and then comparing the entire disk content to the
     old one.  
 
+    In ISconf, editing history would mean editing the journal file
+    itself -- while there's nothing (currently) which would stop you
+    from doing that, and while the resulting file would be dutifully
+    distributed and applied to the target machines, it's highly
+    discouraged and may be a lot more difficult to do in the future,
+    as we add things like digital signatures and checksums to the mix.
+
     Editing history can create major outages when:
     
     - you're trying to deploy changes which worked in QA (using the
@@ -709,13 +711,6 @@ Here's an example /etc/is/main.cf:
       host rebuild, and you no longer have the old disk content available
     - you're trying to add a new server to an existing farm and don't
       have time to resort to backups or run rsync across both disks
-
-    In ISconf, editing history would mean editing the journal file
-    itself -- while there's nothing (currently) which would stop you
-    from doing that, and while the resulting file would be dutifully
-    distributed and applied to the target machines, it's highly
-    discouraged and may be a lot more difficult to do in the future,
-    as we add things like digital signatures and checksums to the mix.
 
 : **environmental data**
 
@@ -757,16 +752,16 @@ Here's an example /etc/is/main.cf:
 
     Your goal should be to keep the set of environmental data as small
     as possible, via architectural decisions in both infrastructure
-    and applications.  Here's why:
+    and applications.  
     
-    + You need to be able to examine each bit of environmental data to
+    You need to be able to examine each bit of environmental data to
     try to predict its behavior during deployment.  Your ability to do
     this will always be flawed -- you cannot possibly imagine all of
     the permutations that might be encountered during future
     operations.  Keeping the environmental data set small reduces your
     workload and the risk caused by a flawed analysis.
 
-    + You need to be able to test each bit of environmental data after
+    You need to be able to test each bit of environmental data after
     deployment.  Any change in environmental data, by definition,
     cannot be tested anywhere except in its native environment.  If
     this environment is production, then we can only test these
@@ -777,7 +772,7 @@ Here's an example /etc/is/main.cf:
     variations between environments; ideally, IP addresses and/or
     hostnames might be the only differences you need to analyze and
     test for.
-    
+
     The classic case of what **not** to do involves hardcoding IP
     addresses in executables -- we all know this is bad, but here's
     why: Embedding an IP address in a larger executable taints the
