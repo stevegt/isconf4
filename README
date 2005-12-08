@@ -26,7 +26,7 @@ isconf up
 Upgrade from versions more recent than 4.2.6pre.133:
 ====================================================
 
-newversion=isconf-4.2.6.N
+newversion=isconf-4.2.8.N
 cd /tmp
 isconf -m "upgrade to $newversion" lock
 isconf snap $newversion.tar.gz
@@ -36,7 +36,7 @@ isconf exec make install
 isconf exec cp etc/rc.isconf /etc/init.d/isconf  # unless you use your own
 (...and make /etc/rc* symlinks, again using isconf exec)
 isconf exec chmod 755 /usr/bin/isconf
-(...cp doc/isconf.8 to MANPATH, again using isconf exec)
+isconf exec cp doc/isconf.8 /usr/man/man8/
 isconf reboot
 isconf ci
 

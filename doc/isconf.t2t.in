@@ -88,8 +88,7 @@ don't need to keep any of your machines in lock-step with each other,
 don't need to test O/S changes before deploying them to production,
 aren't as interested in O/S patch management, or still want to log in
 as root on target machines and make arbitrary untracked changes, then
-you don't want this package.  (You might, however, want
-**cfengine**(8) -- see the bottom of this man page.)
+you don't want this package.  
 
 
 = BACKGROUND =
@@ -407,6 +406,8 @@ in the configuration file.
     Rather than set this in an environment variable, you're better off
     populating the **/var/is/conf/domain** file, below.
 
+    See the **domain** glossary entry.
+
 : **IS_HOME** 
     The base directory which ISconf uses for data storage.  Defaults
     to **/var/is**.
@@ -655,11 +656,20 @@ Here's an example /etc/is/main.cf:
     journal.  A new branch is created by forking an existing branch,
     then creating a **checkpoint image**.
     
-    Branches are named with an arbitrary string of letters and numbers. 
+    Branch names must match this regular expression:
+
+```
+        \w+[-\w\.]+
+```
 
     See also **class**.
 
+    For more discussion of what branches are, and how they contrast
+    with domains, see
+    http://trac.t7a.org/isconf/wiki/DomainsVsBranches.
+
 : **categories of data**
+
     There appear to be three categories of data or executables on the 
     disk of a typical UNIX machine:
 
@@ -679,12 +689,92 @@ Here's an example /etc/is/main.cf:
     See **image** glossary entry.
 
 : **class**
+
     This is an anti-definition: the word "class" should not be used to
     describe anything related to deterministic host management.  It
     brings with it misconceptions, such as "hosts can be subclassed",
     "changes in the parent class can be automatically and safely
     propagated to subclasses", and so on; most of these misconceptions
     imply that //editing history// is a safe thing to do.
+
+: **congruent**
+
+    Remaining in compliance with a fully-descriptive specification.
+    If a configuration management tool is congruent, the machines it
+    manages will remain in lock-step with the desired state.  This
+    makes it easier to maintain a representative test environment, and
+    allows for more predictable disaster recovery.  ISconf is
+    congruent.  Also see the **convergent** glossary entry, and:
+
+        http://www.infrastructures.org/papers/turing/turing.html#methods/congruence
+
+: **convergent**
+
+    Tending to converge towards a desired state.  If a configuration
+    management tool is convergent, the machines it manages will trend
+    towards each other in disk state, but for practical reasons they
+    will rarely reach congruence.  It will be difficult to maintain a
+    representative test environment, and changes will tend to be made
+    first, and tested first, in production.  Predictable disaster
+    recovery will remain elusive.  Also see the **congruent** glossary
+    entry.  For more in-depth information about convergence, see:
+
+        http://www.infrastructures.org/papers/turing/turing.html#methods/convergence
+
+: **domain**
+
+    An ISconf domain name is more or less equivalent to a NIS domain
+    name, an AFS cell name, or a Kerberos realm name.  This name is an
+    arbitrary string, but by convention it is usually based on the DNS
+    domain name.
+
+    ISconf domains are a security mechanism, primarily in regards to
+    information hiding.  All of the machines sharing the same ISconf
+    domain name will share the same distributed cache, so root users
+    on all of these machines will be able to read the contents of the
+    cache.  Likewise, machines that are in different domains will not
+    share the same cache, so root users of these machines will not
+    have access to the cache contents of the other domain.  This
+    becomes important if there is any proprietary or sensitive
+    information stored in the ISconf cache, for example via a 'snap'
+    or 'exec' command.
+
+    Normally you'd want all of the machines in a given legal entity --
+    the same corporation, for instance, to use the same domain name.
+    For example, a small company using ISconf might use an ISconf
+    domain name of 'example.com' on all of their machines.  A larger
+    company might have multiple divisions or subsidiaries and legal or
+    security reasons for segregating machines.  The large campany
+    might put most of their machines in 'example.com', but for
+    regulatory or security reasons might isolate a subsidiary into
+    'foo.example.com', and might put their bastion and firewall
+    machines into 'security.example.com'.  Note again that there
+    doens't need to be a 'security.example.com' DNS domain for this to
+    work.
+
+    The idea of ISconf domains is to completely isolate legal entities
+    from each other when sharing the same net.  Machines in different
+    domains refuse to cache each other's data, answer each other's
+    queries, and so on.  Domains really come into play in the TCP
+    crypto and user auth code (ISconf 4.3 and later), where each
+    domain has its own PGP keyring; its own database of hosts and
+    users, and all of the wire traffic is encrypted accordingly.
+
+    Establishing two machines in different domains means "I don't want
+    these machines to ever cooperate at all.  I will never merge their
+    branches, I don't want them to be able to share or see each
+    other's packages, cache space, or wire traffic."
+
+    For more discussion of what domains are, and how they contrast
+    with branches, see
+    http://trac.t7a.org/isconf/wiki/DomainsVsBranches.
+
+    Domain names must match this regular expression:
+
+```
+        \w+[-\w\.]+
+```
+
 
 : **editing history**
 
@@ -793,9 +883,12 @@ Here's an example /etc/is/main.cf:
     explosion in the size of the environmental dataset, and an
     explosion of risk, to the point where all data on disk must be
     considered to be environmental, and all changes must be considered
-    untested prior to production rollout.  Tools such as cfengine are
-    in fact optimized for this case.
-
+    untested prior to production rollout.  If you find yourself in
+    this situation, your best bet might be to go with a convergent
+    tool such as cfengine; you'll lose congruence, though, until
+    you're able to fix the original problems and rebuild your
+    machines.  See **convergent** and **congruent**.
+    
 : **evolvable data**
 
     Data which can be managed via journal replay.  This includes
