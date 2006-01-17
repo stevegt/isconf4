@@ -417,7 +417,8 @@ class Volume:
         if msg.type() == 'exec':
             # run the command
             debug("spawning updateExec")
-            task = kernel.spawn(self.updateExec(msg),itermode=True)
+            task = kernel.spawn(
+                    self.updateExec(msg),itermode=True,name='updateExec')
 
         if msg.type() == 'reboot':
             # run the command
@@ -432,7 +433,7 @@ class Volume:
         # we only need the last yield value
         for res in task: 
             yield kernel.sigbusy
-            debug("got from updateX", repr(res), kernel.isrunning(task.tid))
+            # debug("got from updateX", repr(res), kernel.isrunning(task.tid))
         # false result means failure
         if not res:
             yield res
@@ -670,26 +671,31 @@ class Volume:
                 popen.tochild, popen.fromchild, popen.childerr)
         stdin.close()
         outputs = [stdout,stderr]
-        while True:
+        while len(outputs):
             yield kernel.sigbusy
             for f in outputs:
-                try:
-                    (r,w,e) = select.select([f],[],[f],.2)
-                    # print r,w,e
-                    for f in r:
-                        rxd = f.read()
-                        if len(rxd) == 0:
-                            f.close()
-                        if f is stdout: 
-                            outmsg = FBP.msg('stdout',rxd)
-                            self.outpin.tx(outmsg)
-                        if f is stderr: 
-                            errmsg = FBP.msg('stderr',rxd)
-                            self.outpin.tx(errmsg)
-                except:
-                    outputs.remove(f)
-            if not len(outputs):
-                break
+                # try to read 100 lines at a time
+                rxd = ''
+                for i in range(100):
+                    try:
+                        (r,w,e) = select.select([f],[],[f],.2)
+                        if r:
+                            newrxd = f.readline() 
+                            if len(newrxd) == 0:
+                                f.close()
+                            rxd += newrxd
+                        else:
+                            break
+                    except:
+                        outputs.remove(f)
+                        break
+                if not len(rxd):
+                    continue
+                if f is stdout: type = 'stdout'
+                if f is stderr: type = 'stderr'
+                outmsg = FBP.msg(type,rxd)
+                self.outpin.tx(outmsg)
+                rxd = ''
         status = popen.wait()
         rc = os.WEXITSTATUS(status)
         if rc:
