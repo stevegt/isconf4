@@ -1,4 +1,4 @@
-#!/usr/bin/python2.3
+#!/usr/bin/python
 
 import __future__
 import os

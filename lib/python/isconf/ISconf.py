@@ -408,8 +408,12 @@ def client(transport,argv,kwopt):
         elif rectype == 'rc':
             code = int(data)
             return code
-        elif rectype == 'stdout': sys.stdout.write(data)
-        elif rectype == 'stderr': sys.stderr.write(data)
+        elif rectype == 'stdout': 
+            sys.stdout.write(data)
+            sys.stdout.flush()
+        elif rectype == 'stderr': 
+            sys.stderr.write(data)
+            sys.stderr.flush()
         elif rectype == 'reqstdin':
             for line in sys.stdin:
                 msg = fbp.mkmsg('stdin',line)

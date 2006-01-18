@@ -82,10 +82,12 @@ class SimpleHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             self.send_error(404, "File not found")
             return None
         mtime = os.path.getmtime(path)
+        size = os.path.getsize(path)
         lastmod = email.Utils.formatdate(mtime)
         self.send_response(200)
         self.send_header("Content-type", ctype)
         self.send_header("Last-Modified", lastmod)
+        self.send_header("Content-Length", size)
         if challenge:
             hmacResponse = HMAC.response(challenge)
             self.send_header("X-HMAC", hmacResponse)

@@ -1,6 +1,6 @@
 
-Requires python 2.2 or later -- 2.2 support will soon be deprecated in
-favor of 2.3 or later.
+Requires python 2.3 or later -- 2.2 support was deprecated as of
+isconf 4.2.8.
 
 See the man page for more details of, for instance, the contents of
 /var/is/conf/domain.

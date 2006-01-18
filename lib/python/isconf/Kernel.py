@@ -263,6 +263,8 @@ class Kernel:
         self._shutdown = True
 
     def ps(self):
+        return self._tasks
+        # XXX
         out = ''
         for id in self._tasks.keys():
             task = self._tasks[id]
@@ -281,7 +283,7 @@ class Kernel:
         return self.siguntil, self.spawn(genobj).isdone
 
     # XXX add respawn flag, only raise Restart if not set
-    def spawn(self,genobj,itermode=False):
+    def spawn(self,genobj,itermode=False,name=None):
         """
         Let the kernel manage an ordinary generator object by wrapping
         it in a Task -- extremely powerful, because this means a yield
@@ -339,7 +341,7 @@ class Kernel:
         
         """
 
-        task = Task(genobj,tid=self._nextid)
+        task = Task(genobj,tid=self._nextid,name=name)
         tid = task.tid
         assert tid == self._nextid
         self._nextid += 1
@@ -441,7 +443,7 @@ class Kernel:
             targv = (targv,)
         if targv:
             why = targv[0]
-        if why:
+        if why != self.sigsleep and why != None:
             # print "why",why
             self.HZ *= 10
         sigargs = None
@@ -499,7 +501,7 @@ class Task:
 
     """
     
-    def __init__(self,genobj,tid=None,parent=None):
+    def __init__(self,genobj,tid=None,parent=None,name=None):
         self.obj = genobj
         nice = 0
         self.ptid = None
@@ -508,6 +510,7 @@ class Task:
             self.ptid = parent.tid
         self.delay = nice
         self.errpin = None
+        self.name = name
         self.nice = nice
         self.priority = nice
         self.result = kernel.eagain
@@ -553,37 +556,5 @@ class Task:
             return True
         return False
 
-
-# XXX deprecated
-class Wrapper:
-
-    def __init__(self,task):
-        if not task.itermode:
-            raise Exception("set itermode=True if you want to iterate on this task")
-        self.task = task
-    
-    def wrapper(self):
-        task = self.task
-        # each time the kernel calls task.obj.next(), it will
-        # store the result in task.result, and set
-        # task.resultReady 
-        while True:
-                if not kernel.isrunning(task.tid):
-                    raise StopIteration
-                if not task.resultReady:
-                    yield kernel.eagain
-                    continue
-                result = task.result
-                task.resultReady = False
-                debug("task.resultReady",task.resultReady)
-                kernel.HZ *= 10
-                yield result
-
-    def __del__(self):
-        # XXX this does not work because task.wrapper is a
-        # reference; itermode tasks are a memory
-        # leak, and need to be explicitly removed with
-        # kernel.kill() if they don't terminate themselves
-        kernel.kill(self.task.tid)
 
 kernel = Kernel()

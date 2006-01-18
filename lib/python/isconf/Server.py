@@ -122,8 +122,9 @@ class Server:
         while True:
             yield None
             # periodic housekeeping
-            debug("mark")
-            # debug(kernel.ps())
+            debug("mark: HZ =", kernel.HZ)
+            # import pprint
+            # pprint.pprint(kernel.ps())
             yield kernel.sigsleep, 10
             # XXX check all buffers for unbounded growth
 

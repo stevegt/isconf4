@@ -410,8 +410,9 @@ def main():
     setup(b,tdir,vdir)
     b.sess("echo newkey >> %s/is/hmac_keys" % vdir)
     b.isconf("start")
-    time.sleep(11)
-    b.isconf("up",timeout=TIMEOUT*3)
+    # XXX why is there a long delay here?
+    time.sleep(40)
+    b.isconf("up",timeout=TIMEOUT*4)
     out = b.cat("%s/2.out" % tdir)
     t.test(out,"hey there world!\n")
     # multiple checkins broken when fixing #49
@@ -462,18 +463,24 @@ def main():
     t.test(out,"pdir")
 
     # bug #35: large exec output
-    # b.sess("tar -C /tmp -czf /tmp/isconftest.tar.gz isconftest")
-    # b.isconf("-m 'large exec output' lock")
-    # b.isconf("snap /tmp/isconftest.tar.gz")
-    # b.sess("cd %s/dira" % tdir)
-    # XXX expect times out here
-    # b.isconf("exec tar -xzvf /tmp/isconftest.tar.gz")
-    # b.sess("cd -")
-    # b.isconf("ci")
-    # a.isconf("up")
-    # out = a.cat("%s/dira/isconftest/t/isconf" % tdir)
-    # t.test(out[:2],"#!")
+    b.sess("tar -C /tmp -czf /tmp/isconftest.tar.gz isconftest")
+    b.isconf("-m 'large exec output' lock")
+    b.isconf("snap /tmp/isconftest.tar.gz")
+    b.sess("cd %s/dira" % tdir)
+    # expect times out here, so redirect 
+    b.isconf("exec tar -xzvf /tmp/isconftest.tar.gz > /tmp/tar.out",
+            timeout=TIMEOUT*2)
+    b.sess("cd -")
+    b.isconf("ci")
+    # expect times out here, so redirect
+    a.isconf("up > /tmp/tar.out")
+    out = a.cat("%s/dira/isconftest/t/isconf" % tdir)
 
+    # bug #64: long-running exec
+    b.isconf("lock long running")
+    b.isconf("exec %s/t/bin/sleeptest 120" % dir, timeout=130)
+    b.isconf("ci")
+    a.isconf("up", timeout=130)
 
     rc = t.results()
     sys.exit(rc)

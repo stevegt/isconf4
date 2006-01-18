@@ -407,6 +407,7 @@ class Volume:
 
             # copy to block tree
             # XXX large files
+            # XXX out of disk space
             open(path,'w').write(data)
             self.announce(path)
 
@@ -622,14 +623,30 @@ class Volume:
         info("update done")
 
     def updateSnap(self,msg):
-        src = self.blk2path(msg['blk'])
-        if not os.path.exists(src):
-            error("missing block: %s" % src)
+        blk = msg['blk']
+        src = self.blk2path(blk)
+        match = re.match("(\w+)-(\w+)-(\d+)",blk)
+        if not match:
+            error("unable to parse block id", blk)
             yield False
             return
-        # XXX large files, atomicity, missing parent dirs
-        debug("opening",src)
-        data = open(src,'r').read()
+        sha1sum = match.group(1)
+        md5sum = match.group(2)
+        while True:
+            if not os.path.exists(src):
+                error("missing block: %s" % src)
+                yield False
+                return
+            debug("opening",src)
+            # XXX large files, atomicity
+            data = open(src,'r').read()
+            s = sha.new(data)
+            m = md5.new(data)
+            if s.hexdigest() == sha1sum and m.hexdigest() == md5sum:
+                break
+            debug("re-fetching corrupt block:", src)
+            os.unlink(src)
+            yield kernel.wait(self.pull())
         # XXX volroot
         dst = msg['pathname']
         dstdir = os.path.dirname(dst)
@@ -673,29 +690,26 @@ class Volume:
         outputs = [stdout,stderr]
         while len(outputs):
             yield kernel.sigbusy
-            for f in outputs:
-                # try to read 100 lines at a time
-                rxd = ''
-                for i in range(100):
-                    try:
-                        (r,w,e) = select.select([f],[],[f],.2)
-                        if r:
-                            newrxd = f.readline() 
-                            if len(newrxd) == 0:
-                                f.close()
-                            rxd += newrxd
-                        else:
-                            break
-                    except:
-                        outputs.remove(f)
-                        break
-                if not len(rxd):
-                    continue
-                if f is stdout: type = 'stdout'
-                if f is stderr: type = 'stderr'
-                outmsg = FBP.msg(type,rxd)
-                self.outpin.tx(outmsg)
-                rxd = ''
+            dead = []
+            (r,w,e) = select.select(outputs,[],outputs,0)
+            dead += e
+            for f in r:
+                rxd = f.read(8192) 
+                if len(rxd) == 0:
+                    dead.append(f)
+                else:
+                    if f is stdout: 
+                        type = 'stdout'
+                    else:
+                        type = 'stderr'
+                    outmsg = FBP.msg(type,rxd)
+                    self.outpin.tx(outmsg)
+            for f in dead:
+                try:
+                    f.close()
+                except:
+                    pass
+                outputs.remove(f)
         status = popen.wait()
         rc = os.WEXITSTATUS(status)
         if rc:

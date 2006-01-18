@@ -243,7 +243,8 @@ class Cache:
         if not HMAC.ck(challenge,response):
             debug("HMAC failed, abort fetching: %s" % url)
             return
-        (mod,size) = (uinfo.get('last-modified'), uinfo.get('content-size'))
+        mod = uinfo.get('last-modified')
+        size = int(uinfo.get('content-length'))
         mod_secs = email.Utils.mktime_tz(email.Utils.parsedate_tz(mod))
         if mod_secs <= mtime:
             warn("not newer:",url,mod,mod_secs,mtime)
@@ -251,9 +252,24 @@ class Cache:
                 del self.req[path]
             return
         debug(url,size,mod)
-        # XXX show progress
-        # XXX large files
-        data = u.read()
+        data = ''
+        while True:
+            yield kernel.sigbusy
+            (r,w,e) = select.select([u],[],[u],0)
+            if e:
+                break
+            if not r:
+                continue
+            rxd = u.read(8192) 
+            if len(rxd) == 0:
+                break
+            # XXX show progress
+            data += rxd
+        actual_size = len(data)
+        if size != actual_size:
+            debug("size mismatch: wanted %d got %d, abort fetching: %s" % 
+                    size, actual_size, url)
+            return
         tmp = os.path.join(dir,".%s.tmp" % file)
         # XXX set umask somewhere early
         # XXX use the following algorithm as a more secure way of creating
@@ -350,7 +366,7 @@ class Cache:
 def httpServer(port,dir):
     from BaseHTTPServer import HTTPServer
     from isconf.HTTPServer import SimpleHTTPRequestHandler
-    from SocketServer import ForkingMixIn
+    from SocketServer import ThreadingMixIn
     
     def logger(*args): 
         msg = str(args)
@@ -361,10 +377,11 @@ def httpServer(port,dir):
         os.makedirs(dir,0700)
     os.chdir(dir)
 
-    class ForkingServer(ForkingMixIn,HTTPServer): pass
+    class ThreadingServer(ThreadingMixIn,HTTPServer): pass
 
     serveraddr = ('',port)
-    svr = ForkingServer(serveraddr,SimpleHTTPRequestHandler)
+    svr = ThreadingServer(serveraddr,SimpleHTTPRequestHandler)
+    svr.daemon_threads = True
     svr.socket.setblocking(0)
     debug("HTTP server serving %s on port %d" % (dir,port))
     while True:
@@ -380,7 +397,6 @@ def httpServer(port,dir):
             yield kernel.sigsleep, 1
             continue
         # XXX filter request -- e.g. do we need directory listings?
-        # XXX HMAC in path info, or in X-header?
         try:
             # process_request does the fork...  For now we're going to
             # say that it's okay that the Kernel and other tasks fork
@@ -484,7 +500,7 @@ class Hmac:
                     self.any = True
                     continue
                 self._keys.append(line)
-        debug('XXX keys',self._keys)
+        # debug('XXX keys',self._keys)
         return self._keys
 
     def msgck(self,msg):
