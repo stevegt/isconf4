@@ -478,7 +478,7 @@ def main():
 
     # bug #64: long-running exec
     b.isconf("lock long running")
-    b.isconf("exec %s/t/bin/sleeptest 120" % dir, timeout=130)
+    b.isconf("exec %s/t/bin/sleeptest 120 y" % dir, timeout=130)
     b.isconf("ci")
     a.isconf("up", timeout=130)
 

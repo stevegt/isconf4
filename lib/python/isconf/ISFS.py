@@ -694,7 +694,7 @@ class Volume:
             (r,w,e) = select.select(outputs,[],outputs,0)
             dead += e
             for f in r:
-                rxd = f.read(8192) 
+                rxd = os.read(f.fileno(), 8192) 
                 if len(rxd) == 0:
                     dead.append(f)
                 else:

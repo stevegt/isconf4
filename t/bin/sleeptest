@@ -4,7 +4,13 @@ import sys
 import time
 
 runtime = int(sys.argv[1])
+output = None
+if len(sys.argv) > 2:
+    output = sys.argv[2]
 
 for i in range(runtime):
+    if output:
+        sys.stdout.write('x')
+        sys.stdout.flush()
     time.sleep(1)
 
