@@ -23,8 +23,8 @@ echo yourdomain.com > /var/is/conf/domain
 isconf start
 isconf up
 
-Upgrade from versions more recent than 4.2.6pre.133:
-====================================================
+Upgrade:
+========
 
 newversion=isconf-4.2.8.N
 cd /tmp
@@ -33,54 +33,10 @@ isconf snap $newversion.tar.gz
 isconf exec tar -xzvf $newversion.tar.gz
 cd $newversion
 isconf exec make install
-isconf exec cp etc/rc.isconf /etc/init.d/isconf  # unless you use your own
-(...and make /etc/rc* symlinks, again using isconf exec)
+isconf exec cp etc/rc.isconf /etc/init.d/isconf  
+(make /etc/rc* symlinks, again using isconf exec)
 isconf exec chmod 755 /usr/bin/isconf
-isconf exec cp doc/isconf.8 /usr/man/man8/
+isconf exec cp doc/isconf.8 /usr/man/man8/  
 isconf reboot
-isconf ci
-
-
-Upgrade from <= 4.2.6pre.133:
-=============================
-
-domain=foo.com
-newversion=isconf-4.2.6.N
-isconf -m "upgrade to $newversion" lock
-# migrate to new config pathname
-isconf exec mkdir /etc/is
-isconf exec ln /etc/is.conf /etc/is/main.cf
-# migrate to new var tree
-isconf exec mkdir /var/is
-cd /var/is
-isconf exec sh -c "mv /var/isconf conf && ln -s /var/is/conf /var/isconf"
-isconf exec sh -c "mv /var/isfs fs && ln -s /var/is/fs /var/isfs"
-# fix domain dirname
-cd /var/is/fs/cache/
-isconf exec sh -c "mv localdomain $domain && ln -s $domain localdomain"
-cd /var/is/fs/private/
-isconf exec sh -c "mv localdomain $domain && ln -s $domain localdomain"
-# create domain config
-echo $domain > /var/is/conf/domain
-isconf snap /var/is/conf/domain
-# install
-cd /tmp
-isconf snap $newversion.tar.gz
-isconf exec tar -xzvf $newversion.tar.gz
-cd $newversion
-isconf exec make install
-isconf exec cp etc/rc.isconf /etc/init.d/isconf
-isconf exec chmod 755 /usr/bin/isconf
-isconf reboot
-# cleanup and ci
-isconf exec rm /etc/is.conf
-isconf exec rm /var/isconf  # skip this if 4.1.7 is still running
-isconf exec rm /var/isfs
-isconf exec rm /var/is/fs/private/localdomain
-isconf ci
-
-# after all machines are upgraded...
-isconf lock clean up after upgrade to $newversion
-isconf exec rm /var/is/fs/cache/localdomain  
 isconf ci
 
