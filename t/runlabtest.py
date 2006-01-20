@@ -476,9 +476,15 @@ def main():
     a.isconf("up > /tmp/tar.out")
     out = a.cat("%s/dira/isconftest/t/isconf" % tdir)
 
-    # bug #64: long-running exec
+    # bug #64: long-running exec with little output
     b.isconf("lock long running")
     b.isconf("exec %s/t/bin/sleeptest 120 y" % dir, timeout=130)
+    b.isconf("ci")
+    a.isconf("up", timeout=130)
+
+    # bug #64: long-running exec with no output
+    b.isconf("lock long running")
+    b.isconf("exec %s/t/bin/sleeptest 120" % dir, timeout=130)
     b.isconf("ci")
     a.isconf("up", timeout=130)
 

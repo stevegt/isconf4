@@ -237,7 +237,11 @@ class Cache:
             mtime = os.path.getmtime(fullpath)
         if not os.path.exists(dir):
             os.makedirs(dir,0700)
-        u = urllib2.urlopen(url)
+        try:
+            u = urllib2.urlopen(url)
+        except:
+            debug("HTTP failed opening %s" % url)
+            return
         uinfo = u.info()
         response = uinfo.get('x-hmac')
         if not HMAC.ck(challenge,response):
