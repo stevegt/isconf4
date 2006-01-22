@@ -181,6 +181,7 @@ class Cache:
                 # send requests
                 yield None
                 self.resend()
+                # XXX randomize timeout
                 yield kernel.sigsleep, timeout/5
                 # see if they've all been filled or timed out
                 # debug(str(self.req))
@@ -282,7 +283,7 @@ class Cache:
             size = int(size)
             if size != actual_size:
                 debug("size mismatch: wanted %d got %d, abort fetching: %s" % 
-                        size, actual_size, url)
+                        (size, actual_size, url))
                 return
         tmp = os.path.join(dir,".%s.tmp" % file)
         # XXX set umask somewhere early
