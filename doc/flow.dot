@@ -1,14 +1,23 @@
-digraph flow
-{
-    rankdir=LR;
-    // labelloc=top;
-    // compound=true;
-    // size="7,10"
-    node[shape=box];
-    distance=5;
-
-    cli -> isconf [label="clp", headlabel="cmd", taillabel="cmdin"]
-    isconf -> cli [label="clp", headlabel="res", taillabel="cmdres"]
-
+digraph "g" {
+	graph [
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		bb = "0,0,0,0"
+		color = "black"
+	]
+	node [
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		folded = "0"
+		shape = "ellipse"
+		color = "black"
+	]
+	edge [
+		fontsize = "14"
+		fontname = "Times-Roman"
+		fontcolor = "black"
+		color = "black"
+	]
 }
-

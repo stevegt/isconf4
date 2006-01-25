@@ -4,15 +4,17 @@ Cache          403     55    13%
 Config          60      8    13%
 Errno           27     19    70%
 Globals         77     26    33%
-HTTPServer      62     20    32%
-ISFS           532     76    14%
-ISconf         339     48    14%
+HTTPServer      63     21    33%
+ISFS           558     77    13%
+ISconf         340     48    14%
 Kernel         296     55    18%
 Main           183     30    16%
 Server          87     21    24%
 Socket         182     34    18%
 __init__         0      0   100%
+component      102     13    12%
 fbp822         229     39    17%
 version          1      1   100%
+subprocess     458     37     8%
 --------------------------------
-TOTAL         2478    432    17%
+TOTAL         3066    484    15%

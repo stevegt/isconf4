@@ -14,6 +14,10 @@ import time
 import unittest
 
 sys.path.append("t")
+sys.path.append("lib/python")
+
+from isconf.component import component
+
 logfn="runlabtest.log"
 logfh = open(logfn,'w')
 
@@ -295,6 +299,7 @@ def main():
     # ordinary start 
     for h in (a,b,c,d):
         h.isconf("start")
+    for h in (a,b,c,d):
         h.isconf("up")
 
     # lock
@@ -424,6 +429,25 @@ def main():
     out = b.cat("%s/multiple" % tdir)
     t.test(out,"test multiple")
     
+    # large files
+    largefile="%s/largefile" % tdir
+    a.sess("dd if=/dev/zero of=%s bs=1M count=500" % largefile)
+    a.isconf("lock large file")
+    a.isconf("snap %s" % largefile,timeout=TIMEOUT*12)
+    a.isconf("ci")
+    b.isconf("up",timeout=TIMEOUT*12)
+    out = b.sess("wc -c %s" % largefile,timeout=TIMEOUT*4)
+    t.test(out,"524288000 /tmp/labtest/largefile\n")
+    def up(h): h.ssh("%s/t/isconf up" % dir)
+    comps = []
+    for h in c,d:
+        comps.append(component([up,h]))
+    for comp in comps:
+        comp.wait()
+    for h in c,d:
+        out = h.sess("wc -c %s" % largefile,timeout=TIMEOUT*4)
+        t.test(out,"524288000 /tmp/labtest/largefile\n")
+
     # fork 
     c.isconf("up")
     c.isconf("fork branch2")

@@ -85,7 +85,7 @@ class File:
         self.path = path
         self.mode = mode
         self.st = None
-        self.tmp = tempfile.TemporaryFile()
+        (self.tmp,self.tmpfn) = tempfile.mkstemp() # XXX need dedicated tmpdir
 
     def setstat(self,st):
         if self.mode != 'w':
@@ -96,12 +96,16 @@ class File:
     def write(self,data):
         if self.mode != 'w':
             raise Exception("not opened for write")
-        self.tmp.write(data)
+        # XXX handle out of disk space
+        os.write(self.tmp,data)
 
     def close(self):
+        # XXX this whole File class is a kludge, and really needs to
+        # be gotten rid of and the useful bits moved into ISconf as part
+        # of the refactoring to turn ISFS into ISDM
+        #
         # build journal transaction message
-        self.tmp.seek(0)
-        data = self.tmp.read() # XXX won't work with large files
+        os.close(self.tmp)
         fbp = fbp822()
         parent = os.path.dirname(self.path)
         pathmodes = []
@@ -115,7 +119,7 @@ class File:
             parent = os.path.dirname(parent)
             assert len(parent) >= 1
         # XXX pathname needs to be relative to volroot
-        msg = fbp.mkmsg('snap',data,
+        msg = fbp.mkmsg('snap','',
                 pathname=self.path,
                 st_mode = self.st.st_mode,
                 st_uid = self.st.st_uid,
@@ -125,7 +129,7 @@ class File:
                 pathmodes = ','.join(pathmodes)
                 )
         debug("calling addwip")
-        yield kernel.wait(self.volume.addwip(msg))
+        yield kernel.wait(self.volume.addwip(msg=msg,tmpfn=self.tmpfn))
         self.volume.closefile(self)
         info("snapshot done:", self.path)
 
@@ -385,7 +389,7 @@ class Volume:
             if os.path.getsize(self.p.pull) == 0:
                 break
 
-    def addwip(self,msg):
+    def addwip(self,msg,tmpfn=None):
         debug("in addwip")
         yield kernel.sigbusy
         xid = "%f.%f@%s" % (time.time(),random.random(),
@@ -395,20 +399,22 @@ class Volume:
         msg.setheader('message', message)
         msg.setheader('time',int(time.time()))
         if msg.type() == 'snap':
-            data = msg.data()
-            s = sha.new(data)
-            m = md5.new(data)
-            blk = "%s-%s-1" % (s.hexdigest(),m.hexdigest())
+            sumtask = kernel.spawn(self.sums(tmpfn),itermode=True)
+            sums = None
+            for sums in sumtask: yield kernel.sigbusy
+            if not sums: 
+                error("unable to checksum",tmpfn)
+                yield False
+                return
+            blk = "%s-%s-1" % (sums['sha'],sums['md5'])
             msg['blk'] = blk
-            msg.payload('')
-            
             path = self.blk2path(blk)
             # XXX check for collisions
 
-            # copy to block tree
-            # XXX large files
-            # XXX out of disk space
-            open(path,'w').write(data)
+            # move to block tree
+            shutil.move(tmpfn,path)
+            # XXX this is too early and will consume disk space on
+            # production machines -- don't announce until ci
             self.announce(path)
 
             # apply the update now rather than wait for up command
@@ -482,6 +488,7 @@ class Volume:
             error("journal is newer than wip -- repair and retry")
             return
         self.journal.addraw(wipdata)
+        # XXX announce all new block files here (rather than in addwip)
         os.unlink(self.p.wip)
         self.announce(self.p.journal)
         info("changes checked in")
@@ -601,6 +608,22 @@ class Volume:
             files.append(path)
         return files
 
+    def sums(self,path):
+        m = md5.new()
+        s = sha.new()
+        fh = open(path,'r')
+        fd = fh.fileno()
+        while True:
+            yield kernel.sigbusy
+            data = os.read(fd,8192)
+            if not data:
+                break
+            m.update(data)
+            s.update(data)
+        fh.close()
+        yield {'md5': m.hexdigest(), 'sha': s.hexdigest()}
+        return
+
     def update(self,reboot_ok=False):
         fbp = fbp822()
         if self.wip():
@@ -625,6 +648,7 @@ class Volume:
     def updateSnap(self,msg):
         blk = msg['blk']
         src = self.blk2path(blk)
+        relsrc = self.mkrelative(src)
         match = re.match("(\w+)-(\w+)-(\d+)",blk)
         if not match:
             error("unable to parse block id", blk)
@@ -632,21 +656,25 @@ class Volume:
             return
         sha1sum = match.group(1)
         md5sum = match.group(2)
-        while True:
+        for retry in range(3):
             if not os.path.exists(src):
-                error("missing block: %s" % src)
+                debug("retry pull", relsrc)
+                yield kernel.wait(self.pullfiles([relsrc]))
+            sumtask = kernel.spawn(self.sums(src),itermode=True)
+            sums = None
+            for sums in sumtask: yield kernel.sigbusy
+            if not sums: 
+                error("unable to checksum",tmpfn)
                 yield False
                 return
-            debug("opening",src)
-            # XXX large files, atomicity
-            data = open(src,'r').read()
-            s = sha.new(data)
-            m = md5.new(data)
-            if s.hexdigest() == sha1sum and m.hexdigest() == md5sum:
+            if sums['sha'] == sha1sum and sums['md5'] == md5sum:
                 break
             debug("re-fetching corrupt block:", src)
             os.unlink(src)
-            yield kernel.wait(self.pull())
+        if not os.path.exists(src):
+            error("missing block:", src)
+            yield False
+            return
         # XXX volroot
         dst = msg['pathname']
         dstdir = os.path.dirname(dst)
@@ -666,14 +694,19 @@ class Volume:
                 debug('creating path %s as %s' % (curpath,pathmode))
                 os.mkdir(curpath,int(st_mode))
                 os.chown(curpath,int(st_uid),int(st_gid))
-        open(dst,'w').write(data)
-        # update history
-        self.history.add(msg)
+        tmpdst = dst + ".IS.snap.tmp~"
+        # security: create and setstat first
+        open(tmpdst,'w')
         class St: pass
         st = St()
         for attr in "st_mode st_uid st_gid st_atime st_mtime".split():
             setattr(st,attr,getattr(msg.head,attr))
-        self.setstat(dst,st)
+        self.setstat(tmpdst,st)
+        # integrity: copy to tmpdst first, then rename
+        shutil.copyfile(src,tmpdst)
+        os.rename(tmpdst,dst)
+        # update history
+        self.history.add(msg)
         info("updated", dst)
         yield True
         debug("updateSnap done")

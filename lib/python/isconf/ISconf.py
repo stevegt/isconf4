@@ -272,7 +272,6 @@ class Ops:
         yield kernel.wait(self.volume.reboot())
 
     def snap(self):
-        # XXX move most of this to ISFS
         debug("starting snap")
         yield None
         if not len(self.args):
@@ -299,6 +298,7 @@ class Ops:
             return
         dst.setstat(st)
         while True:
+            yield kernel.sigbusy
             data = src.read(1024 * 1024 * 1)
             if not len(data):
                 break

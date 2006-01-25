@@ -17,6 +17,7 @@ import urllib
 import cgi
 import re
 import shutil
+import sys
 import mimetypes
 from StringIO import StringIO
 import SimpleHTTPServer 
@@ -60,6 +61,7 @@ class SimpleHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             arglist = re.findall('(.*?)=([^=&]*)&*',m.group(2))
             for (var,val) in arglist:
                 args[var]=val
+        # sys.argv[0] = "[serving %s]" % path
         # get HMAC challenge
         challenge = args.get('challenge',None)
         f = None

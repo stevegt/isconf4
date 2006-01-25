@@ -48,6 +48,9 @@ class Cache:
     """
 
     def __init__(self,udpport,httpport,timeout=2):
+        # XXX kludge -- what we really need is a dict which
+        # shows the "mirror list" of all known locations for
+        # files, rather than self.req
         self.req = {}
         self.udpport = udpport
         self.httpport = httpport
@@ -199,11 +202,10 @@ class Cache:
         for path in paths:
             debug("resend",path,self.req[path])
             if self.req[path]['state'] > START:
-                # XXX kludge -- what we really need is a dict which
-                # shows the "mirror list" of all known locations for
-                # files, rather than self.req
+                # file is being fetched
                 pass
             elif time.time() > self.req[path]['expires']:
+                # fetch never started
                 debug("timeout",path)
                 del self.req[path]
                 continue
@@ -257,8 +259,18 @@ class Cache:
                 del self.req[path]
             return
         debug(url,size,mod)
-        data = ''
+        tmp = os.path.join(dir,".%s.tmp" % file)
+        # XXX set umask somewhere early
+        # XXX use the following algorithm everywhere else as a more 
+        # secure way of creating files that aren't world readable 
+        # -- also see os.mkstemp()
+        if os.path.exists(tmp): os.unlink(tmp)
+        open(tmp,'w')
+        os.chmod(tmp,0600)
+        open(tmp,'w')  # what does this second open do?
+        tmpfd = open(tmp,'a')
         while True:
+            # XXX move timeout to here
             yield kernel.sigbusy
             (r,w,e) = select.select([u],[],[u],0)
             if e:
@@ -269,8 +281,9 @@ class Cache:
             if len(rxd) == 0:
                 break
             # XXX show progress
-            data += rxd
-        actual_size = len(data)
+            tmpfd.write(rxd)
+        tmpfd.close()
+        actual_size = os.stat(tmp).st_size
         if size is None:
             warn("""
             The host at %s is running an older version of
@@ -285,15 +298,6 @@ class Cache:
                 debug("size mismatch: wanted %d got %d, abort fetching: %s" % 
                         (size, actual_size, url))
                 return
-        tmp = os.path.join(dir,".%s.tmp" % file)
-        # XXX set umask somewhere early
-        # XXX use the following algorithm as a more secure way of creating
-        # files that aren't world readable 
-        if os.path.exists(tmp): os.unlink(tmp)
-        open(tmp,'w')
-        os.chmod(tmp,0600)
-        open(tmp,'w')
-        open(tmp,'a').write(data)
         meta = (mod_secs,mod_secs)
         os.rename(tmp,fullpath)
         os.utime(fullpath,meta)
