@@ -108,6 +108,7 @@ class Cache:
 
     def bcast(self,msg):
         # XXX only udp supported so far
+        # XXX we really need a throttle here
         addrs = self.nets['udp']
         if not os.environ.get('IS_NOBROADCAST',None):
             addrs.append('<broadcast>')
@@ -139,7 +140,6 @@ class Cache:
             if self.req.has_key(path):
                 self.req[path]['state'] = SENDME
             yield kernel.wait(self.wget(path,url,challenge))
-            self.ihaveTx(path)
         elif mtime < mymtime:
             debug("remote is older:",url)
             self.ihaveTx(path)
@@ -185,7 +185,7 @@ class Cache:
                 yield None
                 self.resend()
                 # XXX randomize timeout
-                yield kernel.sigsleep, timeout/5
+                yield kernel.sigsleep, timeout/2
                 # see if they've all been filled or timed out
                 # debug(str(self.req))
                 if not self.req:
@@ -303,6 +303,7 @@ class Cache:
         os.utime(fullpath,meta)
         if self.req.has_key(path):
             del self.req[path]
+        self.ihaveTx(path)
 
     def run(self):
         from SocketServer import UDPServer

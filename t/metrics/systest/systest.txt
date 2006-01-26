@@ -51,14 +51,14 @@ n4h2> /tmp/isconftest/t/isconf up
 n4h3> /tmp/isconftest/t/isconf up
 n4h4> /tmp/isconftest/t/isconf up
 n4h1> mkdir -p /tmp/labtest
-# scp /tmp/tmpSTeBGe root@n4h1:/tmp/labtest/1
+# scp /tmp/tmpDYFiXc root@n4h1:/tmp/labtest/1
 n4h1> cat /tmp/labtest/1
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/1
 n4h1> /tmp/isconftest/t/isconf snap foo
 n4h1> /tmp/isconftest/t/isconf -m 'test' lock
 n4h1> /tmp/isconftest/t/isconf exec mkdir -p /tmp/labtest
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/1
-# scp /tmp/tmp2klyIQ root@n4h1:/tmp/labtest/2
+# scp /tmp/tmp29Wfcc root@n4h1:/tmp/labtest/2
 # ssh root@n4h1 chmod +x /tmp/labtest/2
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/2
 n4h1> /tmp/isconftest/t/isconf exec /tmp/labtest/2 'hey there world!'
@@ -99,7 +99,7 @@ n4h2> /tmp/isconftest/t/isconf restart
 n4h1> /tmp/isconftest/t/isconf lock test IS_NOBROADCAST a
 n4h2> /tmp/isconftest/t/isconf lock test IS_NOBROADCAST b
 n4h2> /tmp/isconftest/t/isconf unlock
-# scp /tmp/tmp9e-k-M root@n4h1:/tmp/labtest/nobroadcast
+# scp /tmp/tmpJ3hnc7 root@n4h1:/tmp/labtest/nobroadcast
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/nobroadcast
 n4h1> /tmp/isconftest/t/isconf ci
 n4h2> /tmp/isconftest/t/isconf up
@@ -124,7 +124,7 @@ n4h2> /tmp/isconftest/t/isconf start
 n4h2> /tmp/isconftest/t/isconf up
 n4h2> cat /tmp/labtest/2.out
 n4h1> /tmp/isconftest/t/isconf -m 'test multiple ci' lock
-# scp /tmp/tmp38e9o4 root@n4h1:/tmp/labtest/multiple
+# scp /tmp/tmpTjavoH root@n4h1:/tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf ci
 n4h2> /tmp/isconftest/t/isconf up
@@ -151,7 +151,7 @@ n4h2> /tmp/isconftest/t/isconf start
 n4h2> /tmp/isconftest/t/isconf up
 n4h2> cat /tmp/labtest/2.out
 n4h1> /tmp/isconftest/t/isconf -m 'test multiple ci' lock
-# scp /tmp/tmp38e9o4 root@n4h1:/tmp/labtest/multiple
+# scp /tmp/tmpTjavoH root@n4h1:/tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf ci
 n4h2> /tmp/isconftest/t/isconf up
@@ -178,7 +178,7 @@ n4h2> /tmp/isconftest/t/isconf start
 n4h2> /tmp/isconftest/t/isconf up
 n4h2> cat /tmp/labtest/2.out
 n4h1> /tmp/isconftest/t/isconf -m 'test multiple ci' lock
-# scp /tmp/tmp38e9o4 root@n4h1:/tmp/labtest/multiple
+# scp /tmp/tmpTjavoH root@n4h1:/tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf ci
 n4h2> /tmp/isconftest/t/isconf up
@@ -195,7 +195,7 @@ n4h3> /tmp/isconftest/t/isconf up
 n4h3> /tmp/isconftest/t/isconf fork branch2
 n4h3> /tmp/isconftest/t/isconf up
 n4h3> /tmp/isconftest/t/isconf -m 'test fork' lock
-# scp /tmp/tmpsR82kk root@n4h3:/tmp/labtest/fork
+# scp /tmp/tmpohRVe3 root@n4h3:/tmp/labtest/fork
 n4h3> /tmp/isconftest/t/isconf snap /tmp/labtest/fork
 n4h3> /tmp/isconftest/t/isconf ci
 n4h4> /tmp/isconftest/t/isconf migrate branch2
@@ -222,7 +222,7 @@ n4h2> /tmp/isconftest/t/isconf start
 n4h2> /tmp/isconftest/t/isconf up
 n4h2> cat /tmp/labtest/2.out
 n4h1> /tmp/isconftest/t/isconf -m 'test multiple ci' lock
-# scp /tmp/tmp38e9o4 root@n4h1:/tmp/labtest/multiple
+# scp /tmp/tmpTjavoH root@n4h1:/tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf ci
 n4h2> /tmp/isconftest/t/isconf up
@@ -239,7 +239,7 @@ n4h3> /tmp/isconftest/t/isconf up
 n4h3> /tmp/isconftest/t/isconf fork branch2
 n4h3> /tmp/isconftest/t/isconf up
 n4h3> /tmp/isconftest/t/isconf -m 'test fork' lock
-# scp /tmp/tmpsR82kk root@n4h3:/tmp/labtest/fork
+# scp /tmp/tmpohRVe3 root@n4h3:/tmp/labtest/fork
 n4h3> /tmp/isconftest/t/isconf snap /tmp/labtest/fork
 n4h3> /tmp/isconftest/t/isconf ci
 n4h4> /tmp/isconftest/t/isconf migrate branch2
@@ -266,7 +266,7 @@ n4h2> /tmp/isconftest/t/isconf start
 n4h2> /tmp/isconftest/t/isconf up
 n4h2> cat /tmp/labtest/2.out
 n4h1> /tmp/isconftest/t/isconf -m 'test multiple ci' lock
-# scp /tmp/tmp38e9o4 root@n4h1:/tmp/labtest/multiple
+# scp /tmp/tmpTjavoH root@n4h1:/tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf ci
 n4h2> /tmp/isconftest/t/isconf up
@@ -283,7 +283,7 @@ n4h3> /tmp/isconftest/t/isconf up
 n4h3> /tmp/isconftest/t/isconf fork branch2
 n4h3> /tmp/isconftest/t/isconf up
 n4h3> /tmp/isconftest/t/isconf -m 'test fork' lock
-# scp /tmp/tmpsR82kk root@n4h3:/tmp/labtest/fork
+# scp /tmp/tmpohRVe3 root@n4h3:/tmp/labtest/fork
 n4h3> /tmp/isconftest/t/isconf snap /tmp/labtest/fork
 n4h3> /tmp/isconftest/t/isconf ci
 n4h4> /tmp/isconftest/t/isconf migrate branch2
@@ -298,7 +298,7 @@ n4h1> /tmp/isconftest/t/isconf up
 n4h2> /tmp/isconftest/t/isconf up
 n4h1> mkdir /tmp/labtest/dira
 n4h1> mkdir /tmp/labtest/dira/dirb
-# scp /tmp/tmp6YynNe root@n4h1:/tmp/labtest/dira/dirb/foo
+# scp /tmp/tmp5SoFPJ root@n4h1:/tmp/labtest/dira/dirb/foo
 n4h1> /tmp/isconftest/t/isconf -m 'test missing parent dirs' lock
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/dira/dirb/foo
 n4h1> /tmp/isconftest/t/isconf ci
