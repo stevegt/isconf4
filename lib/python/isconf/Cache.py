@@ -54,7 +54,7 @@ class Cache:
         self.req = {}
         self.udpport = udpport
         self.httpport = httpport
-        self.timeout = timeout
+        self.timeout = float(timeout)
         self.lastSend = 0
         self.sock = None
         self.fetched = {}
@@ -184,8 +184,7 @@ class Cache:
                 # send requests
                 yield None
                 self.resend()
-                # XXX randomize timeout
-                yield kernel.sigsleep, timeout/2
+                yield kernel.sigsleep, timeout/5.0
                 # see if they've all been filled or timed out
                 # debug(str(self.req))
                 if not self.req:
