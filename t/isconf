@@ -19,7 +19,7 @@ fi
 #     python=python
 # fi
 
-[ -z "$python" ] && python=python
+[ -z "$PYTHON" ] && PYTHON=python
 
 coverage=''
 if test -n "$COVERAGE"
@@ -29,5 +29,5 @@ fi
 
 export PYTHONPATH IS_NETS
 
-$python $coverage $base/bin/isconf -c $base/t/simple.conf "$@"
+$PYTHON $coverage $base/bin/isconf -c $base/t/simple.conf "$@"
 

@@ -13,6 +13,7 @@ d.hostname n4h4
 n4h1> isconf stop
 n4h1> /tmp/isconftest/t/isconf stop
 n4h1> killall isconf
+n4h1> export PYTHON=python2.4
 n4h1> rm -rf /tmp/var
 n4h1> rm -rf /tmp/labtest
 n4h1> mkdir -p /tmp/var/is/conf
@@ -21,6 +22,7 @@ n4h1> echo asamplekey > /tmp/var/is/hmac_keys
 n4h2> isconf stop
 n4h2> /tmp/isconftest/t/isconf stop
 n4h2> killall isconf
+n4h2> export PYTHON=python2.4
 n4h2> rm -rf /tmp/var
 n4h2> rm -rf /tmp/labtest
 n4h2> mkdir -p /tmp/var/is/conf
@@ -29,6 +31,7 @@ n4h2> echo asamplekey > /tmp/var/is/hmac_keys
 n4h3> isconf stop
 n4h3> /tmp/isconftest/t/isconf stop
 n4h3> killall isconf
+n4h3> export PYTHON=python2.4
 n4h3> rm -rf /tmp/var
 n4h3> rm -rf /tmp/labtest
 n4h3> mkdir -p /tmp/var/is/conf
@@ -37,6 +40,7 @@ n4h3> echo asamplekey > /tmp/var/is/hmac_keys
 n4h4> isconf stop
 n4h4> /tmp/isconftest/t/isconf stop
 n4h4> killall isconf
+n4h4> export PYTHON=python2.4
 n4h4> rm -rf /tmp/var
 n4h4> rm -rf /tmp/labtest
 n4h4> mkdir -p /tmp/var/is/conf
@@ -51,14 +55,14 @@ n4h2> /tmp/isconftest/t/isconf up
 n4h3> /tmp/isconftest/t/isconf up
 n4h4> /tmp/isconftest/t/isconf up
 n4h1> mkdir -p /tmp/labtest
-# scp /tmp/tmpsDonzq root@n4h1:/tmp/labtest/1
+# scp /tmp/tmpwUuGt0 root@n4h1:/tmp/labtest/1
 n4h1> cat /tmp/labtest/1
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/1
 n4h1> /tmp/isconftest/t/isconf snap foo
 n4h1> /tmp/isconftest/t/isconf -m 'test' lock
 n4h1> /tmp/isconftest/t/isconf exec mkdir -p /tmp/labtest
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/1
-# scp /tmp/tmp5Qb3Uo root@n4h1:/tmp/labtest/2
+# scp /tmp/tmpptl19z root@n4h1:/tmp/labtest/2
 # ssh root@n4h1 chmod +x /tmp/labtest/2
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/2
 n4h1> /tmp/isconftest/t/isconf exec /tmp/labtest/2 'hey there world!'
@@ -99,7 +103,7 @@ n4h2> /tmp/isconftest/t/isconf restart
 n4h1> /tmp/isconftest/t/isconf lock test IS_NOBROADCAST a
 n4h2> /tmp/isconftest/t/isconf lock test IS_NOBROADCAST b
 n4h2> /tmp/isconftest/t/isconf unlock
-# scp /tmp/tmpTS4YB3 root@n4h1:/tmp/labtest/nobroadcast
+# scp /tmp/tmpYi7wBQ root@n4h1:/tmp/labtest/nobroadcast
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/nobroadcast
 n4h1> /tmp/isconftest/t/isconf ci
 n4h2> /tmp/isconftest/t/isconf up
@@ -114,6 +118,7 @@ n4h2> cat /tmp/labtest/nobroadcast
 n4h3> /tmp/isconftest/t/isconf up
 n4h3> cat /tmp/labtest/nobroadcast
 n4h2> /tmp/isconftest/t/isconf stop
+n4h2> export PYTHON=python2.4
 n4h2> rm -rf /tmp/var
 n4h2> rm -rf /tmp/labtest
 n4h2> mkdir -p /tmp/var/is/conf
@@ -124,7 +129,7 @@ n4h2> /tmp/isconftest/t/isconf start
 n4h2> /tmp/isconftest/t/isconf up
 n4h2> cat /tmp/labtest/2.out
 n4h1> /tmp/isconftest/t/isconf -m 'test multiple ci' lock
-# scp /tmp/tmp9Rox5s root@n4h1:/tmp/labtest/multiple
+# scp /tmp/tmp_xnAIX root@n4h1:/tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf ci
 n4h2> /tmp/isconftest/t/isconf up
@@ -136,11 +141,15 @@ n4h1> /tmp/isconftest/t/isconf ci
 n4h2> /tmp/isconftest/t/isconf up
 n4h2> wc -c /tmp/labtest/largefile
 # ssh root@n4h4 /tmp/isconftest/t/isconf up
-st/t/isconf up
+art
+n4h2> /tmp/isconftest/t/isconf restart
+n4h2> /tmp/isconftest/t/isconf lock test IS_NOBROADCAST b
+n4h2> /tmp/isconftest/t/isconf up
 n4h2> cat /tmp/labtest/nobroadcast
 n4h3> /tmp/isconftest/t/isconf up
 n4h3> cat /tmp/labtest/nobroadcast
 n4h2> /tmp/isconftest/t/isconf stop
+n4h2> export PYTHON=python2.4
 n4h2> rm -rf /tmp/var
 n4h2> rm -rf /tmp/labtest
 n4h2> mkdir -p /tmp/var/is/conf
@@ -151,7 +160,7 @@ n4h2> /tmp/isconftest/t/isconf start
 n4h2> /tmp/isconftest/t/isconf up
 n4h2> cat /tmp/labtest/2.out
 n4h1> /tmp/isconftest/t/isconf -m 'test multiple ci' lock
-# scp /tmp/tmp9Rox5s root@n4h1:/tmp/labtest/multiple
+# scp /tmp/tmp_xnAIX root@n4h1:/tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf ci
 n4h2> /tmp/isconftest/t/isconf up
@@ -163,11 +172,15 @@ n4h1> /tmp/isconftest/t/isconf ci
 n4h2> /tmp/isconftest/t/isconf up
 n4h2> wc -c /tmp/labtest/largefile
 # ssh root@n4h3 /tmp/isconftest/t/isconf up
-st/t/isconf up
+art
+n4h2> /tmp/isconftest/t/isconf restart
+n4h2> /tmp/isconftest/t/isconf lock test IS_NOBROADCAST b
+n4h2> /tmp/isconftest/t/isconf up
 n4h2> cat /tmp/labtest/nobroadcast
 n4h3> /tmp/isconftest/t/isconf up
 n4h3> cat /tmp/labtest/nobroadcast
 n4h2> /tmp/isconftest/t/isconf stop
+n4h2> export PYTHON=python2.4
 n4h2> rm -rf /tmp/var
 n4h2> rm -rf /tmp/labtest
 n4h2> mkdir -p /tmp/var/is/conf
@@ -178,7 +191,7 @@ n4h2> /tmp/isconftest/t/isconf start
 n4h2> /tmp/isconftest/t/isconf up
 n4h2> cat /tmp/labtest/2.out
 n4h1> /tmp/isconftest/t/isconf -m 'test multiple ci' lock
-# scp /tmp/tmp9Rox5s root@n4h1:/tmp/labtest/multiple
+# scp /tmp/tmp_xnAIX root@n4h1:/tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf ci
 n4h2> /tmp/isconftest/t/isconf up
@@ -195,7 +208,7 @@ n4h3> /tmp/isconftest/t/isconf up
 n4h3> /tmp/isconftest/t/isconf fork branch2
 n4h3> /tmp/isconftest/t/isconf up
 n4h3> /tmp/isconftest/t/isconf -m 'test fork' lock
-# scp /tmp/tmpvur9UZ root@n4h3:/tmp/labtest/fork
+# scp /tmp/tmpgbg6mu root@n4h3:/tmp/labtest/fork
 n4h3> /tmp/isconftest/t/isconf snap /tmp/labtest/fork
 n4h3> /tmp/isconftest/t/isconf ci
 n4h4> /tmp/isconftest/t/isconf migrate branch2
@@ -207,11 +220,15 @@ n4h1> test -f /tmp/labtest/fork
 n4h2> /tmp/isconftest/t/isconf up
 n4h2> test -f /tmp/labtest/fork
 # ssh root@n4h1 /tmp/isconftest/t/isconf restart
-st/t/isconf up
+art
+n4h2> /tmp/isconftest/t/isconf restart
+n4h2> /tmp/isconftest/t/isconf lock test IS_NOBROADCAST b
+n4h2> /tmp/isconftest/t/isconf up
 n4h2> cat /tmp/labtest/nobroadcast
 n4h3> /tmp/isconftest/t/isconf up
 n4h3> cat /tmp/labtest/nobroadcast
 n4h2> /tmp/isconftest/t/isconf stop
+n4h2> export PYTHON=python2.4
 n4h2> rm -rf /tmp/var
 n4h2> rm -rf /tmp/labtest
 n4h2> mkdir -p /tmp/var/is/conf
@@ -222,7 +239,7 @@ n4h2> /tmp/isconftest/t/isconf start
 n4h2> /tmp/isconftest/t/isconf up
 n4h2> cat /tmp/labtest/2.out
 n4h1> /tmp/isconftest/t/isconf -m 'test multiple ci' lock
-# scp /tmp/tmp9Rox5s root@n4h1:/tmp/labtest/multiple
+# scp /tmp/tmp_xnAIX root@n4h1:/tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf ci
 n4h2> /tmp/isconftest/t/isconf up
@@ -239,7 +256,7 @@ n4h3> /tmp/isconftest/t/isconf up
 n4h3> /tmp/isconftest/t/isconf fork branch2
 n4h3> /tmp/isconftest/t/isconf up
 n4h3> /tmp/isconftest/t/isconf -m 'test fork' lock
-# scp /tmp/tmpvur9UZ root@n4h3:/tmp/labtest/fork
+# scp /tmp/tmpgbg6mu root@n4h3:/tmp/labtest/fork
 n4h3> /tmp/isconftest/t/isconf snap /tmp/labtest/fork
 n4h3> /tmp/isconftest/t/isconf ci
 n4h4> /tmp/isconftest/t/isconf migrate branch2
@@ -251,11 +268,15 @@ n4h1> test -f /tmp/labtest/fork
 n4h2> /tmp/isconftest/t/isconf up
 n4h2> test -f /tmp/labtest/fork
 # ssh root@n4h2 /tmp/isconftest/t/isconf restart
-st/t/isconf up
+art
+n4h2> /tmp/isconftest/t/isconf restart
+n4h2> /tmp/isconftest/t/isconf lock test IS_NOBROADCAST b
+n4h2> /tmp/isconftest/t/isconf up
 n4h2> cat /tmp/labtest/nobroadcast
 n4h3> /tmp/isconftest/t/isconf up
 n4h3> cat /tmp/labtest/nobroadcast
 n4h2> /tmp/isconftest/t/isconf stop
+n4h2> export PYTHON=python2.4
 n4h2> rm -rf /tmp/var
 n4h2> rm -rf /tmp/labtest
 n4h2> mkdir -p /tmp/var/is/conf
@@ -266,7 +287,7 @@ n4h2> /tmp/isconftest/t/isconf start
 n4h2> /tmp/isconftest/t/isconf up
 n4h2> cat /tmp/labtest/2.out
 n4h1> /tmp/isconftest/t/isconf -m 'test multiple ci' lock
-# scp /tmp/tmp9Rox5s root@n4h1:/tmp/labtest/multiple
+# scp /tmp/tmp_xnAIX root@n4h1:/tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/multiple
 n4h1> /tmp/isconftest/t/isconf ci
 n4h2> /tmp/isconftest/t/isconf up
@@ -283,7 +304,7 @@ n4h3> /tmp/isconftest/t/isconf up
 n4h3> /tmp/isconftest/t/isconf fork branch2
 n4h3> /tmp/isconftest/t/isconf up
 n4h3> /tmp/isconftest/t/isconf -m 'test fork' lock
-# scp /tmp/tmpvur9UZ root@n4h3:/tmp/labtest/fork
+# scp /tmp/tmpgbg6mu root@n4h3:/tmp/labtest/fork
 n4h3> /tmp/isconftest/t/isconf snap /tmp/labtest/fork
 n4h3> /tmp/isconftest/t/isconf ci
 n4h4> /tmp/isconftest/t/isconf migrate branch2
@@ -298,7 +319,247 @@ n4h1> /tmp/isconftest/t/isconf up
 n4h2> /tmp/isconftest/t/isconf up
 n4h1> mkdir /tmp/labtest/dira
 n4h1> mkdir /tmp/labtest/dira/dirb
-# scp /tmp/tmp6m3UAD root@n4h1:/tmp/labtest/dira/dirb/foo
+# scp /tmp/tmpzzrj73 root@n4h1:/tmp/labtest/dira/dirb/foo
+n4h1> /tmp/isconftest/t/isconf -m 'test missing parent dirs' lock
+n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/dira/dirb/foo
+n4h1> /tmp/isconftest/t/isconf ci
+n4h2> /tmp/isconftest/t/isconf up
+n4h2> cat /tmp/labtest/dira/dirb/foo
+n4h2> tar -C /tmp -czf /tmp/isconftest.tar.gz isconftest
+n4h2> /tmp/isconftest/t/isconf -m 'large exec output' lock
+n4h2> /tmp/isconftest/t/isconf snap /tmp/isconftest.tar.gz
+n4h2> cd /tmp/labtest/dira
+n4h2> /tmp/isconftest/t/isconf exec tar -xzvf /tmp/isconftest.tar.gz > /tmp/tar.out
+n4h2> cd -
+n4h2> /tmp/isconftest/t/isconf ci
+n4h1> /tmp/isconftest/t/isconf up > /tmp/tar.out
+n4h1> cat /tmp/labtest/dira/isconftest/t/isconf
+n4h2> /tmp/isconftest/t/isconf lock long running
+n4h2> /tmp/isconftest/t/isconf exec /tmp/isconftest/t/bin/sleeptest 120 y
+n4h2> /tmp/isconftest/t/isconf ci
+n4h1> /tmp/isconftest/t/isconf up
+n4h2> /tmp/isconftest/t/isconf lock long running
+n4h2> /tmp/isconftest/t/isconf exec /tmp/isconftest/t/bin/sleeptest 120
+n4h2> /tmp/isconftest/t/isconf ci
+n4h1> /tmp/isconftest/t/isconf up
+n4h1> cd /tmp/isconftest
+n4h2> cd /tmp/isconftest
+n4h3> cd /tmp/isconftest
+n4h4> cd /tmp/isconftest
+n4h1> hostname 
+n4h2> hostname 
+n4h3> hostname 
+n4h4> hostname 
+a.hostname n4h1
+b.hostname n4h2
+c.hostname n4h3
+d.hostname n4h4
+n4h1> isconf stop
+n4h1> /tmp/isconftest/t/isconf stop
+n4h1> killall isconf
+n4h1> export PYTHON=python2.3
+n4h1> rm -rf /tmp/var
+n4h1> rm -rf /tmp/labtest
+n4h1> mkdir -p /tmp/var/is/conf
+n4h1> echo example.com > /tmp/var/is/conf/domain
+n4h1> echo asamplekey > /tmp/var/is/hmac_keys
+n4h2> isconf stop
+n4h2> /tmp/isconftest/t/isconf stop
+n4h2> killall isconf
+n4h2> export PYTHON=python2.3
+n4h2> rm -rf /tmp/var
+n4h2> rm -rf /tmp/labtest
+n4h2> mkdir -p /tmp/var/is/conf
+n4h2> echo example.com > /tmp/var/is/conf/domain
+n4h2> echo asamplekey > /tmp/var/is/hmac_keys
+n4h3> isconf stop
+n4h3> /tmp/isconftest/t/isconf stop
+n4h3> killall isconf
+n4h3> export PYTHON=python2.3
+n4h3> rm -rf /tmp/var
+n4h3> rm -rf /tmp/labtest
+n4h3> mkdir -p /tmp/var/is/conf
+n4h3> echo example.com > /tmp/var/is/conf/domain
+n4h3> echo asamplekey > /tmp/var/is/hmac_keys
+n4h4> isconf stop
+n4h4> /tmp/isconftest/t/isconf stop
+n4h4> killall isconf
+n4h4> export PYTHON=python2.3
+n4h4> rm -rf /tmp/var
+n4h4> rm -rf /tmp/labtest
+n4h4> mkdir -p /tmp/var/is/conf
+n4h4> echo example.com > /tmp/var/is/conf/domain
+n4h4> echo asamplekey > /tmp/var/is/hmac_keys
+n4h1> /tmp/isconftest/t/isconf start
+n4h2> /tmp/isconftest/t/isconf start
+n4h3> /tmp/isconftest/t/isconf start
+n4h4> /tmp/isconftest/t/isconf start
+n4h1> /tmp/isconftest/t/isconf up
+n4h2> /tmp/isconftest/t/isconf up
+n4h3> /tmp/isconftest/t/isconf up
+n4h4> /tmp/isconftest/t/isconf up
+n4h1> mkdir -p /tmp/labtest
+# scp /tmp/tmpAvJ2kd root@n4h1:/tmp/labtest/1
+n4h1> cat /tmp/labtest/1
+n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/1
+n4h1> /tmp/isconftest/t/isconf snap foo
+n4h1> /tmp/isconftest/t/isconf -m 'test' lock
+n4h1> /tmp/isconftest/t/isconf exec mkdir -p /tmp/labtest
+n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/1
+# scp /tmp/tmpNsRZOp root@n4h1:/tmp/labtest/2
+# ssh root@n4h1 chmod +x /tmp/labtest/2
+n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/2
+n4h1> /tmp/isconftest/t/isconf exec /tmp/labtest/2 'hey there world!'
+n4h1> cat /tmp/labtest/2.out
+n4h2> /tmp/isconftest/t/isconf up
+n4h2> test -f /tmp/labtest/1
+n4h2> test -f /tmp/labtest/2.out
+n4h1> /tmp/isconftest/t/isconf ci
+n4h2> /tmp/isconftest/t/isconf up
+n4h2> cat /tmp/labtest/1
+n4h2> cat /tmp/labtest/2.out
+n4h2> grep message: /tmp/var/is/fs/cache/example.com/volume/generic/journal | grep test | wc -l
+n4h3> /tmp/isconftest/t/isconf lock update check
+n4h3> /tmp/isconftest/t/isconf up
+n4h3> /tmp/isconftest/t/isconf lock update check again
+n4h3> /tmp/isconftest/t/isconf unlock
+n4h1> echo newkey > /tmp/var/is/hmac_keys
+n4h1> /tmp/isconftest/t/isconf lock test HMAC a
+n4h2> /tmp/isconftest/t/isconf lock test HMAC b
+n4h1> /tmp/isconftest/t/isconf unlock
+n4h2> /tmp/isconftest/t/isconf unlock
+n4h1> echo asamplekey >> /tmp/var/is/hmac_keys
+n4h2> echo newkey >> /tmp/var/is/hmac_keys
+n4h1> /tmp/isconftest/t/isconf lock test HMAC a
+n4h2> /tmp/isconftest/t/isconf lock test HMAC b
+n4h1> /tmp/isconftest/t/isconf unlock
+n4h2> /tmp/isconftest/t/isconf lock test HMAC b
+n4h1> /tmp/isconftest/t/isconf lock test HMAC a
+n4h2> /tmp/isconftest/t/isconf unlock
+n4h3> echo newkey >> /tmp/var/is/hmac_keys
+n4h4> echo newkey >> /tmp/var/is/hmac_keys
+n4h1> export IS_NOBROADCAST=1
+n4h2> export IS_NOBROADCAST=1
+n4h1> export IS_NETS=/tmp/isconftest/t/nets.limbo
+n4h2> export IS_NETS=/tmp/isconftest/t/nets.limbo
+n4h1> /tmp/isconftest/t/isconf restart
+n4h2> /tmp/isconftest/t/isconf restart
+n4h1> /tmp/isconftest/t/isconf lock test IS_NOBROADCAST a
+n4h2> /tmp/isconftest/t/isconf lock test IS_NOBROADCAST b
+n4h2> /tmp/isconftest/t/isconf unlock
+# scp /tmp/tmptnfxF1 root@n4h1:/tmp/labtest/nobroadcast
+n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/nobroadcast
+n4h1> /tmp/isconftest/t/isconf ci
+n4h2> /tmp/isconftest/t/isconf up
+n4h2> cat /tmp/labtest/nobroadcast
+n4h1> export IS_NETS=/tmp/isconftest/t/nets
+n4h2> export IS_NETS=/tmp/isconftest/t/nets
+n4h1> /tmp/isconftest/t/isconf restart
+n4h2> /tmp/isconftest/t/isconf restart
+n4h2> /tmp/isconftest/t/isconf lock test IS_NOBROADCAST b
+n4h2> /tmp/isconftest/t/isconf up
+n4h2> cat /tmp/labtest/nobroadcast
+n4h3> /tmp/isconftest/t/isconf up
+n4h3> cat /tmp/labtest/nobroadcast
+n4h2> /tmp/isconftest/t/isconf stop
+n4h2> export PYTHON=python2.3
+n4h2> rm -rf /tmp/var
+n4h2> rm -rf /tmp/labtest
+n4h2> mkdir -p /tmp/var/is/conf
+n4h2> echo example.com > /tmp/var/is/conf/domain
+n4h2> echo asamplekey > /tmp/var/is/hmac_keys
+n4h2> echo newkey >> /tmp/var/is/hmac_keys
+n4h2> /tmp/isconftest/t/isconf start
+n4h2> /tmp/isconftest/t/isconf up
+n4h2> cat /tmp/labtest/2.out
+n4h1> /tmp/isconftest/t/isconf -m 'test multiple ci' lock
+# scp /tmp/tmpzKpYN_ root@n4h1:/tmp/labtest/multiple
+n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/multiple
+n4h1> /tmp/isconftest/t/isconf ci
+n4h2> /tmp/isconftest/t/isconf up
+n4h2> cat /tmp/labtest/multiple
+n4h1> dd if=/dev/zero of=/tmp/labtest/largefile bs=1M count=500
+n4h1> /tmp/isconftest/t/isconf lock large file
+n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/largefile
+n4h1> /tmp/isconftest/t/isconf ci
+n4h2> /tmp/isconftest/t/isconf up
+n4h2> wc -c /tmp/labtest/largefile
+# ssh root@n4h4 /tmp/isconftest/t/isconf up
+gefile
+n4h1> /tmp/isconftest/t/isconf ci
+n4h2> /tmp/isconftest/t/isconf up
+n4h2> wc -c /tmp/labtest/largefile
+# ssh root@n4h3 /tmp/isconftest/t/isconf up
+gefile
+n4h1> /tmp/isconftest/t/isconf ci
+n4h2> /tmp/isconftest/t/isconf up
+n4h2> wc -c /tmp/labtest/largefile
+n4h3> wc -c /tmp/labtest/largefile
+n4h4> wc -c /tmp/labtest/largefile
+n4h3> /tmp/isconftest/t/isconf up
+n4h3> /tmp/isconftest/t/isconf fork branch2
+n4h3> /tmp/isconftest/t/isconf up
+n4h3> /tmp/isconftest/t/isconf -m 'test fork' lock
+# scp /tmp/tmpLOaa2Y root@n4h3:/tmp/labtest/fork
+n4h3> /tmp/isconftest/t/isconf snap /tmp/labtest/fork
+n4h3> /tmp/isconftest/t/isconf ci
+n4h4> /tmp/isconftest/t/isconf migrate branch2
+n4h4> /tmp/isconftest/t/isconf up
+n4h4> cat /tmp/labtest/multiple
+n4h4> cat /tmp/labtest/fork
+n4h1> /tmp/isconftest/t/isconf up
+n4h1> test -f /tmp/labtest/fork
+n4h2> /tmp/isconftest/t/isconf up
+n4h2> test -f /tmp/labtest/fork
+# ssh root@n4h1 /tmp/isconftest/t/isconf restart
+gefile
+n4h1> /tmp/isconftest/t/isconf ci
+n4h2> /tmp/isconftest/t/isconf up
+n4h2> wc -c /tmp/labtest/largefile
+n4h3> wc -c /tmp/labtest/largefile
+n4h4> wc -c /tmp/labtest/largefile
+n4h3> /tmp/isconftest/t/isconf up
+n4h3> /tmp/isconftest/t/isconf fork branch2
+n4h3> /tmp/isconftest/t/isconf up
+n4h3> /tmp/isconftest/t/isconf -m 'test fork' lock
+# scp /tmp/tmpLOaa2Y root@n4h3:/tmp/labtest/fork
+n4h3> /tmp/isconftest/t/isconf snap /tmp/labtest/fork
+n4h3> /tmp/isconftest/t/isconf ci
+n4h4> /tmp/isconftest/t/isconf migrate branch2
+n4h4> /tmp/isconftest/t/isconf up
+n4h4> cat /tmp/labtest/multiple
+n4h4> cat /tmp/labtest/fork
+n4h1> /tmp/isconftest/t/isconf up
+n4h1> test -f /tmp/labtest/fork
+n4h2> /tmp/isconftest/t/isconf up
+n4h2> test -f /tmp/labtest/fork
+# ssh root@n4h2 /tmp/isconftest/t/isconf restart
+gefile
+n4h1> /tmp/isconftest/t/isconf ci
+n4h2> /tmp/isconftest/t/isconf up
+n4h2> wc -c /tmp/labtest/largefile
+n4h3> wc -c /tmp/labtest/largefile
+n4h4> wc -c /tmp/labtest/largefile
+n4h3> /tmp/isconftest/t/isconf up
+n4h3> /tmp/isconftest/t/isconf fork branch2
+n4h3> /tmp/isconftest/t/isconf up
+n4h3> /tmp/isconftest/t/isconf -m 'test fork' lock
+# scp /tmp/tmpLOaa2Y root@n4h3:/tmp/labtest/fork
+n4h3> /tmp/isconftest/t/isconf snap /tmp/labtest/fork
+n4h3> /tmp/isconftest/t/isconf ci
+n4h4> /tmp/isconftest/t/isconf migrate branch2
+n4h4> /tmp/isconftest/t/isconf up
+n4h4> cat /tmp/labtest/multiple
+n4h4> cat /tmp/labtest/fork
+n4h1> /tmp/isconftest/t/isconf up
+n4h1> test -f /tmp/labtest/fork
+n4h2> /tmp/isconftest/t/isconf up
+n4h2> test -f /tmp/labtest/fork
+n4h1> /tmp/isconftest/t/isconf up
+n4h2> /tmp/isconftest/t/isconf up
+n4h1> mkdir /tmp/labtest/dira
+n4h1> mkdir /tmp/labtest/dira/dirb
+# scp /tmp/tmp7_3GH- root@n4h1:/tmp/labtest/dira/dirb/foo
 n4h1> /tmp/isconftest/t/isconf -m 'test missing parent dirs' lock
 n4h1> /tmp/isconftest/t/isconf snap /tmp/labtest/dira/dirb/foo
 n4h1> /tmp/isconftest/t/isconf ci
@@ -322,4 +583,4 @@ n4h2> /tmp/isconftest/t/isconf exec /tmp/isconftest/t/bin/sleeptest 120
 n4h2> /tmp/isconftest/t/isconf ci
 n4h1> /tmp/isconftest/t/isconf up
 
-174 tests: 0 failed, 174 passed (100%)
+358 tests: 0 failed, 358 passed (100%)

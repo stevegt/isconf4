@@ -121,6 +121,11 @@ class Cache:
         port = msg['port']
         path = msg['file']
         mtime = msg.head.mtime
+        # XXX is python's pseudo-random good enough here?  
+        #
+        # probably, but for other cases, use 'gpg --gen-random 2 16'
+        # to generate 128 bits of random data from entropy
+        #
         challenge = str(random.random())
         url = "%s://%s:%s/%s?challenge=%s" % (scheme,ip,port,path,challenge)
         path = path.lstrip('/')
@@ -221,6 +226,34 @@ class Cache:
             self.ihaveTx(path)
 
     def wget(self,path,url,challenge):
+        """
+
+        # >>> port=random.randrange(50000,60000)
+        # >>> class fakesock:
+        # ...     def sendto(self,msg,foo,bar): 
+        # ...         print "sendto called"
+        # >>> srcdir="/tmp/var/is/fs/cache/"
+        # >>> pridir="/tmp/var/isdst/fs/private/"
+        # >>> if not os.path.exists(srcdir):
+        # ...     os.makedirs(srcdir)
+        # >>> if not os.path.exists(pridir):
+        # ...     os.makedirs(pridir)
+        # >>> open(srcdir + "foo",  'w').write("lakfdsjl")
+        # >>> open(pridir + ".pull",'w').write("foo\\n")
+        # >>> h = kernel.spawn(httpServer(port=port,dir=srcdir))
+        # >>> kernel.run(steps=1000)
+        # >>> os.environ["HOSTNAME"] = "testhost"
+        # >>> os.environ["IS_HOME"] = "/tmp/var/isdst"
+        # >>> shutil.rmtree("/tmp/var/isdst",ignore_errors=True)
+        # >>> cache = Cache(54321,port)
+        # >>> assert cache
+        # >>> cache.sock = fakesock()
+        # >>> url = "http://localhost:%d/foo" % port
+        # >>> w = kernel.spawn(cache.wget("foo",url,"abc"))
+        # >>> kernel.run(steps=1000)
+        # >>> open("/tmp/var/isdst/fs/cache/foo",'r').read()
+
+        """
         yield None
         # XXX kludge to keep from beating up HTTP servers
         if self.fetched.get(url,0) > time.time() - 5:
@@ -271,12 +304,21 @@ class Cache:
         while True:
             # XXX move timeout to here
             yield kernel.sigbusy
-            (r,w,e) = select.select([u],[],[u],0)
-            if e:
+            try:
+                (r,w,e) = select.select([u],[],[u],0)
+                if e:
+                    # XXX not sure if we should break or raise here
+                    break
+                if not r:
+                    continue
+            except:
+                # python 2.4 throws a "no fileno attribute" exception if 
+                # the entire page content has already arrived
+                pass
+            try:
+                rxd = u.read(8192) 
+            except:
                 break
-            if not r:
-                continue
-            rxd = u.read(8192) 
             if len(rxd) == 0:
                 break
             # XXX show progress
@@ -386,6 +428,28 @@ def httpServer(port,dir):
     from BaseHTTPServer import HTTPServer
     from isconf.HTTPServer import SimpleHTTPRequestHandler
     from SocketServer import ThreadingMixIn
+
+    """
+
+    # >>> port=random.randrange(50000,60000)
+    # >>> srcdir="/tmp/var/is/fs/cache/"
+    # >>> if not os.path.exists(srcdir):
+    # >>>     os.makedirs(srcdir)
+    # >>> open(srcdir + "foo",'w').write("lakfdsjl")
+    # >>> pid = os.fork()
+    # >>> if not pid:
+    # >>>     kernel.run(httpServer(port=port,dir=srcdir))
+    # >>> time.sleep(1)
+    # >>> u = urllib2.urlopen("http://localhost:%d/foo" % port)
+    # >>> k = u.info().keys()
+    # >>> k.sort()
+    # >>> k
+    # ['content-length', 'content-type', 'date', 'last-modified', 'server']
+    # >>> u.read()     
+    # 'lakfdsjl'
+    # >>> os.kill(pid,9)
+
+    """
 
     # Note:  Switched from ForkingMixIn to ThreadingMixIn around
     # 4.2.8.206 in order to remove nasty race condition between the

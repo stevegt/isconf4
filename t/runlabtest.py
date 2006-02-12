@@ -259,7 +259,8 @@ def readblind(child):
             break
     return out
 
-def setup(h,tdir,vdir):
+def setup(h,tdir,vdir,python):
+    h.sess("export PYTHON=%s" % python)
     h.sess("rm -rf /tmp/var")
     h.sess("rm -rf " + tdir)
     h.sess("mkdir -p %s/is/conf" % vdir)
@@ -267,6 +268,12 @@ def setup(h,tdir,vdir):
     h.sess("echo asamplekey > %s/is/hmac_keys" % vdir)
 
 def main():
+    run(python="python2.4")
+    run(python="python2.3")
+    rc = t.results()
+    sys.exit(rc)
+
+def run(python='python'):
     dir = sys.argv[1]
     host = sys.argv[2:6]
     tdir = "/tmp/labtest"
@@ -294,7 +301,7 @@ def main():
         h.sess("isconf stop",blind=True)
         h.isconf("stop",blind=True)
         h.sess("killall isconf",blind=True)
-        setup(h,tdir,vdir)
+        setup(h,tdir,vdir,python)
 
     # ordinary start 
     for h in (a,b,c,d):
@@ -412,7 +419,7 @@ def main():
     # bug #49 -- new machines (not from same image) need to work
     # during evaluation
     b.isconf("stop")
-    setup(b,tdir,vdir)
+    setup(b,tdir,vdir,python)
     b.sess("echo newkey >> %s/is/hmac_keys" % vdir)
     b.isconf("start")
     # XXX why is there a long delay here?
@@ -511,11 +518,6 @@ def main():
     b.isconf("exec %s/t/bin/sleeptest 120" % dir, timeout=130)
     b.isconf("ci")
     a.isconf("up", timeout=130)
-
-    rc = t.results()
-    sys.exit(rc)
-
-
 
 if __name__ == "__main__":
     main()

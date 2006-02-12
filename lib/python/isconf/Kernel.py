@@ -360,12 +360,12 @@ class Kernel:
         """
         assert initobj or steps
         if initobj and not self.isrunning(1): 
-            initid = self.spawn(initobj).tid
+            self.spawn(initobj)
         ticks = 0
         while True:
             if self._shutdown:
                 sys.exit(0)
-            if initobj and not self.isrunning(initid): break
+            if initobj and not self.isrunning(1): break
             if steps and steps <= ticks: 
                 break
             ticks += 1
