@@ -108,7 +108,8 @@ class Cache:
 
     def bcast(self,msg):
         # XXX only udp supported so far
-        # XXX we really need a throttle here
+        # XXX temporary throttle -- only send 10 packets/sec max
+        yield kernel.sigsleep, .1
         addrs = self.nets['udp']
         if not os.environ.get('IS_NOBROADCAST',None):
             addrs.append('<broadcast>')
