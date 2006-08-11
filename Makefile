@@ -48,7 +48,7 @@ sdist: uprev doc
 ship: sdist
 	scp $(tarball) root@trac.t7a.org:/var/trac/isconf/pub
 	ssh root@trac.t7a.org mkdir -p $(pubdoc)
-	rsync -avz doc/ root@trac.t7a.org:$(pubdoc)
+	rsync -e ssh -avz doc/ root@trac.t7a.org:$(pubdoc)
 	# XXX 'latest' is wrong if we're working on a patch branch
 	ssh root@trac.t7a.org rsync -avz $(pubdoc)/ /var/trac/isconf/pub/doc/latest/
 
