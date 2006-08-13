@@ -1,6 +1,6 @@
 Name         Stmts   Exec  Cover
 --------------------------------
-Cache          412     55    13%
+Cache          413     55    13%
 Config          60      8    13%
 Errno           27     19    70%
 Globals         77     26    33%
@@ -17,4 +17,4 @@ fbp822         229     39    17%
 version          1      1   100%
 subprocess     458     37     8%
 --------------------------------
-TOTAL         3075    484    15%
+TOTAL         3076    484    15%
