@@ -39,7 +39,7 @@ cd $pkg
 isconf exec make install
 isconf exec cp etc/rc.isconf /etc/init.d/isconf  
 isconf exec chmod 755 /usr/bin/isconf
-isconf exec cp doc/isconf.8 /usr/man/man8/  
+isconf exec cp doc/isconf.8 /usr/share/man/man8/  
 isconf reboot
 isconf ci
 

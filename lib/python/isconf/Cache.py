@@ -215,7 +215,7 @@ class Cache:
                 continue
             req = self.req[path]['msg']
             # XXX temporary throttle -- only send 10 packets/sec max
-            yield kernel.sigsleep, .1
+            # yield kernel.sigsleep, .1
             self.bcast(str(req))
 
     def flush(self):
@@ -225,8 +225,6 @@ class Cache:
         os.rename(self.p.announce,tmp)
         files = open(tmp,'r').read().strip().split("\n")
         for path in files:
-            # XXX temporary throttle -- only send 10 packets/sec max
-            yield kernel.sigsleep, .1
             self.ihaveTx(path)
 
     def wget(self,path,url,challenge):
