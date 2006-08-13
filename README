@@ -9,9 +9,11 @@ See the man page for more details of, for instance, the contents of
 Install:
 ========
 
+pkg=isconf-4.2.8.N
 cd /tmp
-tar -xzvf isconf-4.2.6.tar.gz
-cd isconf-4.2.6
+wget http://trac.t7a.org/isconf/pub/$pkg.tar.gz
+tar -xzvf $pkg.tar.gz
+cd $pkg
 make install
 cp etc/rc.isconf /etc/init.d/isconf
 (make symlink(s) from /etc/rc*)
@@ -26,15 +28,16 @@ isconf up
 Upgrade:
 ========
 
-newversion=isconf-4.2.8.N
+
+pkg=isconf-4.2.8.N
 cd /tmp
-isconf -m "upgrade to $newversion" lock
-isconf snap $newversion.tar.gz
-isconf exec tar -xzvf $newversion.tar.gz
-cd $newversion
+wget http://trac.t7a.org/isconf/pub/$pkg.tar.gz
+isconf -m "upgrade to $pkg" lock
+isconf snap $pkg.tar.gz
+isconf exec tar -xzvf $pkg.tar.gz
+cd $pkg
 isconf exec make install
 isconf exec cp etc/rc.isconf /etc/init.d/isconf  
-(make /etc/rc* symlinks, again using isconf exec)
 isconf exec chmod 755 /usr/bin/isconf
 isconf exec cp doc/isconf.8 /usr/man/man8/  
 isconf reboot
