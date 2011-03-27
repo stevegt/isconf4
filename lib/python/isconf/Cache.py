@@ -113,6 +113,8 @@ class Cache:
         if not os.environ.get('IS_NOBROADCAST',None):
             addrs.append('<broadcast>')
         for addr in addrs:
+            # XXX this sleep might be all the throttle we need
+            yield kernel.sigsleep, 1
             self.sock.sendto(msg,0,(addr,self.udpport))
 
     def ihaveRx(self,msg,ip):
