@@ -83,7 +83,7 @@ class SimpleHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         except IOError:
             self.send_error(404, "File not found")
             return None
-        mtime = os.path.getmtime(path)
+        mtime = getmtime_int(path)
         size = os.path.getsize(path)
         lastmod = email.Utils.formatdate(mtime)
         self.send_response(200)

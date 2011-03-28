@@ -100,7 +100,7 @@ class Cache:
         if not os.path.exists(fullpath):
             warn("file gone: %s" % fullpath)
             return
-        mtime = os.path.getmtime(fullpath)
+        mtime = getmtime_int(fullpath)
         reply = FBP.msg('ihave',tuid=self.tuid,
                 file=path,mtime=mtime,port=self.httpport,scheme='http')
         HMAC.msgset(reply)
@@ -144,7 +144,7 @@ class Cache:
         mymtime = 0
         debug("checking",url)
         if os.path.exists(fullpath):
-            mymtime = os.path.getmtime(fullpath)
+            mymtime = getmtime_int(fullpath)
         if mtime > mymtime:
             debug("remote is newer:",url)
             if self.req.has_key(path):
@@ -183,7 +183,7 @@ class Cache:
                 fullpath = os.path.join(self.p.cache,path)
                 mtime = 0
                 if os.path.exists(fullpath):
-                    mtime = os.path.getmtime(fullpath)
+                    mtime = getmtime_int(fullpath)
                 req = FBP.msg('whohas',file=path,newer=mtime,tuid=self.tuid)
                 HMAC.msgset(req)
                 self.req.setdefault(path,{})
@@ -277,7 +277,7 @@ class Cache:
         # XXX security checks on pathname
         mtime = 0
         if os.path.exists(fullpath):
-            mtime = os.path.getmtime(fullpath)
+            mtime = getmtime_int(fullpath)
         if not os.path.exists(dir):
             os.makedirs(dir,0700)
         try:
@@ -411,7 +411,7 @@ class Cache:
                     if not os.path.isfile(fullpath):
                         debug("ignoring whohas from %s: not found: %s" % (addr,fullpath))
                         continue
-                    if newer is not None and newer >= os.path.getmtime(
+                    if newer is not None and newer >= getmtime_int(
                             fullpath):
                         debug("ignoring whohas from %s: not newer: %s" % (addr,fullpath))
                         continue
@@ -585,10 +585,10 @@ class Hmac:
             return []
         if time.time() > self.expires \
                 and os.path.exists(path) \
-                and self.mtime < os.path.getmtime(path):
+                and self.mtime < getmtime_int(path):
             self.expires = time.time() + self.ckfreq
             debug("reloading",path)
-            self.mtime = os.path.getmtime(path)
+            self.mtime = getmtime_int(path)
             self.reset()
             for line in open(path,'r').readlines():
                 line = line.strip()

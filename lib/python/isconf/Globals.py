@@ -99,6 +99,11 @@ def _log(type,msg,rc=None):
     if rc and not BUS.log:
         sys.exit(rc)
 
+def getmtime_int(path):
+    mtime = os.path.getmtime(path)
+    mtime = int(mtime)
+    return mtime
+
 def mklist(data):
     if len(data) == 1 or isinstance(data,str):
         data = [data]

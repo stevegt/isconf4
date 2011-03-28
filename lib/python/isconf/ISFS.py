@@ -178,7 +178,7 @@ class Journal:
         if not hasattr(self,"_entries"):
             self._entries = []
         if os.path.exists(self.path):
-            mtime = os.path.getmtime(self.path)
+            mtime = getmtime_int(self.path)
             if mtime != self._mtime:
                 self._entries = self._parse()
                 self._mtime = mtime
@@ -244,7 +244,7 @@ class Journal:
         # do NOT update self._mtime here -- entries() needs to do that
         mtime = 0
         if os.path.exists(self.path):
-            mtime = os.path.getmtime(self.path)
+            mtime = getmtime_int(self.path)
         return mtime
 
     def _parse(self):
@@ -269,7 +269,7 @@ class History:
         open(self.path,'a').write(line)
 
     def xidlist(self):
-        mtime = os.path.getmtime(self.path)
+        mtime = getmtime_int(self.path)
         if mtime != self._mtime:
             self.reload()
             self._mtime = mtime
@@ -484,7 +484,7 @@ class Volume:
         if jtime != self.journal.mtime():
             error("someone else checked in conflicting changes -- repair wip and retry")
             return
-        if self.journal.mtime() > os.path.getmtime(self.p.wip):
+        if self.journal.mtime() > getmtime_int(self.p.wip):
             error("journal is newer than wip -- repair and retry")
             return
         self.journal.addraw(wipdata)
@@ -506,7 +506,7 @@ class Volume:
     def lockmsg(self):
         if os.path.exists(self.p.lock) and os.path.getsize(self.p.lock):
             msg = open(self.p.lock,'r').read()
-            msg += " (lock time %s)" % time.ctime(os.path.getmtime(self.p.lock))
+            msg += " (lock time %s)" % time.ctime(getmtime_int(self.p.lock))
             return msg
         return 'none'
 
