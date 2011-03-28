@@ -109,13 +109,21 @@ class Cache:
     def bcast(self,msg):
         # XXX only udp supported so far
         # XXX throttle needed here
+        debug("bcast")
         addrs = self.nets['udp']
         if not os.environ.get('IS_NOBROADCAST',None):
             addrs.append('<broadcast>')
         for addr in addrs:
-            self.sock.sendto(msg,0,(addr,self.udpport))
             # XXX this sleep might be all the throttle we need
             yield kernel.sigsleep, .1
+            while True:
+                try:
+                    debug("send", addr, msg)
+                    self.sock.sendto(msg,0,(addr,self.udpport))
+                    break
+                except:
+                    debug("sendto failed: %s" % addr)
+                    yield kernel.sigsleep, 1
 
     def ihaveRx(self,msg,ip):
         yield None
@@ -206,9 +214,10 @@ class Cache:
         self.lastSend = time.time()
         paths = self.req.keys()
         for path in paths:
-            debug("resend",path,self.req[path])
+            debug("resend", self.req[path]['expires'], path, self.req[path])
             if self.req[path]['state'] > START:
                 # file is being fetched
+                debug("resend fetching")
                 pass
             elif time.time() > self.req[path]['expires']:
                 # fetch never started
@@ -218,6 +227,7 @@ class Cache:
             req = self.req[path]['msg']
             # XXX temporary throttle -- only send 10 packets/sec max
             # yield kernel.sigsleep, .1
+            debug("calling bcast")
             self.bcast(str(req))
 
     def flush(self):
