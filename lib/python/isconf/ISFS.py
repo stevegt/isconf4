@@ -637,6 +637,9 @@ class Volume:
             return
         for msg in pending:
             debug(msg['pathname'],time.time())
+            # XXX XXX XXX OUCH!!!  using 'wait' here keeps us from
+            # XXX XXX XXX checking return codes; execution of journal
+            # XXX XXX XXX will always continue on error
             if msg.type() == 'snap': 
                 yield kernel.wait(self.updateSnap(msg))
             if msg.type() == 'exec': 
