@@ -568,10 +568,14 @@ class Volume:
         yield kernel.wait(self.addwip(msg))
             
     def setstat(self,path,st):
-        print st.st_mode,st.st_uid,st.st_gid,st.st_atime,st.st_mtime
+        # print st.st_mode,st.st_uid,st.st_gid,st.st_atime,st.st_mtime
         os.chmod(path,st.st_mode)
         os.chown(path,st.st_uid,st.st_gid)
-        os.utime(path,(st.st_atime,st.st_mtime))
+        def toint(val):
+            val = float(val)
+            val = int(val)
+            return val
+        os.utime(path,(toint(st.st_atime),toint(st.st_mtime)))
 
     def unlock(self):
         locker = self.lockedby()
@@ -660,8 +664,8 @@ class Volume:
         sha1sum = match.group(1)
         md5sum = match.group(2)
         for retry in range(3):
-            if not os.path.exists(src):
-                debug("retry pull", relsrc)
+            while not os.path.exists(src):
+                info("pull", relsrc)
                 yield kernel.wait(self.pullfiles([relsrc]))
             sumtask = kernel.spawn(self.sums(src),itermode=True)
             sums = None

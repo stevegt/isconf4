@@ -114,16 +114,11 @@ class Cache:
         if not os.environ.get('IS_NOBROADCAST',None):
             addrs.append('<broadcast>')
         for addr in addrs:
-            # XXX this sleep might be all the throttle we need
-            yield kernel.sigsleep, .1
-            while True:
-                try:
-                    debug("send", addr, msg)
-                    self.sock.sendto(msg,0,(addr,self.udpport))
-                    break
-                except:
-                    debug("sendto failed: %s" % addr)
-                    yield kernel.sigsleep, 1
+            try:
+                debug("sendto", addr, msg)
+                self.sock.sendto(msg,0,(addr,self.udpport))
+            except:
+                info("sendto failed: %s" % addr)
 
     def ihaveRx(self,msg,ip):
         yield None
@@ -198,7 +193,7 @@ class Cache:
             while True:
                 # send requests
                 yield None
-                self.resend()
+                yield kernel.wait(self.resend())
                 yield kernel.sigsleep, timeout/5.0
                 # see if they've all been filled or timed out
                 # debug(str(self.req))
@@ -225,10 +220,9 @@ class Cache:
                 del self.req[path]
                 continue
             req = self.req[path]['msg']
-            # XXX temporary throttle -- only send 10 packets/sec max
-            # yield kernel.sigsleep, .1
             debug("calling bcast")
             self.bcast(str(req))
+            yield kernel.sigsleep, .1
 
     def flush(self):
         if not os.path.exists(self.p.announce):
