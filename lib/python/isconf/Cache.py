@@ -59,6 +59,7 @@ class Cache:
         self.sock = None
         self.fetched = {}
         self.nets = self.readnets()
+        self.sendq = []
 
         # temporary uid -- uniquely identifies host in non-persistent
         # packets.  If we want something permanent we should store it
@@ -108,17 +109,31 @@ class Cache:
 
     def bcast(self,msg):
         # XXX only udp supported so far
-        # XXX throttle needed here
         debug("bcast")
         addrs = self.nets['udp']
         if not os.environ.get('IS_NOBROADCAST',None):
             addrs.append('<broadcast>')
         for addr in addrs:
-            try:
-                debug("sendto", addr, msg)
-                self.sock.sendto(msg,0,(addr,self.udpport))
-            except:
-                info("sendto failed: %s" % addr)
+            if len(self.sendq) > 20:
+                debug("sendq overflow")
+                return
+            self.sendq.append((msg,addr,self.udpport))
+
+    def sender(self):
+        while True:
+            yield None
+            yield kernel.sigsleep, 1
+            while len(self.sendq):
+                msg,addr,udpport = self.sendq.pop(0)
+                try:
+                    debug("sendto", addr, msg)
+                    self.sock.sendto(msg,0,(addr,udpport))
+                except:
+                    info("sendto failed: %s" % addr)
+                    self.sendq.append((msg,addr,udpport))
+                    yield kernel.sigsleep, 1
+                yield kernel.sigsleep, self.timeout/5.0
+
 
     def ihaveRx(self,msg,ip):
         yield None
@@ -193,8 +208,9 @@ class Cache:
             while True:
                 # send requests
                 yield None
-                yield kernel.wait(self.resend())
-                yield kernel.sigsleep, timeout/5.0
+                debug("calling resend")
+                self.resend()
+                yield kernel.sigsleep, 1
                 # see if they've all been filled or timed out
                 # debug(str(self.req))
                 if not self.req:
@@ -222,7 +238,6 @@ class Cache:
             req = self.req[path]['msg']
             debug("calling bcast")
             self.bcast(str(req))
-            yield kernel.sigsleep, .1
 
     def flush(self):
         if not os.path.exists(self.p.announce):
@@ -359,6 +374,9 @@ class Cache:
         from isconf.fbp822 import fbp822, Error822
 
         kernel.spawn(self.puller())
+        kernel.spawn(self.sender())
+
+        # XXX most of the following should be broken out into a receiver() task
 
         dir = self.p.cache
         udpport = self.udpport

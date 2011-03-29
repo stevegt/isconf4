@@ -23,6 +23,7 @@ from StringIO import StringIO
 import SimpleHTTPServer 
 
 from isconf.Cache import HMAC
+from isconf.Globals import getmtime_int
 
 
 class SimpleHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
