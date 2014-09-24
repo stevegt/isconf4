@@ -8,6 +8,10 @@ pubdoc=/var/trac/isconf/pub/doc/$(version).$(revision)
 
 all:
 
+README.md: doc/isconf.t2t.in doc
+	pandoc -o README.md doc/isconf.html 
+
+
 install:
 	python ./setup.py install
 	# chmod might be needed with some versions of distutils
