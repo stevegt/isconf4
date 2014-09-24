@@ -1,27 +1,37 @@
-.TH "isconf(8)" 1 "03/28/2011" "ISconf 4.2.8.250"
+.TH "isconf(8)" 1 "09/24/2014" "ISconf 4.2.8.250"
+
 
 .SH NAME
+
 .P
 isconf \- infrastructure build and configuration manager
 
 .SH SYNOPSIS
+
 .P
 \fBisconf\fR [\fB\-Dhrq\fR] [\fB\-c\fR \fIconfig\fR] [\fB\-m\fR \fImessage\fR] \fIverb\fR [\fIverb_args\fR] ...
 
 .SH QUICK START
+
 .P
-To install the latest version of package 'foo' on ten thousand hosts,
-including any hosts that are currently down or not yet built, you can
-log into the first host and say this:
+First, follow the short installation instructions in the INSTALL file
+that came with this package.  It's best to do this on whatever you're
+using as a golden master image, then deploy that image to all of your
+machines.
+
+.P
+Later, to install the latest version of package 'foo' on ten thousand
+hosts, including any hosts that are currently down or not yet built,
+you can log into any host and say this:
 
 .nf
-      cd /tmp
-      wget http://example.com/foo-1.2.tar.gz  
-      isconf snap foo-1.2.tar.gz  
-      isconf exec tar -xzvf foo-1.2.tar.gz 
-      isconf exec make -C foo-1.2 install
-      isconf exec rm -rf foo-1.2.tar.gz foo-1.2
-      isconf ci
+    cd /tmp
+    wget http://example.com/foo-1.2.tar.gz  
+    isconf snap foo-1.2.tar.gz  
+    isconf exec tar -xzvf foo-1.2.tar.gz 
+    isconf exec make -C foo-1.2 install
+    isconf exec rm -rf foo-1.2.tar.gz foo-1.2
+    isconf ci
 .fi
 
 
@@ -29,11 +39,12 @@ log into the first host and say this:
 \&...then, on the other 9,999 hosts, run this during boot or from cron:
 
 .nf
-      isconf up
+    isconf up
 .fi
 
 
 .SH DESCRIPTION
+
 .P
 See the GLOSSARY below for terms and concepts.
 
@@ -67,6 +78,7 @@ as root on target machines and make arbitrary untracked changes, then
 you don't want this package.  
 
 .SH BACKGROUND
+
 .P
 One hundred years ago, automobiles were built by hand.  Each vehicle
 was unique, composed of parts which were often crafted on the spot.
@@ -113,6 +125,7 @@ and weekends, and to, finally, begin to do more engineering and less
 firefighting.
 
 .SH PREREQUISITES
+
 .P
 To do deterministic and repeatable host management, there are some
 things you need to do in addition to just installing and using ISconf.
@@ -157,6 +170,7 @@ that the external tool manages only those files which it must.  See
 .RE
 
 .SH FLAGS
+
 .P
 Flags appear only after the isconf command name, not after
 subcommands (as opposed to e.g. CVS).
@@ -203,19 +217,23 @@ Quiet \-\- don't show verbose output.
 Version \-\- show ISconf version.
 
 .SH SUBCOMMANDS
+
 .P
 Subcommands are often called 'verbs' in ISconf documentation and
 usage.  They can be grouped into the following categories:
 
 .SS Changing disk state
+
 .P
     lock, unlock, snap, exec, reboot, ci, up
 
 .SS Branch management
+
 .P
     fork, migrate
 
 .SS Daemon management
+
 .P
     start, stop, restart
 
@@ -242,11 +260,12 @@ execution on target machines after \fBci\fR.
 Example:
 
 .nf
-      isconf lock "permanently shut down apache"
-      isconf exec /etc/rc2.d/S85apache stop
-      isconf exec rm /etc/rc2.d/S85apache 
-      isconf ci
+    isconf lock "permanently shut down apache"
+    isconf exec /etc/rc2.d/S85apache stop
+    isconf exec rm /etc/rc2.d/S85apache 
+    isconf ci
 .fi
+
 
 
 If you want to embed shell redirects or pipes in the \fBexec\fR
@@ -255,15 +274,17 @@ invocation.  For example, this *won't* do what you want \-\- it will
 only change /etc/motd on the origin machine:
 
 .nf
-      isconf exec echo web server down > /etc/motd
+    isconf exec echo web server down > /etc/motd
 .fi
+
 
 
 Here's what you really want instead:
 
 .nf
-      isconf exec sh -c "echo web server down > /etc/motd"
+    isconf exec sh -c "echo web server down > /etc/motd"
 .fi
+
 
 
 .TP
@@ -311,15 +332,16 @@ point in their build.   For example, this is what you might do to
 install and boot a new kernel:
 
 .nf
-      isconf lock "upgrade to 2.6.20"
-      isconf snap kernel-2.6.20-1.i686.rpm
-      isconf exec rpm -ivh kernel-2.6.20-1.i686.rpm
-      isconf reboot
-      isconf ci
-  
-      # on other machines
-      isconf -r up
+    isconf lock "upgrade to 2.6.20"
+    isconf snap kernel-2.6.20-1.i686.rpm
+    isconf exec rpm -ivh kernel-2.6.20-1.i686.rpm
+    isconf reboot
+    isconf ci
+
+    # on other machines
+    isconf -r up
 .fi
+
 
 
 Apply thought when using this verb; 'isconf up' (without the \-r)
@@ -384,6 +406,7 @@ If used with \fB\-r\fR, and if a pending \fBreboot\fR entry is
 encountered in the journal, then the host will reboot.
 
 .SH ENVIRONMENT
+
 .P
 ISconf behavior is controlled predominantly by environment
 variables.  These can be set and exported before starting or
@@ -447,6 +470,7 @@ The command which ISconf uses to reboot the machine in response to
 an 'isconf reboot' request.  Defaults to "shutdown \-r now".
 
 .SH FILES
+
 .TP
 \fB/etc/is/main.cf\fR
 Top\-level configuration file for ISconf.  See CONFIGURATION for
@@ -506,10 +530,11 @@ listed in it, followed by the \fB+ANY+\fR key.  The file might look
 like this when first deployed:
 
 .nf
-      someauthenticationkey
-      +ANY+
-  
+    someauthenticationkey
+    +ANY+
+
 .fi
+
 
 
 As you deploy the above file, hosts will begin sending
@@ -547,6 +572,7 @@ Network broadcast list \-\- see \fBIS_NETS\fR above.  See t/nets for
 an example.  Likely to change.
 
 .SH CONFIGURATION
+
 .P
 ISconf uses environment variables for its configuration, and these
 variables are in turn passed on to any executables ISconf calls \-\- see
@@ -556,9 +582,9 @@ but whitespace is whitespace \-\- tabs aren't required.  Each stanza
 looks like this:
 
 .nf
-      target: optional includes
-          var1 = value
-          var2 = value
+    target: optional includes
+        var1 = value
+        var2 = value
 .fi
 
 
@@ -579,72 +605,73 @@ You can see the resulting environment by using the \fB\-D\fR flag.
 Here's an example /etc/is/main.cf:
 
 .nf
-      DEFAULT:
-          NTPSERVERS = ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov
-          IS_NETS=/etc/is/nets
-  
-      NET1:
-          GATEWAY = 10.10.1.1
-  
-      NET2:
-          GATEWAY = 10.10.2.1
-  
-      # The host 'scotty' will end up with these environment variables
-      # set during the ISconf run:
-      #
-      # NTPSERVERS="ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov"
-      # GATEWAY=10.10.1.1
-      # building=23
-      # floor=2
-      # IS_NETS=/etc/is/nets.scotty
-      #
-      scotty: NET1
-          building = this value is ignored
-          building = 23
-          floor = 2
-          IS_NETS=/etc/is/nets.scotty
-  
-      # kirk will get:
-      #
-      # NTPSERVERS="ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov"
-      # IS_NETS=/etc/is/nets
-      # GATEWAY = 10.10.2.1
-      # building=52
-      # floor=12
-      # 
-      kirk: NET2
-          building = 52
-          floor = 12
-  
-      LOST:
-          building = unknown
-          floor = unknown
-  
-      # any other host in example.com:
-      #
-      # NTPSERVERS="ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov"
-      # IS_NETS=/etc/is/nets
-      # building=unknown
-      # floor=unknown
-      # GATEWAY=10.2.3.1
-      # 
-      ^.*\e.example\e.com: LOST
-          GATEWAY = 10.2.3.1
-  
-      # any other host not in example.com:
-      #
-      # NTPSERVERS="ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov"
-      # IS_NETS=/etc/is/nets
-      # building=unknown
-      # floor=unknown
-      # GATEWAY=10.0.0.1
-      # 
-      ^.*: LOST
-          GATEWAY = 10.0.0.1
+    DEFAULT:
+        NTPSERVERS = ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov
+        IS_NETS=/etc/is/nets
+
+    NET1:
+        GATEWAY = 10.10.1.1
+
+    NET2:
+        GATEWAY = 10.10.2.1
+
+    # The host 'scotty' will end up with these environment variables
+    # set during the ISconf run:
+    #
+    # NTPSERVERS="ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov"
+    # GATEWAY=10.10.1.1
+    # building=23
+    # floor=2
+    # IS_NETS=/etc/is/nets.scotty
+    #
+    scotty: NET1
+        building = this value is ignored
+        building = 23
+        floor = 2
+        IS_NETS=/etc/is/nets.scotty
+
+    # kirk will get:
+    #
+    # NTPSERVERS="ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov"
+    # IS_NETS=/etc/is/nets
+    # GATEWAY = 10.10.2.1
+    # building=52
+    # floor=12
+    # 
+    kirk: NET2
+        building = 52
+        floor = 12
+
+    LOST:
+        building = unknown
+        floor = unknown
+
+    # any other host in example.com:
+    #
+    # NTPSERVERS="ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov"
+    # IS_NETS=/etc/is/nets
+    # building=unknown
+    # floor=unknown
+    # GATEWAY=10.2.3.1
+    # 
+    ^.*\e.example\e.com: LOST
+        GATEWAY = 10.2.3.1
+
+    # any other host not in example.com:
+    #
+    # NTPSERVERS="ntp1 ntp2 bigben.ucsd.edu mcs.anl.gov"
+    # IS_NETS=/etc/is/nets
+    # building=unknown
+    # floor=unknown
+    # GATEWAY=10.0.0.1
+    # 
+    ^.*: LOST
+        GATEWAY = 10.0.0.1
 .fi
 
 
 .SH GLOSSARY
+
 .TP
 \fBbase image\fR
 
@@ -673,8 +700,9 @@ then creating a \fBcheckpoint image\fR.
 Branch names must match this regular expression:
 
 .nf
-          \ew+[-\ew\e.]+
+        \ew+[-\ew\e.]+
 .fi
+
 
 
 See also \fBclass\fR.
@@ -798,8 +826,9 @@ http://trac.t7a.org/isconf/wiki/DomainsVsBranches.
 Domain names must match this regular expression:
 
 .nf
-          \ew+[-\ew\e.]+
+        \ew+[-\ew\e.]+
 .fi
+
 
 
 .TP
@@ -971,6 +1000,7 @@ the base image.  Used for replay on other hosts of the same
 branch.  
 
 .SH INTERNALS
+
 .P
 The basic algorithm that ISconf uses is roughly:
 
@@ -1008,6 +1038,7 @@ could make use of distinct handling.)
 .RE
 
 .SH BUGS/RESTRICTIONS
+
 .P
 See http://trac.t7a.org/isconf/report for bugs, and see notes for a
 given release at http://trac.t7a.org/isconf/roadmap?show=all.
@@ -1068,6 +1099,7 @@ and/or files in var log.
 .RE
 
 .SH SEE ALSO
+
 .TS
 center, tab(^); ll.
  Background on where all this came from^http://www.infrastructures.org
@@ -1083,10 +1115,9 @@ mailing list at
 http://mailman.terraluna.org/mailman/listinfo/infrastructures
 
 .SH AUTHOR
+
 .P
 Steve Traugott \-\- http://www.stevegt.com
 
-
-.\" man code generated by txt2tags 2.5 (http://txt2tags.sf.net)
+.\" man code generated by txt2tags 2.6 (http://txt2tags.org)
 .\" cmdline: txt2tags -o isconf.8 -t man isconf.t2t
-

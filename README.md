@@ -42,9 +42,14 @@ SYNOPSIS
 QUICK START
 ===========
 
-To install the latest version of package 'foo' on ten thousand hosts,
-including any hosts that are currently down or not yet built, you can
-log into the first host and say this:
+First, follow the short installation instructions in the INSTALL file
+that came with this package. It's best to do this on whatever you're
+using as a golden master image, then deploy that image to all of your
+machines.
+
+Later, to install the latest version of package 'foo' on ten thousand
+hosts, including any hosts that are currently down or not yet built, you
+can log into any host and say this:
 
           cd /tmp
           wget http://example.com/foo-1.2.tar.gz  
