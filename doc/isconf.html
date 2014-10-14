@@ -7,7 +7,7 @@
 <CENTER>
 <H1>isconf(8)</H1>
 <FONT SIZE="4"><I>ISconf 4.2.8.250</I></FONT><BR>
-<FONT SIZE="4">09/24/2014</FONT>
+<FONT SIZE="4">10/14/2014</FONT>
 </CENTER>
 
 <P></P>
@@ -63,7 +63,10 @@ isconf - infrastructure build and configuration manager
 First, follow the short installation instructions in the INSTALL file
 that came with this package.  It's best to do this on whatever you're
 using as a golden master image, then deploy that image to all of your
-machines.
+machines.  If you're only setting up a few machines and have no image
+server, then you <I>might</I> be able to get away with installing each
+manually from the vendor CD, if you carefully install them each the
+same way.
 </P>
 <P>
 Later, to install the latest version of package 'foo' on ten thousand
@@ -74,6 +77,7 @@ you can log into any host and say this:
 <PRE>
       cd /tmp
       wget http://example.com/foo-1.2.tar.gz  
+      isconf lock just a comment about installing foo
       isconf snap foo-1.2.tar.gz  
       isconf exec tar -xzvf foo-1.2.tar.gz 
       isconf exec make -C foo-1.2 install
@@ -88,6 +92,17 @@ you can log into any host and say this:
 <PRE>
       isconf up
 </PRE>
+
+<P>
+If you're only managing a few machines, you can probably get away with
+not starting the isconf daemon at boot -- just start it manually when
+you need it by saying 'isconf start'.  If you're turning these
+machines over to someone else for long-term suport, don't want to
+teach them isconf, and expect them to manually make a mess anyway,
+then it would make sense to leave the daemon off when you're done
+anyway.  See <B>BUGS/RESTRICTIONS</B> for some security reasons why it
+also makes sense to leave the daemon off when you're done.
+</P>
 
 <A NAME="toc4"></A>
 <H1>DESCRIPTION</H1>

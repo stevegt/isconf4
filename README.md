@@ -2,7 +2,7 @@ isconf(8)
 =========
 
 *ISconf 4.2.8.250*\
- 09/24/2014
+ 10/14/2014
 
 * * * * *
 
@@ -45,7 +45,10 @@ QUICK START
 First, follow the short installation instructions in the INSTALL file
 that came with this package. It's best to do this on whatever you're
 using as a golden master image, then deploy that image to all of your
-machines.
+machines. If you're only setting up a few machines and have no image
+server, then you *might* be able to get away with installing each
+manually from the vendor CD, if you carefully install them each the same
+way.
 
 Later, to install the latest version of package 'foo' on ten thousand
 hosts, including any hosts that are currently down or not yet built, you
@@ -53,6 +56,7 @@ can log into any host and say this:
 
           cd /tmp
           wget http://example.com/foo-1.2.tar.gz  
+          isconf lock just a comment about installing foo
           isconf snap foo-1.2.tar.gz  
           isconf exec tar -xzvf foo-1.2.tar.gz 
           isconf exec make -C foo-1.2 install
@@ -62,6 +66,15 @@ can log into any host and say this:
 ...then, on the other 9,999 hosts, run this during boot or from cron:
 
           isconf up
+
+If you're only managing a few machines, you can probably get away with
+not starting the isconf daemon at boot -- just start it manually when
+you need it by saying 'isconf start'. If you're turning these machines
+over to someone else for long-term suport, don't want to teach them
+isconf, and expect them to manually make a mess anyway, then it would
+make sense to leave the daemon off when you're done anyway. See
+**BUGS/RESTRICTIONS** for some security reasons why it also makes sense
+to leave the daemon off when you're done.
 
 DESCRIPTION
 ===========
