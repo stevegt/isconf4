@@ -53,6 +53,7 @@ you can log into any host and say this:
 ```
     cd /tmp
     wget http://example.com/foo-1.2.tar.gz  
+    isconf start
     isconf lock just a comment about installing foo
     isconf snap foo-1.2.tar.gz  
     isconf exec tar -xzvf foo-1.2.tar.gz 
@@ -64,14 +65,15 @@ you can log into any host and say this:
 ...then, on the other 9,999 hosts, run this during boot or from cron:
 
 ```
+    isconf start
     isconf up
 ```
 
 If you're only managing a few machines, you can probably get away with
-not starting the isconf daemon at boot -- just start it manually when
-you need it by saying 'isconf start'.  If you're turning these
-machines over to someone else for long-term suport, don't want to
-teach them isconf, and expect them to manually make a mess anyway,
+not starting the isconf daemon at boot -- as above, just start it
+manually when you need it by saying 'isconf start'.  If you're turning
+these machines over to someone else for long-term support, don't want
+to teach them isconf, and expect them to manually make a mess anyway,
 then it would make sense to leave the daemon off when you're done
 anyway.  See **BUGS/RESTRICTIONS** for some security reasons why it
 also makes sense to leave the daemon off when you're done.
