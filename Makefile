@@ -57,7 +57,7 @@ XXXship: sdist
 	ssh root@trac.t7a.org rsync -avz $(pubdoc)/ /var/trac/isconf/pub/doc/latest/
 
 pypi: sdist
-	python setup.py upload -r pypi
+	python setup.py sdist upload -r pypi
 
 test:
 	cd t && time make
