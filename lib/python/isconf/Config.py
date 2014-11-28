@@ -56,7 +56,7 @@ class Config:
     def match(self,hostname):
         vars={}
         for name in self.sections:
-            if name is 'DEFAULT':
+            if name == 'DEFAULT':
                 vars.update(self.section[name])
             if name == hostname:
                 vars.update(self.section[name])

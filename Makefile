@@ -47,14 +47,17 @@ XXXtar:
 sdist: uprev doc
 	rm -f MANIFEST
 	python setup.py sdist
-	mv dist/$(tarname).tar.gz $(tarball)
+	# mv dist/$(tarname).tar.gz $(tarball)
 
-ship: sdist
+XXXship: sdist
 	scp $(tarball) root@trac.t7a.org:/var/trac/isconf/pub
 	ssh root@trac.t7a.org mkdir -p $(pubdoc)
 	rsync -e ssh -avz doc/ root@trac.t7a.org:$(pubdoc)
 	# XXX 'latest' is wrong if we're working on a patch branch
 	ssh root@trac.t7a.org rsync -avz $(pubdoc)/ /var/trac/isconf/pub/doc/latest/
+
+pypi: sdist
+	python setup.py upload -r pypi
 
 test:
 	cd t && time make
